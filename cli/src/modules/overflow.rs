@@ -12,7 +12,7 @@ pub fn get_module(version: Version) -> Module<impl (Fn(&Node) -> Option<Finding>
             _ => None,
         }*/
 
-        match node.other.get("kind") {
+        /*match node.other.get("kind") {
             Some(kind) => match kind {
                 serde_json::value::Value::String(kind) => {
                     if kind == "function" {
@@ -35,7 +35,7 @@ pub fn get_module(version: Version) -> Module<impl (Fn(&Node) -> Option<Finding>
                 _ => (),
             },
             _ => (),
-        }
+        }*/
 
         None
     })

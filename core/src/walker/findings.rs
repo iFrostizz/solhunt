@@ -29,6 +29,40 @@ pub struct Finding {
     // TODO: add finding code to identify
 }
 
-pub type Findings = Vec<Finding>;
+impl Finding {
+    pub fn format(&self) -> String {
+        self.severity.format(format!(
+            "{}: {}",
+            self.name.clone(),
+            self.description.clone()
+        ))
+    }
+}
 
+#[derive(Debug)]
+pub struct Meta {
+    pub file: String,
+    pub src: Option<usize>,
+}
+
+#[derive(Debug)]
+pub struct MetaFinding {
+    pub finding: Finding,
+    pub meta: Meta,
+}
+
+impl MetaFinding {
+    pub fn format(&self) -> String {
+        format!(
+            "{} l.{} {}",
+            self.meta.file.clone(),
+            self.meta.src.unwrap_or(0),
+            self.finding.format()
+        )
+    }
+}
+
+pub type Findings = Vec<MetaFinding>;
+
+/// Module name -> Findings
 pub type AllFindings = HashMap<String, Findings>;

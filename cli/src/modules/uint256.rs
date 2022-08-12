@@ -7,15 +7,14 @@ use core::{
 use ethers_solc::artifacts::ast::{Node, NodeType};
 
 pub fn get_module() -> Module<impl (Fn(&Node) -> Option<Finding>)> {
-    Module::new("uint256", |node| {
+    Module::new("uint256", move |node| {
         if let NodeType::VariableDeclaration = node.node_type {
-            let type_name = node.other.get("typeName").unwrap().clone();
+            let type_name = node.other.get("typeName").expect("no typeName node in VariableDeclaration").clone();
             if let Some(type_descriptions) = type_name.get("typeDescriptions") {
                 let type_identifier = type_descriptions
                     .get("typeIdentifier")
                     .expect("No typeIdentifier");
                 if type_identifier == "t_uint256" {
-                    // println!("{} {}", self.name, self.matching);
                     let name = "uint256".to_string();
                     let description = "We just found a uint256 yay!".to_string();
 

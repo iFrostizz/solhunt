@@ -1,5 +1,8 @@
-use ethers_solc::{Project, ProjectPathsConfig, Solc, ConfigurableContractArtifact, ArtifactId, output::ProjectCompileOutput};
-use std::{path::PathBuf, collections::btree_map::BTreeMap, time::Instant};
+use ethers_solc::{
+    output::ProjectCompileOutput, ArtifactId, ConfigurableContractArtifact, Project,
+    ProjectPathsConfig, Solc,
+};
+use std::{collections::btree_map::BTreeMap, path::PathBuf, time::Instant};
 
 // TODO: implement compile files https://docs.rs/ethers-solc/latest/ethers_solc/struct.Project.html#method.compile_files
 
@@ -25,7 +28,8 @@ pub fn compile(auto_detect: bool, path: PathBuf) -> ProjectCompileOutput {
             .compile_with_version(
                 &Solc::find_svm_installed_version("0.8.0").unwrap().unwrap(),
                 sources,
-            ).unwrap()
+            )
+            .unwrap()
     };
 
     // project.rerun_if_sources_changed();
@@ -43,7 +47,10 @@ pub fn compile(auto_detect: bool, path: PathBuf) -> ProjectCompileOutput {
     compiled
 }
 
-pub fn compile_artifacts(auto_detect: bool, path: PathBuf) -> BTreeMap<ArtifactId, ConfigurableContractArtifact> {
+pub fn compile_artifacts(
+    auto_detect: bool,
+    path: PathBuf,
+) -> BTreeMap<ArtifactId, ConfigurableContractArtifact> {
     let compiled = compile(auto_detect, path);
 
     compiled.into_artifacts().collect()

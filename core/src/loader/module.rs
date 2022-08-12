@@ -3,6 +3,7 @@
 use crate::walker::{Finding, Findings};
 use ethers_solc::artifacts::ast::Node;
 
+#[derive(Debug)]
 pub struct Module<F> {
     pub name: String,
     pub findings: Findings,

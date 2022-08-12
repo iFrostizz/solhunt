@@ -1,23 +1,28 @@
 use std::env::current_dir;
 
-use crate::modules::{overflow, uint256};
+use crate::{
+    modules::{overflow, uint256},
+    utils::formatter::format_findings,
+};
 use core::{solidity, walker::Walker};
 
 mod modules;
+mod utils;
 
 fn main() {
     let mut path = current_dir().unwrap(); // TODO: from args if "." or "./"
-    path.push("assets/contracts");
+    path.push("assets/contracts/Uint.sol");
     let output = solidity::compile_artifacts(true, path);
 
-    /*let over_module = overflow::get_module();
+    // dbg!(&output);
 
-    let modules = vec![over_module];
+    let module = uint256::get_module();
+
+    let modules = vec![module];
     let mut walker = Walker::new(output, modules);
 
-    let all_findings = walker.traverse();
-
-    dbg!(&all_findings);*/
+    let all_findings = walker.traverse().expect("failed to traverse ast");
+    format_findings(all_findings);
 }
 
 #[cfg(test)]
@@ -55,7 +60,10 @@ mod test {
         let modules = vec![uint256::get_module()];
 
         let mut walker = Walker::new(output, modules);
-        let all_findings = walker.traverse();
+        dbg!("1");
+        let all_findings = walker.traverse().expect("couldn't");
+
+        println!("{:#?}", &all_findings);
 
         assert!(all_findings.get("uint256").unwrap().len() > 0)
     }
@@ -108,12 +116,13 @@ mod test {
         let modules = vec![overflow::get_module(temp_version)];
 
         let mut walker = Walker::new(output, modules);
-        let all_findings = walker.traverse();
+        let all_findings = walker.traverse().unwrap();
 
         assert_eq!(all_findings.get("overflow").unwrap().len(), 0)
     }
 
     #[test]
+    #[ignore]
     fn can_find_overflow_old_ver() {
         let compiled = compile_temp(
             "examples/Foo",
@@ -145,7 +154,7 @@ mod test {
         let modules = vec![overflow::get_module(temp_version)];
 
         let mut walker = Walker::new(output, modules);
-        let all_findings = walker.traverse();
+        let all_findings = walker.traverse().unwrap();
 
         assert!(all_findings.get("overflow").unwrap().len() > 0)
     }

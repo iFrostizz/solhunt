@@ -1,5 +1,5 @@
-use serde_json::value::Value;
 use semver::Version;
+use serde_json::value::Value;
 
 pub fn version_from_literals(literals: Value) -> Version {
     let literals: Vec<String> = serde_json::from_value(literals).unwrap();
