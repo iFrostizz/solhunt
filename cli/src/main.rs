@@ -1,20 +1,26 @@
-use std::env::current_dir;
+use std::{env::current_dir, path::PathBuf};
 
 use crate::{
     modules::{overflow, uint256},
     utils::formatter::format_findings,
+    cmd::parse::Cmd,
 };
 use core::{solidity, walker::Walker};
 
+use clap::Parser;
+
 mod modules;
 mod utils;
+mod cmd;
 
 fn main() {
-    let mut path = current_dir().unwrap(); // TODO: from args if "." or "./"
-    path.push("assets/contracts/Uint.sol");
-    let output = solidity::compile_artifacts(true, path);
+    let args = Cmd::parse();
 
-    // dbg!(&output);
+    let mut path = PathBuf::new();
+    path.push(current_dir().expect("could not get current path"));
+    path.push(args.path);
+
+    let output = solidity::compile_artifacts(true, path);
 
     let module = uint256::get_module();
 
