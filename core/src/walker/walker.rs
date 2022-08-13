@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use std::{fs::File, io::BufReader};
 
 use crate::{
-    loader::Module,
+    loader::{Information, Module},
     solidity::utils::{get_file_lines, get_line_position},
     walker::{AllFindings, Finding, Findings, Meta, MetaFinding},
 };
 
 pub struct Walker<F>
 where
-    F: Fn(&Node) -> Option<Finding>,
+    F: Fn(&Node, &Information) -> Option<Finding>,
 {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     modules: Vec<Module<F>>,
@@ -21,7 +21,7 @@ where
 
 impl<F> Walker<F>
 where
-    F: Fn(&Node) -> Option<Finding>,
+    F: Fn(&Node, &Information) -> Option<Finding>,
 {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
@@ -49,29 +49,29 @@ where
                 .as_ref()
                 .expect(format!("no ast found for {}", unique_id).as_str());
 
-            dbg!(&ast.absolute_path.clone());
-
             let lines_to_bytes = match File::open(ast.absolute_path.clone()) {
+                // only use if file is found
                 Ok(file) => {
                     let file = BufReader::new(file);
                     get_file_lines(file).expect("failed to parse lines")
                 }
-                Err(_) => {
-                    Vec::new()
-                }
+                Err(_) => Vec::new(),
             };
             let lines_to_bytes = &lines_to_bytes;
 
             let nodes = &ast.nodes;
 
-            // dbg!(&nodes);
-
             let name = &ast.absolute_path;
+
+            let info = Information {
+                name: name.to_string(),
+                version: id.version.clone(),
+            };
 
             self.modules.iter().for_each(|module| {
                 all_findings.entry(module.name.clone()).or_default();
                 let mut findings: &mut Findings = &mut Vec::new();
-                self.visit_nodes(module, nodes, lines_to_bytes, name.clone(), &mut findings);
+                self.visit_nodes(module, nodes, lines_to_bytes, info.clone(), &mut findings);
                 all_findings
                     .entry(module.name.clone())
                     .and_modify(|f| f.append(findings));
@@ -86,25 +86,18 @@ where
         module: &Module<F>,
         nodes: &Vec<Node>,
         lines_to_bytes: &Vec<usize>,
-        name: String,
+        info: Information,
         findings: &mut Findings,
     ) {
         nodes.into_iter().for_each(|node| {
-            if let Some(finding) = module.process(&node) {
+            if let Some(finding) = module.process(&node, &info) {
                 let meta = Meta {
-                    file: name.clone(),
+                    file: info.name.clone(),
                     src: get_line_position(&node.src, lines_to_bytes),
                 };
                 let meta_finding = MetaFinding { finding, meta };
 
                 findings.push(meta_finding);
-                /*println!(
-                    "{:#?}",
-                    &finding.severity.format(format!(
-                        "Name: {}, Desc: {}",
-                        finding.name, finding.description
-                    ))
-                );*/
             }
             /*match node.node_type {
                 NodeType::PragmaDirective => {
@@ -145,7 +138,7 @@ where
             // dbg!(&node.id);*/
             let inner_nodes = &node.nodes;
 
-            self.visit_nodes(module, inner_nodes, lines_to_bytes, name.clone(), findings);
+            self.visit_nodes(module, inner_nodes, lines_to_bytes, info.clone(), findings);
         });
     }
 }

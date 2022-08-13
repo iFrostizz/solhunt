@@ -60,10 +60,7 @@ mod test {
         let modules = vec![uint256::get_module()];
 
         let mut walker = Walker::new(output, modules);
-        dbg!("1");
         let all_findings = walker.traverse().expect("couldn't");
-
-        println!("{:#?}", &all_findings);
 
         assert!(all_findings.get("uint256").unwrap().len() > 0)
     }
@@ -96,33 +93,22 @@ mod test {
 
         let output = compiled.into_artifacts().collect();
 
-        /*compiled
-        .output()
-        .contracts
-        .contracts_with_files_and_version()
-        .for_each(|(file, name, contract, version)| {
-            dbg!(&version);
-        })*/
-
-        /*dbg!(compiled
-        .output()
-        .sources
-        .0
-        .into_keys()
-        .collect::<Vec<String>>());*/
-
-        let temp_version = Version::new(0, 8, 10); // TODO: We really want to parse it instead
-
-        let modules = vec![overflow::get_module(temp_version)];
+        let modules = vec![overflow::get_module()];
 
         let mut walker = Walker::new(output, modules);
         let all_findings = walker.traverse().unwrap();
 
-        assert_eq!(all_findings.get("overflow").unwrap().len(), 0)
+        assert_eq!(
+            all_findings
+                .get("overflow")
+                .unwrap()
+                .iter()
+                .find_map(|mf| { (mf.finding.code == 0).then_some(true) }),
+            None
+        )
     }
 
     #[test]
-    #[ignore]
     fn can_find_overflow_old_ver() {
         let compiled = compile_temp(
             "examples/Foo",
@@ -150,12 +136,19 @@ mod test {
 
         let output = compiled.into_artifacts().collect();
 
-        let temp_version = Version::new(0, 7, 0);
-        let modules = vec![overflow::get_module(temp_version)];
+        let modules = vec![overflow::get_module()];
 
         let mut walker = Walker::new(output, modules);
         let all_findings = walker.traverse().unwrap();
 
-        assert!(all_findings.get("overflow").unwrap().len() > 0)
+        assert_eq!(
+            all_findings
+                .get("overflow")
+                .unwrap()
+                .iter()
+                .find_map(|mf| { (mf.finding.code == 0).then_some(true) })
+                .unwrap(),
+            true
+        )
     }
 }

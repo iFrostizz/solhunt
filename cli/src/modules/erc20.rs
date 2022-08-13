@@ -1,11 +1,14 @@
 // Check for non-compliant code (e.g:
 // Using safeApprove instead of ... : https://code4rena.com/reports/2022-06-badger/#n-01-safeapprove-is-deprecated
 
-use core::{loader::Module, walker::Finding};
+use core::{
+    loader::{Information, Module},
+    walker::Finding,
+};
 use ethers_solc::artifacts::ast::Node;
 
-pub fn get_module() -> Module<impl (Fn(&Node) -> Option<Finding>)> {
-    Module::new("erc20", |node| {
+pub fn get_module() -> Module<impl (Fn(&Node, &Information) -> Option<Finding>)> {
+    Module::new("erc20", |node, info| {
         None
         /*if let NodeType::VariableDeclaration = node.node_type {
             let type_name = node.other.get("typeName").unwrap().clone();
@@ -21,6 +24,7 @@ pub fn get_module() -> Module<impl (Fn(&Node) -> Option<Finding>)> {
                         name,
                         description,
                         severity: Severity::Informal,
+                        code: 1,
                     })
                 } else { None }
             } else { None }

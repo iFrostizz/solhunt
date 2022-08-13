@@ -5,6 +5,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub enum Severity {
     Informal,
+    Gas,
     Low,
     Medium,
     High,
@@ -14,6 +15,7 @@ impl Severity {
     pub fn format(&self, text: String) -> String {
         match *self {
             Severity::Informal => format!("\x1b[0m{}\x1b[0m", text),
+            Severity::Gas => format!("\x1b[0m{}\x1b[0m", text),
             Severity::Low => format!("\x1b[0m{}\x1b[0m", text),
             Severity::Medium => format!("\x1b[0m{}\x1b[0m", text),
             Severity::High => format!("\x1b[0m{}\x1b[0m", text),
@@ -26,7 +28,7 @@ pub struct Finding {
     pub name: String,
     pub description: String,
     pub severity: Severity,
-    // TODO: add finding code to identify
+    pub code: u32, // Identify finding type easily
 }
 
 impl Finding {

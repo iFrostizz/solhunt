@@ -2,6 +2,7 @@
 
 use crate::walker::{Finding, Findings};
 use ethers_solc::artifacts::ast::Node;
+use semver::Version;
 
 #[derive(Debug)]
 pub struct Module<F> {
@@ -10,9 +11,15 @@ pub struct Module<F> {
     pub func: F,
 }
 
+#[derive(Debug, Clone)]
+pub struct Information {
+    pub name: String,
+    pub version: Version,
+}
+
 impl<F> Module<F>
 where
-    F: Fn(&Node) -> Option<Finding>,
+    F: Fn(&Node, &Information) -> Option<Finding>,
 {
     pub fn new(name: impl Into<String>, func: F) -> Module<F> {
         Module {
@@ -22,7 +29,7 @@ where
         }
     }
 
-    pub fn process(&self, node: &Node) -> Option<Finding> {
-        (self.func)(node)
+    pub fn process(&self, node: &Node, info: &Information) -> Option<Finding> {
+        (self.func)(node, info)
     }
 }

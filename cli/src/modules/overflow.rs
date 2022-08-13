@@ -1,18 +1,16 @@
 // Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
-use core::{loader::Module, walker::Finding};
+use core::{
+    loader::{Information, Module},
+    walker::{Finding, Severity},
+};
 use ethers_solc::artifacts::ast::{Node, NodeType};
 use semver::{Version, VersionReq};
 use serde_json::from_value;
 
-pub fn get_module(version: Version) -> Module<impl (Fn(&Node) -> Option<Finding>)> {
-    Module::new("overflow", move |node| {
-        /*dbg!(&node);
-        match node.node_type {
-            _ => None,
-        }*/
-
-        /*match node.other.get("kind") {
+pub fn get_module() -> Module<impl (Fn(&Node, &Information) -> Option<Finding>)> {
+    Module::new("overflow", |node, info| {
+        match node.other.get("kind") {
             Some(kind) => match kind {
                 serde_json::value::Value::String(kind) => {
                     if kind == "function" {
@@ -25,19 +23,33 @@ pub fn get_module(version: Version) -> Module<impl (Fn(&Node) -> Option<Finding>
                             // "body" is a Node
                             match body.other.get("statements") {
                                 Some(statements) => {
-                                    dbg!(&statements);
+                                    // dbg!(&statements);
                                 }
                                 _ => (),
                             }
+                            if info.version.minor < 8 {
+                                Some(Finding {
+                                    name: "overflow".to_string(),
+                                    description:
+                                        "the function may overflow, please bump version > 0.8.0"
+                                            .to_string(),
+                                    severity: Severity::Low,
+                                    code: 0,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
                         }
+                    } else {
+                        None
                     }
                 }
-                _ => (),
+                _ => None,
             },
-            _ => (),
-        }*/
-
-        None
+            _ => None,
+        }
     })
 }
 
