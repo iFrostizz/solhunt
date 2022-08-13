@@ -33,3 +33,5 @@ where
         (self.func)(node, info)
     }
 }
+
+pub type DynModule = Module<Box<dyn (Fn(&Node, &Information) -> Option<Finding>)>>;

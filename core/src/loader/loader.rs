@@ -1,12 +1,12 @@
 // Can take all Modules to pass them to the walker
 
-/*use ethers_solc::artifacts::ast::Node;
-use crate::{walker, loader::Module};
+use crate::loader::DynModule;
 
-pub struct Loader<F>(pub Vec<Module<F>>) where F: Fn(&Module, &Node);
+pub struct Loader(pub Vec<DynModule>);
 
-impl Loader<F> where F: Fn(&Module, &Node) {
-    pub fn new(modules: Vec<Module<F>>) -> Self {
+impl Loader
+{
+    pub fn new(modules: Vec<DynModule>) -> Self {
         Loader(modules)
     }
-}*/
+}

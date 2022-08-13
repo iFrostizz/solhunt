@@ -6,28 +6,25 @@ use std::collections::HashMap;
 use std::{fs::File, io::BufReader};
 
 use crate::{
-    loader::{Information, Module},
+    loader::Information,
     solidity::utils::{get_file_lines, get_line_position},
-    walker::{AllFindings, Finding, Findings, Meta, MetaFinding},
+    walker::{AllFindings, Findings, Meta, MetaFinding},
 };
+use crate::loader::{DynModule, Loader};
 
-pub struct Walker<F>
-where
-    F: Fn(&Node, &Information) -> Option<Finding>,
+pub struct Walker
 {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-    modules: Vec<Module<F>>,
+    loader: Loader,
 }
 
-impl<F> Walker<F>
-where
-    F: Fn(&Node, &Information) -> Option<Finding>,
+impl Walker
 {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-        modules: Vec<Module<F>>,
+        loader: Loader,
     ) -> Self {
-        Walker { artifact, modules }
+        Walker { artifact, loader }
     }
 
     /*
@@ -68,7 +65,7 @@ where
                 version: id.version.clone(),
             };
 
-            self.modules.iter().for_each(|module| {
+            self.loader.0.iter().for_each(|module| {
                 all_findings.entry(module.name.clone()).or_default();
                 let mut findings: &mut Findings = &mut Vec::new();
                 self.visit_nodes(module, nodes, lines_to_bytes, info.clone(), &mut findings);
@@ -83,7 +80,7 @@ where
 
     pub fn visit_nodes(
         &self,
-        module: &Module<F>,
+        module: &DynModule,
         nodes: &Vec<Node>,
         lines_to_bytes: &Vec<usize>,
         info: Information,

@@ -1,43 +1,29 @@
-use std::{env::current_dir, path::PathBuf};
-
 use crate::{
-    modules::{overflow, uint256},
+    cmd::parse::parse,
     utils::formatter::format_findings,
-    cmd::parse::Cmd,
 };
 use core::{solidity, walker::Walker};
 
-use clap::Parser;
-
+mod cmd;
 mod modules;
 mod utils;
-mod cmd;
 
 fn main() {
-    let args = Cmd::parse();
-
-    let mut path = PathBuf::new();
-    path.push(current_dir().expect("could not get current path"));
-    path.push(args.path);
+    let (path, loader, verbosity) = parse();
 
     let output = solidity::compile_artifacts(true, path);
 
-    let module = uint256::get_module();
-
-    let modules = vec![module];
-    let mut walker = Walker::new(output, modules);
+    let mut walker = Walker::new(output, loader);
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
-    format_findings(all_findings);
+    format_findings(all_findings, verbosity);
 }
 
 #[cfg(test)]
 mod test {
-    use crate::modules::uint256;
-    use crate::overflow;
-    use core::walker::Walker;
-    use ethers_solc::output::ProjectCompileOutput;
-    use ethers_solc::project_util::TempProject;
+    use crate::modules::loader::get_all_modules;
+    use core::{walker::Walker, loader::Loader};
+    use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
     use semver::Version;
 
     fn compile_temp(name: impl AsRef<str>, content: impl AsRef<str>) -> ProjectCompileOutput {
@@ -51,11 +37,11 @@ mod test {
         let compiled = compile_temp(
             "examples/Foo",
             r#"
-    pragma solidity ^0.8.10;
-    contract Foo {
-        uint256 unint;
-    }
-   "#,
+        pragma solidity ^0.8.10;
+        contract Foo {
+            uint256 unint;
+        }
+            "#,
         );
 
         assert!(!compiled.has_compiler_errors());
@@ -63,9 +49,10 @@ mod test {
 
         let output = compiled.into_artifacts().collect();
 
-        let modules = vec![uint256::get_module()];
+        let modules = get_all_modules();
+        let loader = Loader::new(modules);
 
-        let mut walker = Walker::new(output, modules);
+        let mut walker = Walker::new(output, loader);
         let all_findings = walker.traverse().expect("couldn't");
 
         assert!(all_findings.get("uint256").unwrap().len() > 0)
@@ -99,9 +86,10 @@ mod test {
 
         let output = compiled.into_artifacts().collect();
 
-        let modules = vec![overflow::get_module()];
+        let modules = get_all_modules();
+        let loader = Loader::new(modules);
 
-        let mut walker = Walker::new(output, modules);
+        let mut walker = Walker::new(output, loader);
         let all_findings = walker.traverse().unwrap();
 
         assert_eq!(
@@ -142,9 +130,10 @@ mod test {
 
         let output = compiled.into_artifacts().collect();
 
-        let modules = vec![overflow::get_module()];
+        let modules = get_all_modules();
+        let loader = Loader::new(modules);
 
-        let mut walker = Walker::new(output, modules);
+        let mut walker = Walker::new(output, loader);
         let all_findings = walker.traverse().unwrap();
 
         assert_eq!(

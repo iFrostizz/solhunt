@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Severity {
     Informal,
     Gas,
