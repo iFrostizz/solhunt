@@ -1,11 +1,9 @@
 use crate::modules::loader::get_all_modules;
 use clap::Parser;
-use core::{
-    loader::{Loader, DynModule},
-};
+use core::loader::{DynModule, Loader};
 
-use std::{env::current_dir, path::PathBuf};
 use serde::Serialize;
+use std::{env::current_dir, path::PathBuf};
 
 #[derive(Parser, Debug, Serialize)]
 #[clap(author, version, about, long_about = None)]
@@ -18,6 +16,7 @@ pub struct Cmd {
     pub modules: Option<Vec<String>>,
     #[clap(short, long, help = "Exclude these modules")]
     pub except_modules: Option<Vec<String>>,
+    // TODO: allow configuring of ignored directories through a .toml file
     // source, foundry: foundry/common/src/evm.rs
     /// Verbosity
     ///
@@ -44,24 +43,22 @@ pub fn parse() -> (PathBuf, Loader, u8) {
     let all_modules = get_all_modules(); // get em' all before loading only those that we want
 
     // Only those specified
-    let modules: Vec<DynModule> =
-        match args.modules {
-            Some(modules_names) => all_modules
-                .into_iter()
-                .filter(|module| modules_names.contains(&module.name))
-                .collect(),
-            None => all_modules, // don't touch if not specified
-        };
+    let modules: Vec<DynModule> = match args.modules {
+        Some(modules_names) => all_modules
+            .into_iter()
+            .filter(|module| modules_names.contains(&module.name))
+            .collect(),
+        None => all_modules, // don't touch if not specified
+    };
 
-    let modules: Vec<DynModule> =
-        match args.except_modules {
-            Some(modules_names) => modules
-                .into_iter()
-                .filter(|module| !modules_names.contains(&module.name))
-                .collect(),
+    let modules: Vec<DynModule> = match args.except_modules {
+        Some(modules_names) => modules
+            .into_iter()
+            .filter(|module| !modules_names.contains(&module.name))
+            .collect(),
 
-            None => modules,
-        };
+        None => modules,
+    };
 
     let loader = Loader::new(modules);
 

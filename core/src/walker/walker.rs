@@ -5,21 +5,19 @@ use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use std::{fs::File, io::BufReader};
 
+use crate::loader::{DynModule, Loader};
 use crate::{
     loader::Information,
     solidity::utils::{get_file_lines, get_line_position},
     walker::{AllFindings, Findings, Meta, MetaFinding},
 };
-use crate::loader::{DynModule, Loader};
 
-pub struct Walker
-{
+pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     loader: Loader,
 }
 
-impl Walker
-{
+impl Walker {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         loader: Loader,

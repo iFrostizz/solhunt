@@ -4,8 +4,7 @@ use crate::loader::DynModule;
 
 pub struct Loader(pub Vec<DynModule>);
 
-impl Loader
-{
+impl Loader {
     pub fn new(modules: Vec<DynModule>) -> Self {
         Loader(modules)
     }

@@ -1,7 +1,4 @@
-use crate::{
-    cmd::parse::parse,
-    utils::formatter::format_findings,
-};
+use crate::{cmd::parse::parse, utils::formatter::format_findings};
 use core::{solidity, walker::Walker};
 
 mod cmd;
@@ -22,7 +19,7 @@ fn main() {
 #[cfg(test)]
 mod test {
     use crate::modules::loader::get_all_modules;
-    use core::{walker::Walker, loader::Loader};
+    use core::{loader::Loader, walker::Walker};
     use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
     use semver::Version;
 
