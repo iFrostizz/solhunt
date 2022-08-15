@@ -19,14 +19,24 @@ fn main() {
 #[cfg(test)]
 mod test {
     use crate::modules::loader::get_all_modules;
-    use core::{loader::Loader, walker::Walker};
+    use core::{
+        loader::Loader,
+        walker::{AllFindings, MetaFinding, Walker},
+    };
     use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
-    // use semver::Version;
 
     fn compile_temp(name: impl AsRef<str>, content: impl AsRef<str>) -> ProjectCompileOutput {
         let tmp = TempProject::dapptools().unwrap();
         let f = tmp.add_contract(name, content).unwrap();
         tmp.project().compile_file(f.clone()).unwrap()
+    }
+
+    fn has_with_code(name: &str, code: u32, all_findings: &AllFindings) -> bool {
+        all_findings
+            .get(name)
+            .unwrap()
+            .iter()
+            .any(|mf| mf.finding.code == code)
     }
 
     #[test]
@@ -52,7 +62,7 @@ mod test {
         let mut walker = Walker::new(output, loader);
         let all_findings = walker.traverse().expect("couldn't");
 
-        assert!(all_findings.get("uint256").unwrap().len() > 0)
+        assert!(!all_findings.get("uint256").unwrap().is_empty())
     }
 
     #[test]
@@ -89,14 +99,7 @@ mod test {
         let mut walker = Walker::new(output, loader);
         let all_findings = walker.traverse().unwrap();
 
-        assert_eq!(
-            all_findings
-                .get("overflow")
-                .unwrap()
-                .iter()
-                .find_map(|mf| { (mf.finding.code == 0).then_some(true) }),
-            None
-        )
+        assert!(!has_with_code("overflow", 0, &all_findings));
     }
 
     #[test]
@@ -133,14 +136,7 @@ mod test {
         let mut walker = Walker::new(output, loader);
         let all_findings = walker.traverse().unwrap();
 
-        assert_eq!(
-            all_findings
-                .get("overflow")
-                .unwrap()
-                .iter()
-                .find_map(|mf| { (mf.finding.code == 0).then_some(true) })
-                .unwrap_or(false),
-            true
-        )
+        assert!(has_with_code("overflow", 0, &all_findings));
+        assert!(has_with_code("overflow", 1, &all_findings));
     }
 }

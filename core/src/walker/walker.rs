@@ -83,7 +83,7 @@ impl Walker {
         &self,
         module: &DynModule,
         sources: &Vec<SourceUnitPart>,
-        _lines_to_bytes: &Vec<usize>,
+        lines_to_bytes: &Vec<usize>,
         info: Information,
         findings: &mut Findings,
     ) {
@@ -97,17 +97,19 @@ impl Walker {
                 _ => (),
             }*/
             let mod_findings = module.process_source(&source, &info);
-            let meta = Meta {
-                file: info.name.clone(),
-                // src: get_line_position(&node.src, lines_to_bytes), TODO: not defined currently
-                src: None,
-            };
+
+            let file = info.name.clone();
 
             let mut meta_findings: Findings = mod_findings
                 .into_iter()
                 .map(|finding| MetaFinding {
-                    finding,
-                    meta: meta.clone(),
+                    finding: finding.clone(),
+                    meta: Meta {
+                        file: file.clone(),
+                        src: finding
+                            .src
+                            .and_then(|src| get_line_position(&src, &lines_to_bytes)),
+                    },
                 })
                 .collect();
 

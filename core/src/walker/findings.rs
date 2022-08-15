@@ -1,9 +1,10 @@
 // Store findings and do whatever with them
 
+use ethers_solc::artifacts::ast::SourceLocation;
 use std::collections::HashMap;
 use yansi::Paint;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Severity {
     Informal,
     Gas,
@@ -24,12 +25,13 @@ impl Severity {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Finding {
     pub name: String,
     pub description: String,
     pub severity: Severity,
-    pub code: u32, // Identify finding type easily
+    pub src: Option<SourceLocation>, // Option<SourceLocation>,
+    pub code: u32,                   // Identify finding type easily
 }
 
 impl Finding {
@@ -57,9 +59,12 @@ pub struct MetaFinding {
 impl MetaFinding {
     pub fn format(&self) -> String {
         self.finding.severity.format(format!(
-            "{} l.{} {}",
+            "{} {} {}",
             self.meta.file.clone(),
-            self.meta.src.unwrap_or(0),
+            self.meta
+                .src
+                .and_then(|line| Some(format!("l{}", line)))
+                .unwrap_or_default(),
             self.finding.format()
         ))
     }

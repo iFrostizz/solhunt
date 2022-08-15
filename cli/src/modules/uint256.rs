@@ -21,6 +21,7 @@ pub fn get_module() -> DynModule {
                                     name: "uint256".to_string(),
                                     description: "We just found a uint256 yay!".to_string(),
                                     severity: Severity::Informal,
+                                    src: Some(var.src.clone()),
                                     code: 0,
                                 });
                             }

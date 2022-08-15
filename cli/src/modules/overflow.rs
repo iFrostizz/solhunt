@@ -4,53 +4,95 @@ use core::{
     loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
-use ethers_solc::artifacts::ast::SourceUnitPart;
+use ethers_solc::artifacts::ast::{
+    AssignmentOperator::{AddAssign, MulAssign, SubAssign},
+    ContractDefinitionPart, Expression, SourceLocation, SourceUnitPart, Statement,
+};
+use semver::{Error, Version};
+use solang_parser::pt::{
+    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, Import, Loc, Visibility,
+};
+use std::str::FromStr;
 
 pub fn get_module() -> DynModule {
     Module::new(
         "overflow",
-        Box::new(|_node, _info| {
-            /*match node.other.get("kind") {
-                Some(kind) => match kind {
-                    serde_json::value::Value::String(kind) => {
-                        if kind == "function" {
-                            // We investigate overflow in functions
-                            // dbg!(&node);
-                            // TODO: nodeType = String("Assignement")
-                            // TODO: operator = String("+=")
-                            if let Some(body) = &node.body {
-                                // Function has stuff inside
-                                // "body" is a Node
-                                match body.other.get("statements") {
-                                    Some(_statements) => {
-                                        // dbg!(&statements);
+        Box::new(|source, info| {
+            // TODO: call a "setup" hook with info
+            let mut findings: Vec<Finding> = Vec::new();
+
+            if info.version.minor < 8 {
+                findings.push(Finding {
+                    name: "No built-il overflow check".to_string(),
+                    description: "Looks like this contract is < 0.8.0, there is no built-in overflow check, be careful!".to_string(),
+                    severity: Severity::Informal, // no real finding so it's informal for now
+                    src: None, // SourceLocation::from_str("0:0:0").unwrap(),
+                    code: 0,
+                })
+            } else {
+                // Less likely but will need to check for "unchecked"
+            }
+
+            if let SourceUnitPart::ContractDefinition(def) = source {
+                def.nodes.iter().for_each(|node| {
+                    if let ContractDefinitionPart::FunctionDefinition(func) = node {
+                        func.body
+                            .as_ref()
+                            .unwrap()
+                            .statements
+                            .iter()
+                            .for_each(|stat| {
+                                if let Statement::ExpressionStatement(expr) = stat {
+                                    if let Expression::Assignment(ass) = &expr.expression {
+                                        let lhs = &ass.lhs;
+                                        let rhs = &ass.rhs;
+                                        match &ass.operator {
+                                            // TODO: if uses AddAssign and msg.value, it's probably fine
+                                            AddAssign | MulAssign => findings.push(Finding {
+                                                name: "Overflow".to_string(),
+                                                description: "Overflow may happen".to_string(),
+                                                severity: Severity::Medium,
+                                                src: Some(ass.src.clone()),
+                                                code: 1,
+                                            }),
+                                            SubAssign => findings.push(Finding {
+                                                name: "Underflow".to_string(),
+                                                description: "Underflow may happen".to_string(),
+                                                severity: Severity::Medium,
+                                                src: Some(ass.src.clone()),
+                                                code: 2,
+                                            }),
+                                            _ => (),
+                                        }
+                                    } else {
+                                        // unimplemented!("Overflow module: Expression TBD");
                                     }
-                                    _ => (),
-                                }
-                                if info.version.minor < 8 {
-                                    Some(Finding {
-                                        name: "overflow".to_string(),
-                                        description:
-                                            "the function may overflow, please bump version > 0.8.0"
-                                                .to_string(),
-                                        severity: Severity::Low,
-                                        code: 0,
-                                    })
                                 } else {
-                                    None
+                                    // unimplemented!("Overflow module: Statement TBD");
                                 }
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                },
-                _ => None,
-            }*/
-            vec![]
+                            });
+                    } /*else {
+                          unimplemented!("Overflow module: ContractDefinitionPart TBD");
+                      }*/
+                });
+            }
+
+            findings
         }),
+    )
+}
+
+#[allow(unused)]
+fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
+    Version::parse(
+        literals
+            .iter()
+            .flat_map(|literal| {
+                literal
+                    .chars()
+                    .filter(|char| char.is_digit(10) || char.to_string() == ".")
+            })
+            .collect::<String>()
+            .as_str(),
     )
 }

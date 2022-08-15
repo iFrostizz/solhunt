@@ -81,7 +81,8 @@ pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>) -> eyre::Result<()> {
                     || dir.ends_with("node_modules")
                     || dir.ends_with("out")
                     || dir.ends_with("cache")
-                    || dir.ends_with("target"))
+                    || dir.ends_with("target")
+                    || dir.ends_with("artifacts"))
                 {
                     visit_dirs(&path, files)?;
                 }
