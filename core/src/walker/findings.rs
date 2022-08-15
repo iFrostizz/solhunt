@@ -1,6 +1,7 @@
 // Store findings and do whatever with them
 
 use std::collections::HashMap;
+use yansi::Paint;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Severity {
@@ -14,11 +15,11 @@ pub enum Severity {
 impl Severity {
     pub fn format(&self, text: String) -> String {
         match *self {
-            Severity::Informal => format!("\x1b[0m{}\x1b[0m", text),
-            Severity::Gas => format!("\x1b[0m{}\x1b[0m", text),
-            Severity::Low => format!("\x1b[0m{}\x1b[0m", text),
-            Severity::Medium => format!("\x1b[0m{}\x1b[0m", text),
-            Severity::High => format!("\x1b[0m{}\x1b[0m", text),
+            Severity::Informal => format!("{}", Paint::blue(text)),
+            Severity::Gas => format!("{}", Paint::magenta(text)),
+            Severity::Low => format!("{}", Paint::green(text)),
+            Severity::Medium => format!("{}", Paint::yellow(text)),
+            Severity::High => format!("{}", Paint::red(text)),
         }
     }
 }
@@ -55,12 +56,12 @@ pub struct MetaFinding {
 
 impl MetaFinding {
     pub fn format(&self) -> String {
-        format!(
+        self.finding.severity.format(format!(
             "{} l.{} {}",
             self.meta.file.clone(),
             self.meta.src.unwrap_or(0),
             self.finding.format()
-        )
+        ))
     }
 }
 
