@@ -1,18 +1,15 @@
 // Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
+use crate::utils::int_as_bytes;
 use core::{
     loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
 use ethers_solc::artifacts::ast::{
     AssignmentOperator::{AddAssign, MulAssign, SubAssign},
-    ContractDefinitionPart, Expression, SourceLocation, SourceUnitPart, Statement,
+    ContractDefinitionPart, Expression, SourceUnitPart, Statement,
 };
 use semver::{Error, Version};
-use solang_parser::pt::{
-    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, Import, Loc, Visibility,
-};
-use std::str::FromStr;
 
 pub fn get_module() -> DynModule {
     Module::new(
@@ -44,10 +41,21 @@ pub fn get_module() -> DynModule {
                             .for_each(|stat| {
                                 if let Statement::ExpressionStatement(expr) = stat {
                                     if let Expression::Assignment(ass) = &expr.expression {
+                                        // huh
+
                                         let lhs = &ass.lhs;
                                         let rhs = &ass.rhs;
+
+                                        if let Expression::IndexAccess(idx) = lhs {
+                                            if let Some(typ) = &idx.type_descriptions.type_string {
+                                                if let Some(bytes) = int_as_bytes(typ) {
+                                                    if bytes <= 64 {}
+                                                }
+                                            }
+                                        }
+
                                         match &ass.operator {
-                                            // TODO: if uses AddAssign and msg.value, it's probably fine
+                                            // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
                                             AddAssign | MulAssign => findings.push(Finding {
                                                 name: "Overflow".to_string(),
                                                 description: "Overflow may happen".to_string(),

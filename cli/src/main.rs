@@ -21,7 +21,7 @@ mod test {
     use crate::modules::loader::get_all_modules;
     use core::{
         loader::Loader,
-        walker::{AllFindings, MetaFinding, Walker},
+        walker::{AllFindings, Walker},
     };
     use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
 

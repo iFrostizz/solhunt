@@ -1,7 +1,7 @@
 // A module contains the matching logic to be paired with the ast
 
 use crate::walker::{Finding, Findings};
-use ethers_solc::artifacts::ast::{ContractDefinitionPart, SourceUnitPart};
+use ethers_solc::artifacts::ast::SourceUnitPart;
 use semver::Version;
 
 #[derive(Debug)]

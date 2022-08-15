@@ -68,7 +68,7 @@ impl Walker {
 
             self.loader.0.iter().for_each(|module| {
                 all_findings.entry(module.name.clone()).or_default();
-                let mut findings: &mut Findings = &mut Vec::new();
+                let findings: &mut Findings = &mut Vec::new();
                 self.visit_source(module, nodes, lines_to_bytes, info.clone(), findings);
                 all_findings
                     .entry(module.name.clone())
