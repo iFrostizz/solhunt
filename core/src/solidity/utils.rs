@@ -13,10 +13,10 @@ pub struct Position {
 // This function runs a dichotomy algorithm in order to find the correct line position.
 // TODO: caching with check for best match to save steps
 pub fn get_line_position(src: &SourceLocation, lines_to_bytes: &Vec<usize>) -> Option<usize> {
-    lines_to_bytes
-        .iter()
-        .enumerate()
-        .find_map(|(l, b)| (src.start >= *b && src.start < lines_to_bytes[l + 1]).then_some(l))
+    lines_to_bytes.iter().enumerate().find_map(|(l, b)| {
+        (src.start.unwrap_or(0) >= *b && src.start.unwrap_or(0) < lines_to_bytes[l + 1])
+            .then_some(l)
+    }) // unwrap_or(0) should work but not ideal
 }
 
 // Scan the file to get the bytes position of each line start

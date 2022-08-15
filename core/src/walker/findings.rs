@@ -41,7 +41,7 @@ impl Finding {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Meta {
     pub file: String,
     pub src: Option<usize>,

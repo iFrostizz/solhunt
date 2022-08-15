@@ -1,7 +1,7 @@
 // A module contains the matching logic to be paired with the ast
 
 use crate::walker::{Finding, Findings};
-use ethers_solc::artifacts::ast::Node;
+use ethers_solc::artifacts::ast::{ContractDefinitionPart, SourceUnitPart};
 use semver::Version;
 
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub struct Information {
 
 impl<F> Module<F>
 where
-    F: Fn(&Node, &Information) -> Option<Finding>,
+    F: Fn(&SourceUnitPart, &Information) -> Vec<Finding>,
 {
     pub fn new(name: impl Into<String>, func: F) -> Module<F> {
         Module {
@@ -29,9 +29,13 @@ where
         }
     }
 
-    pub fn process(&self, node: &Node, info: &Information) -> Option<Finding> {
-        (self.func)(node, info)
+    pub fn process_source(&self, source: &SourceUnitPart, info: &Information) -> Vec<Finding> {
+        (self.func)(source, info)
     }
+
+    /*pub fn process_def(&self, def: &ContractDefinitionPart, info: &Information) -> Vec<Finding> {
+        (self.func)(def, info)
+    }*/
 }
 
-pub type DynModule = Module<Box<dyn (Fn(&Node, &Information) -> Option<Finding>)>>;
+pub type DynModule = Module<Box<dyn Fn(&SourceUnitPart, &Information) -> Vec<Finding>>>;

@@ -1,6 +1,9 @@
 use ethers_solc::{
-    output::ProjectCompileOutput, ArtifactId, ConfigurableContractArtifact, Project,
-    ProjectPathsConfig, Solc,
+    output::ProjectCompileOutput,
+    ArtifactId,
+    ConfigurableContractArtifact,
+    Project,
+    // ProjectPathsConfig, Solc,
 };
 use std::{
     collections::btree_map::BTreeMap,
@@ -10,6 +13,7 @@ use std::{
 };
 
 // TODO: use cache and only recompile if files have changed
+// TODO: if no svm, display message & start timer after
 
 pub fn compile(auto_detect: bool, path: PathBuf) -> ProjectCompileOutput {
     let project = Project::builder().build().unwrap();
@@ -81,10 +85,8 @@ pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>) -> eyre::Result<()> {
                 {
                     visit_dirs(&path, files)?;
                 }
-            } else {
-                if is_sol_file(&path) {
-                    files.push(path);
-                }
+            } else if is_sol_file(&path) {
+                files.push(path);
             }
         }
     }

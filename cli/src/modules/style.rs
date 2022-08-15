@@ -3,11 +3,9 @@
 // hardhat's console.log
 
 use core::{
-    loader::{Information, Module},
-    walker::Finding,
+    loader::{DynModule, Module},
 };
-use ethers_solc::artifacts::ast::Node;
 
-pub fn get_module() -> Module<Box<dyn Fn(&Node, &Information) -> Option<Finding>>> {
-    Module::new("style", Box::new(|_node, _info| None))
+pub fn get_module() -> DynModule {
+    Module::new("style", Box::new(|_node, _info| vec![]))
 }

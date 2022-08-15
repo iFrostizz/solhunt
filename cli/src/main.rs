@@ -21,7 +21,7 @@ mod test {
     use crate::modules::loader::get_all_modules;
     use core::{loader::Loader, walker::Walker};
     use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
-    use semver::Version;
+    // use semver::Version;
 
     fn compile_temp(name: impl AsRef<str>, content: impl AsRef<str>) -> ProjectCompileOutput {
         let tmp = TempProject::dapptools().unwrap();
@@ -139,7 +139,7 @@ mod test {
                 .unwrap()
                 .iter()
                 .find_map(|mf| { (mf.finding.code == 0).then_some(true) })
-                .unwrap(),
+                .unwrap_or(false),
             true
         )
     }

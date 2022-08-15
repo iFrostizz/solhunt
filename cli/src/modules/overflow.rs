@@ -1,16 +1,16 @@
 // Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
 use core::{
-    loader::{Information, Module},
+    loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
-use ethers_solc::artifacts::ast::{Node, NodeType};
+use ethers_solc::artifacts::ast::SourceUnitPart;
 
-pub fn get_module() -> Module<Box<dyn Fn(&Node, &Information) -> Option<Finding>>> {
+pub fn get_module() -> DynModule {
     Module::new(
         "overflow",
-        Box::new(|node, info| {
-            match node.other.get("kind") {
+        Box::new(|_node, _info| {
+            /*match node.other.get("kind") {
                 Some(kind) => match kind {
                     serde_json::value::Value::String(kind) => {
                         if kind == "function" {
@@ -49,7 +49,8 @@ pub fn get_module() -> Module<Box<dyn Fn(&Node, &Information) -> Option<Finding>
                     _ => None,
                 },
                 _ => None,
-            }
+            }*/
+            vec![]
         }),
     )
 }
