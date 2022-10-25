@@ -11,12 +11,35 @@ pub struct Position {
 
 // Convert bytes source location to line & location for easier reference
 // This function runs a dichotomy algorithm in order to find the correct line position.
+// For now we are not using binary search, maybe one day for optimizing
 // TODO: caching with check for best match to save steps
-pub fn get_line_position(src: &SourceLocation, lines_to_bytes: &Vec<usize>) -> Option<usize> {
-    lines_to_bytes.iter().enumerate().find_map(|(l, b)| {
-        (src.start.unwrap_or(0) >= *b && src.start.unwrap_or(0) < lines_to_bytes[l + 1])
-            .then_some(l)
-    }) // unwrap_or(0) should work but not ideal
+pub fn get_line_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> Result<usize, usize> {
+    /*lines_to_bytes.iter().enumerate().find_map(|(l, b)| {
+        dbg!(&src.start);
+        (src.start.unwrap_or(0) >= *b
+            && src.start.unwrap_or(0) < *lines_to_bytes.get(l + 1).unwrap_or(&0))
+        .then_some(l)
+    }) // unwrap_or(0) should work but not ideal*/
+
+    /*let tup = lines_to_bytes.iter().enumerate().find(|(l, b)| {
+        dbg!(
+            l,
+            b,
+            &src.start.unwrap_or(0),
+            *lines_to_bytes.get(l + 1).unwrap_or(&0)
+        );
+        src.start.unwrap_or(0) >= **b
+            && src.start.unwrap_or(0) < *lines_to_bytes.get(l + 1).unwrap_or(&0)
+        // .then_some(l)
+    });
+
+    dbg!(&tup);
+
+    let (l, _) = tup.unwrap_or((0, &0));
+
+    Some(l)*/
+    dbg!(&src.start);
+    lines_to_bytes.binary_search(&src.start.unwrap_or(0))
 }
 
 // Scan the file to get the bytes position of each line start

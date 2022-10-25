@@ -1,9 +1,10 @@
 use ethers_solc::{
     output::ProjectCompileOutput,
+    remappings::Remapping,
+    // ProjectPathsConfig, Solc,
     ArtifactId,
     ConfigurableContractArtifact,
     Project,
-    // ProjectPathsConfig, Solc,
 };
 use std::{
     collections::btree_map::BTreeMap,
@@ -15,9 +16,26 @@ use std::{
 // TODO: use cache and only recompile if files have changed
 // TODO: if no svm, display message & start timer after
 
-pub fn compile(auto_detect: bool, path: PathBuf) -> ProjectCompileOutput {
-    let project = Project::builder().build().unwrap();
-    let files = get_sol_files(path);
+pub fn compile(
+    auto_detect: bool,
+    path: PathBuf,
+    remappings: Vec<Remapping>,
+) -> ProjectCompileOutput {
+    let mut project = Project::builder().build().unwrap();
+    project.paths.remappings = remappings;
+
+    let files = if path.is_dir() {
+        get_sol_files(path)
+    } else if let Some(ext) = path.extension() {
+        if ext == "sol" {
+            vec![path]
+        } else {
+            panic!("Nothing valid to compile.");
+        }
+    } else {
+        panic!("Nothing valid to compile.");
+    };
+
     let amount = files.len();
     println!("Compiling {} files ...", amount);
 
@@ -54,9 +72,10 @@ pub fn compile(auto_detect: bool, path: PathBuf) -> ProjectCompileOutput {
 
 pub fn compile_artifacts(
     auto_detect: bool,
-    path: PathBuf,
+    path: &Path,
+    remappings: Vec<Remapping>,
 ) -> BTreeMap<ArtifactId, ConfigurableContractArtifact> {
-    let compiled = compile(auto_detect, path);
+    let compiled = compile(auto_detect, path.to_path_buf(), remappings);
 
     compiled.into_artifacts().collect()
 }
@@ -112,5 +131,5 @@ pub fn is_sol_file(path: &Path) -> bool {
         }
     }
 
-    return false;
+    false
 }

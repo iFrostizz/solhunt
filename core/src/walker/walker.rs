@@ -45,7 +45,7 @@ impl Walker {
             let ast: &SourceUnit = art
                 .ast
                 .as_ref()
-                .expect(format!("no ast found for {}", unique_id).as_str());
+                .unwrap_or_else(|| panic!("no ast found for {}", unique_id));
 
             let lines_to_bytes = match File::open(ast.absolute_path.clone()) {
                 // only use if file is found
@@ -55,7 +55,6 @@ impl Walker {
                 }
                 Err(_) => Vec::new(),
             };
-            let lines_to_bytes = &lines_to_bytes;
 
             let nodes = &ast.nodes;
 
@@ -69,7 +68,7 @@ impl Walker {
             self.loader.0.iter().for_each(|module| {
                 all_findings.entry(module.name.clone()).or_default();
                 let findings: &mut Findings = &mut Vec::new();
-                self.visit_source(module, nodes, lines_to_bytes, info.clone(), findings);
+                self.visit_source(module, nodes, &lines_to_bytes, info.clone(), findings);
                 all_findings
                     .entry(module.name.clone())
                     .and_modify(|f| f.append(findings));
@@ -82,12 +81,12 @@ impl Walker {
     pub fn visit_source(
         &self,
         module: &DynModule,
-        sources: &Vec<SourceUnitPart>,
-        lines_to_bytes: &Vec<usize>,
+        sources: &[SourceUnitPart],
+        lines_to_bytes: &[usize],
         info: Information,
         findings: &mut Findings,
     ) {
-        sources.into_iter().for_each(|source| {
+        sources.iter().for_each(|source| {
             // dbg!(&source);
             /*match source {
                 SourceUnitPart::ContractDefinition(def) => {
@@ -96,7 +95,7 @@ impl Walker {
                 } // TODO: decide if done by each module or here, if too much repetition in modules
                 _ => (),
             }*/
-            let mod_findings = module.process_source(&source, &info);
+            let mod_findings = module.process_source(source, &info);
 
             let file = info.name.clone();
 
@@ -108,7 +107,7 @@ impl Walker {
                         file: file.clone(),
                         src: finding
                             .src
-                            .and_then(|src| get_line_position(&src, &lines_to_bytes)),
+                            .map(|src| get_line_position(&src, lines_to_bytes).unwrap_or(0)),
                     },
                 })
                 .collect();

@@ -33,12 +33,8 @@ pub fn get_module() -> DynModule {
             if let SourceUnitPart::ContractDefinition(def) = source {
                 def.nodes.iter().for_each(|node| {
                     if let ContractDefinitionPart::FunctionDefinition(func) = node {
-                        func.body
-                            .as_ref()
-                            .unwrap()
-                            .statements
-                            .iter()
-                            .for_each(|stat| {
+                        if let Some(body) = &func.body {
+                            body.statements.iter().for_each(|stat| {
                                 if let Statement::ExpressionStatement(expr) = stat {
                                     if let Expression::Assignment(ass) = &expr.expression {
                                         // huh
@@ -47,6 +43,14 @@ pub fn get_module() -> DynModule {
                                         let rhs = &ass.rhs;
 
                                         if let Expression::IndexAccess(idx) = lhs {
+                                            if let Some(typ) = &idx.type_descriptions.type_string {
+                                                if let Some(bytes) = int_as_bytes(typ) {
+                                                    if bytes <= 64 {}
+                                                }
+                                            }
+                                        }
+
+                                        if let Expression::IndexAccess(idx) = rhs {
                                             if let Some(typ) = &idx.type_descriptions.type_string {
                                                 if let Some(bytes) = int_as_bytes(typ) {
                                                     if bytes <= 64 {}
@@ -78,7 +82,8 @@ pub fn get_module() -> DynModule {
                                 } else {
                                     // unimplemented!("Overflow module: Statement TBD");
                                 }
-                            });
+                            })
+                        };
                     } /*else {
                           unimplemented!("Overflow module: ContractDefinitionPart TBD");
                       }*/
@@ -103,4 +108,62 @@ fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
             .collect::<String>()
             .as_str(),
     )
+}
+
+#[cfg(test)]
+mod module_overflow_test {
+    use crate::test::{compile_and_get_findings, has_with_code};
+
+    #[test]
+    fn can_find_overflow_old_ver() {
+        let findings = compile_and_get_findings(
+            "examples/Foo",
+            r#"
+        pragma solidity 0.7.0;
+        contract Foo {
+        mapping(address => uint256) bal;
+            
+            function deposit() external payable {
+            bal[msg.sender] += msg.value;
+            }
+            
+            function withdraw(uint256 amount) external {
+            bal[msg.sender] -= amount;
+            payable(msg.sender).transfer(amount);
+            }
+            
+            fallback() external payable {}
+        }
+        "#,
+        );
+
+        assert!(has_with_code(&findings, "overflow", 0));
+        assert!(has_with_code(&findings, "overflow", 1));
+    }
+
+    #[test]
+    fn dont_find_overflow() {
+        let findings = compile_and_get_findings(
+            "examples/Foo",
+            r#"
+        pragma solidity ^0.8.10;
+        contract Foo {
+        mapping(address => uint256) bal;
+            
+            function deposit() external payable {
+            bal[msg.sender] += msg.value;
+            }
+            
+            function withdraw(uint256 amount) external {
+            bal[msg.sender] -= amount;
+            payable(msg.sender).transfer(amount);
+            }
+            
+            fallback() external payable {}
+        }
+        "#,
+        );
+
+        assert!(!has_with_code(&findings, "overflow", 0));
+    }
 }

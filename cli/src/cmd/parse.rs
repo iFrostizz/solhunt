@@ -1,9 +1,14 @@
 use crate::modules::loader::get_all_modules;
 use clap::Parser;
 use core::loader::{DynModule, Loader};
+use ethers_solc::remappings::Remapping;
 
 use serde::Serialize;
-use std::{env::current_dir, path::PathBuf};
+use std::{
+    env::current_dir,
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Parser, Debug, Serialize)]
 #[clap(author, version, about, long_about = None)]
@@ -33,12 +38,16 @@ pub struct Cmd {
     pub verbosity: u8, // TODO: use "hmgi" instead
 }
 
-pub fn parse() -> (PathBuf, Loader, u8) {
-    let args = Cmd::parse();
-
+pub fn get_working_path(add_path: String) -> PathBuf {
     let mut path = PathBuf::new();
     path.push(current_dir().expect("could not get current path"));
-    path.push(args.path);
+    path.push(add_path);
+
+    path
+}
+
+pub fn parse() -> (PathBuf, Loader, u8) {
+    let args = Cmd::parse();
 
     let all_modules = get_all_modules(); // get em' all before loading only those that we want
 
@@ -51,6 +60,7 @@ pub fn parse() -> (PathBuf, Loader, u8) {
         None => all_modules, // don't touch if not specified
     };
 
+    // Remove those we don't want
     let modules: Vec<DynModule> = match args.except_modules {
         Some(modules_names) => modules
             .into_iter()
@@ -62,5 +72,35 @@ pub fn parse() -> (PathBuf, Loader, u8) {
 
     let loader = Loader::new(modules);
 
-    (path, loader, args.verbosity)
+    (get_working_path(args.path), loader, args.verbosity)
+}
+
+pub fn get_remappings(path: &Path) -> Vec<Remapping> {
+    let base_path = path.to_path_buf();
+    let mut remappings: Vec<Remapping> = Vec::new();
+
+    let remappings_file = base_path.join("remappings.txt");
+    if remappings_file.is_file() {
+        let content = fs::read_to_string(remappings_file)
+            .map_err(|err| err.to_string())
+            .unwrap();
+
+        let rem_lines = content.split('\n').collect::<Vec<&str>>();
+        let rem = rem_lines
+            .iter()
+            .filter(|l| l != &&"")
+            .map(|l| l.split_once('='))
+            .collect::<Vec<Option<(&str, &str)>>>();
+        rem.iter().for_each(|pair| {
+            if let Some((lib, path)) = pair {
+                let full_path = base_path.join(path);
+                remappings.push(Remapping {
+                    name: lib.to_string(),
+                    path: full_path.into_os_string().into_string().unwrap(),
+                });
+            }
+        });
+    }
+
+    remappings
 }

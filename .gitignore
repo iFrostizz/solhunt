@@ -13,3 +13,6 @@ Cargo.lock
 
 .idea/
 out/
+
+artifacts/
+cache/

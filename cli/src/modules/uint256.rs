@@ -34,3 +34,23 @@ pub fn get_module() -> DynModule {
         }),
     )
 }
+
+#[cfg(test)]
+mod module_overflow_test {
+    use crate::test::{compile_and_get_findings, has_with_code};
+
+    #[test]
+    fn can_find_overflow_old_ver() {
+        let findings = compile_and_get_findings(
+            "examples/Foo",
+            r#"
+        pragma solidity ^0.8.10;
+        contract Foo {
+            uint256 unint;
+        }
+            "#,
+        );
+
+        assert!(has_with_code(&findings, "uint256", 0));
+    }
+}
