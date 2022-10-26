@@ -47,14 +47,13 @@ impl Walker {
                 .as_ref()
                 .unwrap_or_else(|| panic!("no ast found for {}", unique_id));
 
-            let lines_to_bytes = match File::open(ast.absolute_path.clone()) {
-                // only use if file is found
-                Ok(file) => {
-                    let file = BufReader::new(file);
-                    get_file_lines(file).expect("failed to parse lines")
-                }
-                Err(_) => Vec::new(),
-            };
+            let abs_path = &ast.absolute_path.clone();
+            dbg!(&abs_path);
+            let file = File::open(abs_path)
+                .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
+            let file = BufReader::new(file);
+            let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");
+            // dbg!(&lines_to_bytes);
 
             let nodes = &ast.nodes;
 
@@ -82,11 +81,12 @@ impl Walker {
         &self,
         module: &DynModule,
         sources: &[SourceUnitPart],
-        lines_to_bytes: &[usize],
+        lines_to_bytes: &[u32],
         info: Information,
         findings: &mut Findings,
     ) {
         sources.iter().for_each(|source| {
+            // dbg!(&lines_to_bytes);
             // dbg!(&source);
             /*match source {
                 SourceUnitPart::ContractDefinition(def) => {
@@ -105,9 +105,9 @@ impl Walker {
                     finding: finding.clone(),
                     meta: Meta {
                         file: file.clone(),
-                        src: finding
+                        line: finding
                             .src
-                            .map(|src| get_line_position(&src, lines_to_bytes).unwrap_or(0)),
+                            .map(|src| get_line_position(&src, lines_to_bytes) as u32),
                     },
                 })
                 .collect();

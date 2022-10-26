@@ -5,9 +5,12 @@ use core::{
     loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
-use ethers_solc::artifacts::ast::{
-    AssignmentOperator::{AddAssign, MulAssign, SubAssign},
-    ContractDefinitionPart, Expression, SourceUnitPart, Statement,
+use ethers_solc::artifacts::{
+    ast::{
+        AssignmentOperator::{AddAssign, MulAssign, SubAssign},
+        ContractDefinitionPart, Expression, SourceUnitPart, Statement,
+    },
+    Block,
 };
 use semver::{Error, Version};
 
@@ -34,56 +37,8 @@ pub fn get_module() -> DynModule {
                 def.nodes.iter().for_each(|node| {
                     if let ContractDefinitionPart::FunctionDefinition(func) = node {
                         if let Some(body) = &func.body {
-                            body.statements.iter().for_each(|stat| {
-                                if let Statement::ExpressionStatement(expr) = stat {
-                                    if let Expression::Assignment(ass) = &expr.expression {
-                                        // huh
-
-                                        let lhs = &ass.lhs;
-                                        let rhs = &ass.rhs;
-
-                                        if let Expression::IndexAccess(idx) = lhs {
-                                            if let Some(typ) = &idx.type_descriptions.type_string {
-                                                if let Some(bytes) = int_as_bytes(typ) {
-                                                    if bytes <= 64 {}
-                                                }
-                                            }
-                                        }
-
-                                        if let Expression::IndexAccess(idx) = rhs {
-                                            if let Some(typ) = &idx.type_descriptions.type_string {
-                                                if let Some(bytes) = int_as_bytes(typ) {
-                                                    if bytes <= 64 {}
-                                                }
-                                            }
-                                        }
-
-                                        match &ass.operator {
-                                            // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
-                                            AddAssign | MulAssign => findings.push(Finding {
-                                                name: "Overflow".to_string(),
-                                                description: "Overflow may happen".to_string(),
-                                                severity: Severity::Medium,
-                                                src: Some(ass.src.clone()),
-                                                code: 1,
-                                            }),
-                                            SubAssign => findings.push(Finding {
-                                                name: "Underflow".to_string(),
-                                                description: "Underflow may happen".to_string(),
-                                                severity: Severity::Medium,
-                                                src: Some(ass.src.clone()),
-                                                code: 2,
-                                            }),
-                                            _ => (),
-                                        }
-                                    } else {
-                                        // unimplemented!("Overflow module: Expression TBD");
-                                    }
-                                } else {
-                                    // unimplemented!("Overflow module: Statement TBD");
-                                }
-                            })
-                        };
+                            findings.append(&mut parse_body(body));
+                        }
                     } /*else {
                           unimplemented!("Overflow module: ContractDefinitionPart TBD");
                       }*/
@@ -93,6 +48,62 @@ pub fn get_module() -> DynModule {
             findings
         }),
     )
+}
+
+fn parse_body(body: &Block) -> std::vec::Vec<core::walker::Finding> {
+    let mut findings = Vec::new();
+
+    body.statements.iter().for_each(|stat| {
+        if let Statement::ExpressionStatement(expr) = stat {
+            if let Expression::Assignment(ass) = &expr.expression {
+                // huh
+
+                /*let lhs = &ass.lhs;
+                let rhs = &ass.rhs;
+
+                if let Expression::IndexAccess(idx) = lhs {
+                    if let Some(typ) = &idx.type_descriptions.type_string {
+                        if let Some(bytes) = int_as_bytes(typ) {
+                            if bytes <= 64 {}
+                        }
+                    }
+                }
+
+                if let Expression::IndexAccess(idx) = rhs {
+                    if let Some(typ) = &idx.type_descriptions.type_string {
+                        if let Some(bytes) = int_as_bytes(typ) {
+                            if bytes <= 64 {}
+                        }
+                    }
+                }*/
+
+                match &ass.operator {
+                    // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
+                    AddAssign | MulAssign => findings.push(Finding {
+                        name: "Overflow".to_string(),
+                        description: "Overflow may happen".to_string(),
+                        severity: Severity::Medium,
+                        src: Some(ass.src.clone()),
+                        code: 1,
+                    }),
+                    SubAssign => findings.push(Finding {
+                        name: "Underflow".to_string(),
+                        description: "Underflow may happen".to_string(),
+                        severity: Severity::Medium,
+                        src: Some(ass.src.clone()),
+                        code: 2,
+                    }),
+                    _ => (),
+                }
+            } else {
+                // unimplemented!("Overflow module: Expression TBD");
+            }
+        } else {
+            // unimplemented!("Overflow module: Statement TBD");
+        }
+    });
+
+    findings
 }
 
 #[allow(unused)]
@@ -112,40 +123,46 @@ fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
 
 #[cfg(test)]
 mod module_overflow_test {
-    use crate::test::{compile_and_get_findings, has_with_code};
+    use crate::test::{
+        compile_and_get_findings, has_with_code, has_with_code_at_line,
+        lines_for_findings_with_code,
+    };
 
     #[test]
     fn can_find_overflow_old_ver() {
         let findings = compile_and_get_findings(
-            "examples/Foo",
-            r#"
-        pragma solidity 0.7.0;
-        contract Foo {
-        mapping(address => uint256) bal;
-            
-            function deposit() external payable {
-            bal[msg.sender] += msg.value;
-            }
-            
-            function withdraw(uint256 amount) external {
-            bal[msg.sender] -= amount;
-            payable(msg.sender).transfer(amount);
-            }
-            
-            fallback() external payable {}
-        }
-        "#,
+            "OldVerCheck",
+            "pragma solidity 0.7.0;
+contract Foo {
+    mapping(address => uint256) bal;
+
+    function deposit() external payable {
+        bal[msg.sender] += msg.value;
+    }
+
+    function withdraw(uint256 amount) external {
+        bal[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
+    }
+
+    fallback() external payable {}
+} ",
         );
 
-        assert!(has_with_code(&findings, "overflow", 0));
-        assert!(has_with_code(&findings, "overflow", 1));
+        assert!(has_with_code(&findings, "overflow", 0)); // ver
+        assert_eq!(
+            lines_for_findings_with_code(&findings, "overflow", 1),
+            vec![6]
+        ); // +
+           //assert!(has_with_code_at_line(&findings, "overflow", 1, 6)); // +
+        assert!(has_with_code_at_line(&findings, "overflow", 2, 10)); // -
     }
 
     #[test]
     fn dont_find_overflow() {
         let findings = compile_and_get_findings(
-            "examples/Foo",
-            r#"
+            "NoOverFlow",
+            "
         pragma solidity ^0.8.10;
         contract Foo {
         mapping(address => uint256) bal;
@@ -161,9 +178,41 @@ mod module_overflow_test {
             
             fallback() external payable {}
         }
-        "#,
+        ",
         );
 
         assert!(!has_with_code(&findings, "overflow", 0));
+    }
+
+    #[test]
+    fn find_unchecked_overflow() {
+        let findings = compile_and_get_findings(
+            "Unchecked",
+            "
+            pragma solidity ^0.8.10;
+            contract Foo {
+            mapping(address => uint256) bal;
+            
+            function deposit() external payable {
+                unchecked {
+                    bal[msg.sender] += msg.value;
+                }
+            }
+            
+            function withdraw(uint256 amount) external {
+                unchecked {
+                    bal[msg.sender] -= amount;
+                }
+                payable(msg.sender).transfer(amount);
+            }
+            
+            fallback() external payable {}
+        }
+        ",
+        );
+
+        assert!(!has_with_code(&findings, "overflow", 0));
+        assert!(has_with_code(&findings, "overflow", 1)); // +
+        assert!(has_with_code(&findings, "overflow", 2)); // -
     }
 }

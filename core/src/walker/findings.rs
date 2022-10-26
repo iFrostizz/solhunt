@@ -47,7 +47,7 @@ impl Finding {
 #[derive(Debug, Clone)]
 pub struct Meta {
     pub file: String,
-    pub src: Option<usize>,
+    pub line: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -62,8 +62,8 @@ impl MetaFinding {
             "{} {} {}",
             self.meta.file.clone(),
             self.meta
-                .src
-                .and_then(|line| Some(format!("l{}", line)))
+                .line
+                .map(|line| format!("l{}", line))
                 .unwrap_or_default(),
             self.finding.format()
         ))

@@ -16,3 +16,4 @@ out/
 
 artifacts/
 cache/
+cli/test-data/
