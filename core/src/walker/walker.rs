@@ -48,7 +48,6 @@ impl Walker {
                 .unwrap_or_else(|| panic!("no ast found for {}", unique_id));
 
             let abs_path = &ast.absolute_path.clone();
-            dbg!(&abs_path);
             let file = File::open(abs_path)
                 .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
             let file = BufReader::new(file);

@@ -36,8 +36,10 @@ pub fn get_module() -> DynModule {
             if let SourceUnitPart::ContractDefinition(def) = source {
                 def.nodes.iter().for_each(|node| {
                     if let ContractDefinitionPart::FunctionDefinition(func) = node {
-                        if let Some(body) = &func.body {
-                            findings.append(&mut parse_body(body));
+                        if info.version.minor < 8 {
+                            if let Some(body) = &func.body {
+                                findings.append(&mut parse_body(body));
+                            }
                         }
                     } /*else {
                           unimplemented!("Overflow module: ContractDefinitionPart TBD");
@@ -124,14 +126,14 @@ fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
 #[cfg(test)]
 mod module_overflow_test {
     use crate::test::{
-        compile_and_get_findings, has_with_code, has_with_code_at_line,
+        compile_and_get_findings, finding_num, has_with_code, has_with_code_at_line,
         lines_for_findings_with_code,
     };
 
     #[test]
     fn can_find_overflow_old_ver() {
         let findings = compile_and_get_findings(
-            "OldVerCheck",
+            "OldVerCheck.sol",
             "pragma solidity 0.7.0;
 contract Foo {
     mapping(address => uint256) bal;
@@ -154,16 +156,17 @@ contract Foo {
             lines_for_findings_with_code(&findings, "overflow", 1),
             vec![6]
         ); // +
-           //assert!(has_with_code_at_line(&findings, "overflow", 1, 6)); // +
-        assert!(has_with_code_at_line(&findings, "overflow", 2, 10)); // -
+        assert_eq!(
+            lines_for_findings_with_code(&findings, "overflow", 2),
+            vec![10]
+        ); // -
     }
 
     #[test]
     fn dont_find_overflow() {
         let findings = compile_and_get_findings(
-            "NoOverFlow",
-            "
-        pragma solidity ^0.8.10;
+            "NoOverFlow.sol",
+            "pragma solidity ^0.8.10;
         contract Foo {
         mapping(address => uint256) bal;
             
@@ -177,17 +180,16 @@ contract Foo {
             }
             
             fallback() external payable {}
-        }
-        ",
+        }",
         );
 
-        assert!(!has_with_code(&findings, "overflow", 0));
+        assert_eq!(finding_num(&findings, "overflow"), 0);
     }
 
     #[test]
     fn find_unchecked_overflow() {
         let findings = compile_and_get_findings(
-            "Unchecked",
+            "Unchecked.sol",
             "
             pragma solidity ^0.8.10;
             contract Foo {

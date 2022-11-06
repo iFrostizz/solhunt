@@ -30,7 +30,7 @@ mod test {
     use std::{fs::File, io::Write, path::Path};
 
     // TODO: keep compile_temp but find a solution to read the file, or only pass content
-    pub fn compile_and_get_findings(name: &str, content: &str) -> AllFindings {
+    /*pub fn compile_and_get_findings(name: &str, content: &str) -> AllFindings {
         let mut name = name.to_string();
         name.push_str(".sol"); // add extension
         let path = Path::new("./test-data/").join(name);
@@ -45,24 +45,29 @@ mod test {
         let mut walker = Walker::new(output, loader);
 
         walker.traverse().expect("failed to traverse ast")
-    }
+    }*/
 
-    /*pub fn compile_and_get_findings(
-        name: impl AsRef<str>,
-        content: impl AsRef<str>,
+    pub fn compile_and_get_findings(
+        /*name: impl AsRef<str>,
+        content: impl AsRef<str>,*/
+        name: &str,
+        content: &str,
     ) -> AllFindings {
-        let compiled = compile_temp(name, content);
+        let path = Path::new("examples/");
+        let location = path.join(name);
+        let location = location.to_str().unwrap();
+
+        let compiled = compile_temp(location, content);
 
         assert!(!compiled.has_compiler_errors());
         assert!(compiled.find_first("Foo").is_some());
 
         let output = compiled.into_artifacts().collect();
 
-        let mut f = File::create(name.try_into()
-        .unwrap()).unwrap();
+        let mut f = File::create(location).unwrap();
         let con: String = content.try_into().unwrap();
         f.write_all(con.as_bytes()).unwrap();
-        f.sync_all().unwrap();
+        // f.sync_all().unwrap();
 
         let modules = get_all_modules();
         let loader = Loader::new(modules);
@@ -70,7 +75,7 @@ mod test {
         let mut walker = Walker::new(output, loader);
 
         walker.traverse().unwrap()
-    }*/
+    }
 
     pub fn compile_temp(name: impl AsRef<str>, content: impl AsRef<str>) -> ProjectCompileOutput {
         let tmp = TempProject::dapptools().unwrap();
@@ -78,13 +83,16 @@ mod test {
         tmp.project().compile_file(f).unwrap()
     }
 
-    // TODO: be more specific with file line and multiple findings
     pub fn has_with_code(all_findings: &AllFindings, name: &str, code: u32) -> bool {
         all_findings
             .get(name)
             .unwrap()
             .iter()
             .any(|mf| mf.finding.code == code)
+    }
+
+    pub fn finding_num(all_findings: &AllFindings, name: &str) -> usize {
+        all_findings.get(name).unwrap().len()
     }
 
     pub fn has_with_code_at_line(

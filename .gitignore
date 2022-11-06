@@ -16,4 +16,4 @@ out/
 
 artifacts/
 cache/
-cli/test-data/
+cli/examples/**

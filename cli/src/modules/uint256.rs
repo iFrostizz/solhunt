@@ -42,7 +42,7 @@ mod module_overflow_test {
     #[test]
     fn can_find_overflow_old_ver() {
         let findings = compile_and_get_findings(
-            "DummyUint256",
+            "DummyUint256.sol",
             "
             pragma solidity ^0.8.10;
             contract Foo {
