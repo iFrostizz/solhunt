@@ -24,15 +24,25 @@ mod test {
     use core::{
         loader::Loader,
         solidity,
-        walker::{AllFindings, Findings, MetaFinding, Walker},
+        walker::{AllFindings, Walker},
     };
     use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
-    use std::{fs::File, io::Write, path::Path};
+    use std::{
+        self,
+        fs::{self, File},
+        io::Write,
+        path::Path,
+    };
 
     // TODO: keep compile_temp but find a solution to read the file, or only pass content
     pub fn compile_and_get_findings(name: &str, content: &str) -> AllFindings {
         let mut name = name.to_string();
         name.push_str(".sol"); // add extension
+
+        if fs::create_dir("./test-data/").is_ok() {
+            println!("I just created the test dir for you")
+        } // else is probably already here
+
         let path = Path::new("./test-data/").join(name);
 
         let mut f = File::create(&path).unwrap();
@@ -72,6 +82,7 @@ mod test {
         walker.traverse().unwrap()
     }*/
 
+    #[allow(dead_code)]
     pub fn compile_temp(name: impl AsRef<str>, content: impl AsRef<str>) -> ProjectCompileOutput {
         let tmp = TempProject::dapptools().unwrap();
         let f = tmp.add_contract(name, content).unwrap();
@@ -91,6 +102,7 @@ mod test {
             .any(|mf| mf.finding.code == code)
     }
 
+    #[allow(dead_code)]
     pub fn has_with_code_at_line(
         all_findings: &AllFindings,
         name: &str,
@@ -119,6 +131,7 @@ mod test {
             .collect::<Vec<MetaFinding>>()
     }*/
 
+    #[allow(dead_code)]
     pub fn findings_with_code(all_findings: &AllFindings, name: &str, code: u32) -> u32 {
         all_findings
             .get(name)
