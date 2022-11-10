@@ -97,7 +97,7 @@ mod test {
     pub fn has_with_code(all_findings: &AllFindings, name: &str, code: u32) -> bool {
         all_findings
             .get(name)
-            .unwrap()
+            .unwrap_or(&Vec::new())
             .iter()
             .any(|mf| mf.finding.code == code)
     }
@@ -148,7 +148,7 @@ mod test {
     ) -> Vec<u32> {
         all_findings
             .get(name)
-            .unwrap()
+            .unwrap_or(&Vec::new())
             .iter()
             .filter(|mf| mf.finding.code == code)
             .filter_map(|mf| mf.meta.line)

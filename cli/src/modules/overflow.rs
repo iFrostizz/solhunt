@@ -59,8 +59,6 @@ pub fn get_module() -> DynModule {
 fn check_overflow_stat(stat: &Statement) -> Vec<Finding> {
     let mut findings = Vec::new();
 
-    dbg!(&stat);
-
     if let Statement::ExpressionStatement(expr) = stat {
         if let Expression::Assignment(ass) = &expr.expression {
             // huh
