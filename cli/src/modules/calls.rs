@@ -140,4 +140,36 @@ contract Foo {
             vec![14]
         );
     }
+
+    #[test]
+    fn can_find_contract_call() {
+        let findings = compile_and_get_findings(
+            "CallContract.sol",
+            "pragma solidity ^0.8.0;
+contract Coll {
+    uint256 val;
+
+    function setStuff(uint256 _val) external {
+                val = _val;
+    }
+}
+            
+contract Foo {
+    Coll to;
+
+    constructor(Coll _to) {
+        to = _to;
+    }
+
+    function doTheThing() public {
+        to.setStuff(10);
+    }
+}",
+        );
+
+        assert_eq!(
+            lines_for_findings_with_code(&findings, "calls", 0),
+            vec![18]
+        );
+    }
 }
