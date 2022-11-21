@@ -6,7 +6,8 @@ use core::{
 };
 use ethers_solc::artifacts::{
     ast::{ContractDefinitionPart, SourceUnitPart},
-    Block, Expression, ExpressionStatement, FunctionCall, FunctionDefinition, Statement,
+    Block, Contract, ContractKind, Expression, ExpressionStatement, FunctionCall,
+    FunctionDefinition, Statement,
 };
 
 pub fn get_module() -> DynModule {
@@ -18,15 +19,19 @@ pub fn get_module() -> DynModule {
             if let SourceUnitPart::ContractDefinition(def) = source {
                 // println!("{:#?}", def);
 
-                def.nodes.iter().for_each(|node| {
-                    if let ContractDefinitionPart::FunctionDefinition(func) = node {
-                        if let Some(body) = &func.body {
-                            // dbg!(&body);
+                if def.kind == ContractKind::Contract {
+                    // dbg!(&source);
 
-                            findings.append(&mut parse_body(body));
+                    def.nodes.iter().for_each(|node| {
+                        if let ContractDefinitionPart::FunctionDefinition(func) = node {
+                            if let Some(body) = &func.body {
+                                // dbg!(&body);
+
+                                findings.append(&mut parse_body(body));
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
 
             findings
@@ -39,7 +44,7 @@ fn parse_body(body: &Block) -> Vec<Finding> {
 
     body.statements
         .iter()
-        .for_each(|stat| findings.append(&mut check_for_external_call(&stat)));
+        .for_each(|stat| findings.append(&mut check_for_external_call(stat)));
 
     findings
 }
@@ -49,7 +54,16 @@ fn check_for_external_call(stat: &Statement) -> Vec<Finding> {
 
     if let Statement::ExpressionStatement(expr) = stat {
         if let Expression::FunctionCall(call) = &expr.expression {
-            if let Expression::FunctionCallOptions(opt) = &call.expression {
+            // dbg!(&call);
+            findings.push(Finding {
+                name: "calls".to_owned(),
+                description: "external call detected".to_owned(),
+                severity: Severity::Informal,
+                src: Some(call.src.clone()),
+                code: 0,
+            });
+
+            /*if let Expression::FunctionCallOptions(opt) = &call.expression {
                 if let Expression::MemberAccess(acc) = &opt.expression {
                     let type_desc = &acc.type_descriptions;
                     if let Some(id) = &type_desc.type_identifier {
@@ -64,7 +78,7 @@ fn check_for_external_call(stat: &Statement) -> Vec<Finding> {
                         }
                     }
                 }
-            }
+            }*/
         }
     }
 

@@ -35,42 +35,50 @@ impl Walker {
             - ast.NodeTransformer (allows modification)
      */
     pub fn traverse(&mut self) -> eyre::Result<AllFindings> {
-        // Should output a friendly stuff
         let mut all_findings: AllFindings = HashMap::new();
+
+        let mut ids: Vec<usize> = Vec::new();
 
         for (id, art) in &self.artifact {
             // dbg!(&id.version, &id.name, &id.identifier()); Careful, pragma version is the COMPILED version. Should parse
             // probably fine to use the compiled version, if major change then it wouldn't compile.
             let unique_id = format!("{} {}", id.name, id.identifier());
+
             let ast: &SourceUnit = art
                 .ast
                 .as_ref()
                 .unwrap_or_else(|| panic!("no ast found for {}", unique_id));
 
-            let abs_path = &ast.absolute_path.clone();
-            let file = File::open(abs_path)
-                .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
-            let file = BufReader::new(file);
-            let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");
-            // dbg!(&lines_to_bytes);
+            // dedup same sources
+            // TODO: is that bug from the ast ?
+            if !ids.contains(&ast.id) {
+                ids.push(ast.id);
 
-            let nodes = &ast.nodes;
+                let abs_path = &ast.absolute_path.clone();
+                let file = File::open(abs_path)
+                    .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
+                let file = BufReader::new(file);
+                let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");
+                // dbg!(&lines_to_bytes);
 
-            let name = &ast.absolute_path;
+                let nodes = &ast.nodes;
 
-            let info = Information {
-                name: name.to_string(),
-                version: id.version.clone(),
-            };
+                let name = &ast.absolute_path;
 
-            self.loader.0.iter().for_each(|module| {
-                all_findings.entry(module.name.clone()).or_default();
-                let findings: &mut Findings = &mut Vec::new();
-                self.visit_source(module, nodes, &lines_to_bytes, info.clone(), findings);
-                all_findings
-                    .entry(module.name.clone())
-                    .and_modify(|f| f.append(findings));
-            });
+                let info = Information {
+                    name: name.to_string(),
+                    version: id.version.clone(),
+                };
+
+                self.loader.0.iter().for_each(|module| {
+                    all_findings.entry(module.name.clone()).or_default();
+                    let findings: &mut Findings = &mut Vec::new();
+                    self.visit_source(module, nodes, &lines_to_bytes, info.clone(), findings);
+                    all_findings
+                        .entry(module.name.clone())
+                        .and_modify(|f| f.append(findings));
+                });
+            }
         }
 
         Ok(all_findings)
@@ -85,15 +93,6 @@ impl Walker {
         findings: &mut Findings,
     ) {
         sources.iter().for_each(|source| {
-            // dbg!(&lines_to_bytes);
-            // dbg!(&source);
-            /*match source {
-                SourceUnitPart::ContractDefinition(def) => {
-                    dbg!(&def);
-                    def.nodes.iter().for_each(|node| println!("{:#?}", node));
-                } // TODO: decide if done by each module or here, if too much repetition in modules
-                _ => (),
-            }*/
             let mod_findings = module.process_source(source, &info);
 
             let file = info.name.clone();
