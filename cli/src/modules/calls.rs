@@ -6,9 +6,9 @@ use core::{
 };
 use ethers_solc::artifacts::{
     ast::{ContractDefinitionPart, SourceUnitPart},
-    Block, Contract, ContractKind, Expression, ExpressionStatement, FunctionCall,
-    FunctionDefinition, Statement,
+    Block, ContractKind, Expression, ParameterList, Statement, TypeName,
 };
+use std::collections::HashMap;
 
 pub fn get_module() -> DynModule {
     Module::new(
@@ -24,10 +24,14 @@ pub fn get_module() -> DynModule {
 
                     def.nodes.iter().for_each(|node| {
                         if let ContractDefinitionPart::FunctionDefinition(func) = node {
-                            if let Some(body) = &func.body {
-                                // dbg!(&body);
+                            // parse_func(func);
+                            // dbg!(&func);
 
-                                findings.append(&mut parse_body(body));
+                            let data = parse_params(&func.parameters);
+                            dbg!(&data);
+
+                            if let Some(body) = &func.body {
+                                findings.append(&mut parse_body(body, &data));
                             }
                         }
                     });
@@ -39,17 +43,39 @@ pub fn get_module() -> DynModule {
     )
 }
 
-fn parse_body(body: &Block) -> Vec<Finding> {
+fn parse_params(params: &ParameterList) -> HashMap<String, String> {
+    let mut data: HashMap<String, String> = HashMap::new();
+
+    for param in params.parameters.clone().into_iter() {
+        if let Some(type_name) = param.type_name {
+            match type_name {
+                TypeName::ElementaryTypeName(type_name) => {
+                    if type_name.name == "address" {
+                        data.insert(param.name, "address".to_string());
+                    }
+                }
+                TypeName::ArrayTypeName(_type_name) => {
+                    println!("todo");
+                }
+                _ => println!("todo"),
+            }
+        }
+    }
+
+    data
+}
+
+fn parse_body(body: &Block, data: &HashMap<String, String>) -> Vec<Finding> {
     let mut findings = Vec::new();
 
     body.statements
         .iter()
-        .for_each(|stat| findings.append(&mut check_for_external_call(stat)));
+        .for_each(|stat| findings.append(&mut check_for_external_call(stat, data)));
 
     findings
 }
 
-fn check_for_external_call(stat: &Statement) -> Vec<Finding> {
+fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> Vec<Finding> {
     let mut findings = Vec::new();
 
     if let Statement::ExpressionStatement(expr) = stat {
@@ -62,6 +88,23 @@ fn check_for_external_call(stat: &Statement) -> Vec<Finding> {
                 src: Some(call.src.clone()),
                 code: 0,
             });
+
+            let func_expr = &call.expression;
+            if let Expression::MemberAccess(mem) = func_expr {
+                if let Expression::Identifier(identifier) = &mem.expression {
+                    if let Some(arb_type) = data.get(&identifier.name) {
+                        if arb_type == "address" {
+                            findings.push(Finding {
+                                name: "calls".to_owned(),
+                                description: "external call with arbitrary address".to_owned(),
+                                severity: Severity::Medium,
+                                src: Some(call.src.clone()),
+                                code: 1,
+                            });
+                        }
+                    }
+                }
+            }
 
             /*if let Expression::FunctionCallOptions(opt) = &call.expression {
                 if let Expression::MemberAccess(acc) = &opt.expression {
@@ -171,5 +214,22 @@ contract Foo {
             lines_for_findings_with_code(&findings, "calls", 0),
             vec![18]
         );
+    }
+
+    #[test]
+    fn can_find_arbitrary_call() {
+        let findings = compile_and_get_findings(
+            "Arbitrary.sol",
+            "pragma solidity ^0.8.0;
+            
+contract Foo {
+
+    function doTheThing(address to) public {
+        to.call('');
+    }
+}",
+        );
+
+        assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
     }
 }

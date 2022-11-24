@@ -1,3 +1,4 @@
+#[allow(unused)]
 pub fn type_as_bytes(id: &str) -> Option<usize> {
     // from ethers_core / lexer
     let bytes = match id {
@@ -101,12 +102,13 @@ pub fn type_as_bytes(id: &str) -> Option<usize> {
         "uint248" => 248,
         "uint256" => 256,
         "uint" => 256,
-       _ => return None,
+        _ => return None,
     };
 
     Some(bytes)
 }
 
+#[allow(unused)]
 pub fn int_as_bytes(int: &str) -> Option<usize> {
     let bytes = match int {
         "int8" => 16,
