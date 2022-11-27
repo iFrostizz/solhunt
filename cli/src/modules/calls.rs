@@ -28,7 +28,7 @@ pub fn get_module() -> DynModule {
                             // dbg!(&func);
 
                             let data = parse_params(&func.parameters);
-                            dbg!(&data);
+                            // dbg!(&data);
 
                             if let Some(body) = &func.body {
                                 findings.append(&mut parse_body(body, &data));

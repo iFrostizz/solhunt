@@ -1,3 +1,4 @@
+pub mod assembly;
 pub mod calls;
 pub mod erc20;
 pub mod loader;
