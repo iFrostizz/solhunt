@@ -6,7 +6,7 @@ use core::{
 };
 use ethers_solc::artifacts::{
     ast::{ContractDefinitionPart, SourceUnitPart},
-    yul::{YulExpression, YulStatement},
+    yul::{YulExpression, YulForLoop, YulStatement},
     Block, Statement,
 };
 
@@ -67,15 +67,26 @@ fn recurse_assembly_statements(stat: &YulStatement) -> Vec<Finding> {
     let mut findings = Vec::new();
 
     if let YulStatement::YulAssignment(yul_ass) = stat {
-        if let YulExpression::YulFunctionCall { .. } = yul_ass.value {
-            findings.push(Finding {
-                name: "assembly".to_owned(),
-                description: "using extcodesize. Can be an issue if determining if EOA.".to_owned(),
-                severity: Severity::Medium,
-                src: Some(yul_ass.src.clone()),
-                code: 1,
-            });
+        if let YulExpression::YulFunctionCall(function_call) = &yul_ass.value {
+            let func_name = &function_call.function_name;
+
+            if func_name.name == "extcodesize" {
+                findings.push(Finding {
+                    name: "assembly".to_owned(),
+                    description: "using extcodesize. Can be an issue if determining if EOA."
+                        .to_owned(),
+                    severity: Severity::Medium,
+                    src: Some(func_name.src.clone()),
+                    code: 1,
+                });
+            }
         }
+    } else if let YulStatement::YulForLoop(for_loop) = stat {
+        for_loop
+            .body
+            .statements
+            .iter()
+            .for_each(|s| findings.append(&mut recurse_assembly_statements(&s)));
     }
 
     findings
@@ -116,15 +127,15 @@ contract Foo {
     #[test]
     fn without_extcodesize() {
         let findings = compile_and_get_findings(
-            "ExtCodeSize.sol",
+            "WithoutExtCodeSize.sol",
             "pragma solidity ^0.8.0;
 
 contract Foo {
     function make(address to) public {
-        uint256 size;
+        uint256 bal;
             
         assembly {
-            size := extcodesize(to)
+            bal := balance(to)
         }
     }
 }",
@@ -141,7 +152,7 @@ contract Foo {
     #[test]
     fn nested_extcodesize() {
         let findings = compile_and_get_findings(
-            "ExtCodeSize.sol",
+            "NestedExtCodeSize.sol",
             "pragma solidity ^0.8.0;
 
 contract Foo {
