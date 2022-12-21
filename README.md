@@ -1,6 +1,6 @@
 # Solhunt
 
-![very cool image](./images/solhunt.png "*your weapon of choice*")
+<img src="./images/solhunt.pn" alt="*your weapon of choice*" width="100" height="100"/>
 
 This tool is a static analyzer currently shaped for Solidity. It aims to be your *hunting weapon of choice* to find the most common vulnerabilities before pushing them to production.
 It has been built with modularity in mind. The core is the part that should be reusable and the most generic and the cli contains a bunch of detection modules.
