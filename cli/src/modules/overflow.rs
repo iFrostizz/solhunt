@@ -1,4 +1,4 @@
-// Check if overflow may occur in unchecked or < 0.8.0 versions of solc
+// Check if overflow may occur in unchecked or < 16.8.0 versions of solc
 
 // use crate::utils::int_as_bytes;
 use core::{
@@ -174,17 +174,19 @@ fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
 }
 
 #[cfg(test)]
-mod module_overflow_test {
+mod test {
     use crate::test::{
         compile_and_get_findings, has_with_code, has_with_module, lines_for_findings_with_code,
     };
+    use core::solidity::ProjectFile;
 
     #[test]
     fn can_find_overflow_old_ver() {
-        let findings = compile_and_get_findings(
-            "OldVerCheck",
-            "pragma solidity 0.7.0;
-contract Foo {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("OldVerCheck"),
+            String::from(
+                "pragma solidity 0.7.0;
+contract OldVerCheck {
     mapping(address => uint256) bal;
 
     function deposit() external payable {
@@ -198,7 +200,8 @@ contract Foo {
 
     fallback() external payable {}
 }",
-        );
+            ),
+        )]);
 
         assert!(has_with_code(&findings, "overflow", 0)); // ver
         assert_eq!(
@@ -213,10 +216,11 @@ contract Foo {
 
     #[test]
     fn dont_find_overflow() {
-        let findings = compile_and_get_findings(
-            "NoOverFlow",
-            "pragma solidity ^0.8.10;
-contract Foo {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("NoOverFlow"),
+            String::from(
+                "pragma solidity ^0.8.10;
+contract NoOverFlow {
     mapping(address => uint256) bal;
     
     function deposit() external payable {
@@ -230,17 +234,19 @@ contract Foo {
     
     fallback() external payable {}
 }",
-        );
+            ),
+        )]);
 
         assert!(!has_with_module(&findings, "overflow"));
     }
 
     #[test]
     fn find_unchecked_overflow() {
-        let findings = compile_and_get_findings(
-            "Unchecked",
-            "pragma solidity ^0.8.10;
-contract Foo {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("Unchecked"),
+            String::from(
+                "pragma solidity ^0.8.10;
+contract Unchecked {
     mapping(address => uint256) bal;
     
     function deposit() external payable {
@@ -258,7 +264,8 @@ contract Foo {
     
     fallback() external payable {}
 }",
-        );
+            ),
+        )]);
 
         assert!(!has_with_code(&findings, "overflow", 0));
         assert_eq!(

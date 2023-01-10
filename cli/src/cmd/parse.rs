@@ -1,7 +1,7 @@
 use crate::modules::loader::get_all_modules;
 use clap::Parser;
 use core::loader::{DynModule, Loader};
-use ethers_solc::remappings::Remapping;
+use ethers_solc::remappings::{RelativeRemapping, Remapping};
 
 use serde::Serialize;
 use std::{
@@ -75,9 +75,9 @@ pub fn parse() -> (PathBuf, Loader, u8) {
     (get_working_path(args.path), loader, args.verbosity)
 }
 
-pub fn get_remappings(path: &Path) -> Vec<Remapping> {
+pub fn get_remappings(path: &Path) -> Vec<RelativeRemapping> {
     let base_path = path.to_path_buf();
-    let mut remappings: Vec<Remapping> = Vec::new();
+    let mut remappings: Vec<RelativeRemapping> = Vec::new();
 
     let remappings_file = base_path.join("remappings.txt");
     if remappings_file.is_file() {
@@ -94,10 +94,13 @@ pub fn get_remappings(path: &Path) -> Vec<Remapping> {
         rem.iter().for_each(|pair| {
             if let Some((lib, path)) = pair {
                 let full_path = base_path.join(path);
-                remappings.push(Remapping {
-                    name: lib.to_string(),
-                    path: full_path.into_os_string().into_string().unwrap(),
-                });
+                remappings.push(
+                    Remapping {
+                        name: lib.to_string(),
+                        path: full_path.into_os_string().into_string().unwrap(),
+                    }
+                    .into_relative(base_path.clone()),
+                );
             }
         });
     }

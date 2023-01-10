@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ethers-solc = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "f/ast", features = ["svm-solc"] }
+ethers-solc = { git = "https://github.com/iFrostizz/ethers-rs.git", rev = "ce3cc16", features = ["svm-solc"] }
+foundry-cli = { git = "https://github.com/iFrostizz/foundry.git", rev = "ff92a13" }
 # ethers-solc = { path = "/home/franfran/Projects/own/ethers-rs/ethers-solc", features = ["svm-solc"] }
 # ethers-solc = { version = "0.17.0", features = ["svm-solc"] }
 eyre = "0.6.8"

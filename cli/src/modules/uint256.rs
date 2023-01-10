@@ -36,20 +36,22 @@ pub fn get_module() -> DynModule {
 }
 
 #[cfg(test)]
-mod module_overflow_test {
+mod test {
     use crate::test::{compile_and_get_findings, has_with_code};
+    use core::solidity::ProjectFile;
 
     #[test]
-    fn can_find_overflow_old_ver() {
-        let findings = compile_and_get_findings(
-            "DummyUint256.sol",
-            "
-            pragma solidity ^0.8.10;
-            contract Foo {
+    fn can_find_dummy_uin256() {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("DummyUint256"),
+            String::from(
+                "pragma solidity ^0.8.10;
+            contract DummyUint256 {
                 uint256 unint;
             }
             ",
-        );
+            ),
+        )]);
 
         assert!(has_with_code(&findings, "uint256", 0));
     }

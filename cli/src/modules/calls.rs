@@ -131,13 +131,15 @@ fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> 
 #[cfg(test)]
 mod tests {
     use crate::test::{compile_and_get_findings, lines_for_findings_with_code};
+    use core::solidity::ProjectFile;
 
     #[test]
     fn can_find_call() {
-        let findings = compile_and_get_findings(
-            "Call.sol",
-            "pragma solidity ^0.8.0;
-contract Foo {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("Call"),
+            String::from(
+                "pragma solidity ^0.8.0;
+contract Call {
     address to;
 
     constructor(address _to) {
@@ -148,7 +150,8 @@ contract Foo {
         to.call{value: 1 ether}('');
     }
 }",
-        );
+            ),
+        )]);
 
         assert_eq!(
             lines_for_findings_with_code(&findings, "calls", 0),
@@ -158,14 +161,15 @@ contract Foo {
 
     #[test]
     fn can_find_interface_call() {
-        let findings = compile_and_get_findings(
-            "CallInt.sol",
-            "pragma solidity ^0.8.0;
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("CallInt"),
+            String::from(
+                "pragma solidity ^0.8.0;
 interface Coll {
     function setStuff() external;
 }
             
-contract Foo {
+contract CallInt {
     Coll to;
 
     constructor(Coll _to) {
@@ -176,7 +180,8 @@ contract Foo {
         to.setStuff();
     }
 }",
-        );
+            ),
+        )]);
 
         assert_eq!(
             lines_for_findings_with_code(&findings, "calls", 0),
@@ -186,9 +191,10 @@ contract Foo {
 
     #[test]
     fn can_find_contract_call() {
-        let findings = compile_and_get_findings(
-            "CallContract.sol",
-            "pragma solidity ^0.8.0;
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("CallContract"),
+            String::from(
+                "pragma solidity ^0.8.0;
 contract Coll {
     uint256 val;
 
@@ -197,7 +203,7 @@ contract Coll {
     }
 }
             
-contract Foo {
+contract CallContract {
     Coll to;
 
     constructor(Coll _to) {
@@ -208,27 +214,30 @@ contract Foo {
         to.setStuff(10);
     }
 }",
-        );
+            ),
+        )]);
 
         assert_eq!(
             lines_for_findings_with_code(&findings, "calls", 0),
-            vec![18]
+            vec![19]
         );
     }
 
     #[test]
     fn can_find_arbitrary_call() {
-        let findings = compile_and_get_findings(
-            "Arbitrary.sol",
-            "pragma solidity ^0.8.0;
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("Arbitrary"),
+            String::from(
+                "pragma solidity ^0.8.0;
             
-contract Foo {
+contract Arbitrary {
 
     function doTheThing(address to) public {
         to.call('');
     }
 }",
-        );
+            ),
+        )]);
 
         assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
     }

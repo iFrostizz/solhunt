@@ -1,7 +1,8 @@
 use cmd::parse::get_remappings;
 
 use crate::{cmd::parse::parse, utils::formatter::format_findings};
-use core::{solidity, walker::Walker};
+use core::{solidity::Solidity, walker::Walker};
+use std::collections::BTreeMap;
 
 mod cmd;
 mod modules;
@@ -10,9 +11,13 @@ mod utils;
 fn main() {
     let (path, loader, verbosity) = parse();
 
-    let output = solidity::compile_artifacts(true, &path, get_remappings(&path));
+    let solidity = Solidity::default()
+        .with_remappings(get_remappings(&path))
+        .with_path_root(path);
 
-    let mut walker = Walker::new(output, loader);
+    let output = solidity.compile_artifacts();
+
+    let mut walker = Walker::new(output, loader, BTreeMap::new());
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
@@ -23,39 +28,134 @@ mod test {
     use crate::modules::loader::get_all_modules;
     use core::{
         loader::Loader,
-        solidity,
+        solidity::{get_string_lines, ProjectFile},
         walker::{AllFindings, Walker},
     };
-    use ethers_solc::{output::ProjectCompileOutput, project_util::TempProject};
-    use std::{
-        self,
-        fs::{self, File},
-        io::Write,
-        path::Path,
+    use ethers_solc::{
+        output::ProjectCompileOutput, project_util::TempProject, ArtifactId, ConfigurableArtifacts,
+        ConfigurableContractArtifact,
     };
+    use std::{self, collections::BTreeMap};
 
-    // TODO: keep compile_temp but find a solution to read the file, or only pass content
-    pub fn compile_and_get_findings(name: &str, content: &str) -> AllFindings {
-        let mut name = name.to_string();
-        name.push_str(".sol"); // add extension
+    pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
+        let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
-        if fs::create_dir("./test-data/").is_ok() {
-            println!("I just created the test dir for you")
-        } // else is probably already here
+        let mut source_map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
 
-        let path = Path::new("./test-data/").join(name);
+        files.iter().for_each(|f| {
+            let (name, content) = match f {
+                ProjectFile::Contract(name, content) => {
+                    project.add_source(name, content).unwrap();
+                    (name, content)
+                }
+                ProjectFile::Library(name, content) => {
+                    project.add_lib(name, content).unwrap();
+                    (name, content)
+                }
+            };
 
-        let mut f = File::create(&path).unwrap();
-        f.write_all(content.as_bytes()).unwrap();
+            source_map.insert(name.clone(), get_string_lines(content.to_string()));
+        });
 
-        let output = solidity::compile_artifacts(true, &path, Default::default());
+        let compiled = project.compile().unwrap();
+
+        assert!(!compiled.has_compiler_errors());
+
+        println!("---------------------------------");
+
+        let output = compiled
+            .into_artifacts()
+            .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>()
+            .into_iter()
+            .find(|(art_id, _)| {
+                // dbg!(art_id);
+
+                // dbg!(&art_id.name, &name);
+                // let art_id_name = art_id
+                //     .source
+                //     .clone()
+                //     .file_name()
+                //     .unwrap()
+                //     .to_os_string()
+                //     .into_string()
+                //     .unwrap();
+
+                // let art_id_name = art_id_name.strip_suffix(".sol").unwrap();
+
+                if let ProjectFile::Contract(name, _) = &files[0] {
+                    &art_id.name == name
+                } else {
+                    false
+                }
+                // &art_id.name == "Foo"
+            })
+            .expect("Foo testing contract not found");
+
+        let output = BTreeMap::from([(output.0, output.1)]);
 
         let modules = get_all_modules();
         let loader = Loader::new(modules);
-        let mut walker = Walker::new(output, loader);
+        let mut walker = Walker::new(output.into(), loader, source_map);
 
         walker.traverse().expect("failed to traverse ast")
     }
+
+    // TODO: keep compile_temp but find a solution to read the file, or only pass content
+    // pub fn compile_and_get_findings(name: &str, content: &str) -> AllFindings {
+    //     let name = name.to_string();
+    //     let mut file_name = name.clone();
+
+    //     file_name.push_str(".sol"); // add extension
+
+    //     if fs::create_dir("./test-data/").is_ok() {
+    //         println!("I just created the test dir for you")
+    //     } // else is probably already here
+
+    //     let root = PathBuf::from("./test-data/");
+    //     let path = root.join(file_name.clone());
+
+    //     let mut f = File::create(&path).unwrap();
+    //     f.write_all(content.as_bytes()).unwrap();
+
+    //     // dbg!(&root);
+
+    //     let solidity = Solidity::default().with_path_root(root).ephemeral(true);
+    //     let output = solidity
+    //         .compile()
+    //         /*.find_first(name)
+    //         .unwrap()
+    //         .clone()*/
+    //         .into_artifacts()
+    //         .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>()
+    //         .into_iter()
+    //         .find(|(art_id, _)| {
+    //             // dbg!(&art_id.name, &name);
+    //             // dbg!(art_id);
+    //             let art_id_name = art_id
+    //                 .source
+    //                 .clone()
+    //                 .file_name()
+    //                 .unwrap()
+    //                 .to_os_string()
+    //                 .into_string()
+    //                 .unwrap();
+
+    //             let art_id_name = art_id_name.strip_suffix(".sol").unwrap();
+
+    //             // dbg!(&art_id_name, &name);
+
+    //             art_id_name == name
+    //         })
+    //         .unwrap();
+
+    //     let output = BTreeMap::from([(output.0, output.1)]);
+
+    //     let modules = get_all_modules();
+    //     let loader = Loader::new(modules);
+    //     let mut walker = Walker::new(output.into(), loader);
+
+    //     walker.traverse().expect("failed to traverse ast")
+    // }
 
     /*pub fn compile_and_get_findings(
         name: impl AsRef<str>,

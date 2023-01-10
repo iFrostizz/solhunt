@@ -1,31 +1,37 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
 use ethers_solc::{
-    artifacts::ast::{SourceUnit, SourceUnitPart},
+    artifacts::ast::{lowfidelity::Ast, SourceUnit, SourceUnitPart},
     ArtifactId, ConfigurableContractArtifact,
 };
-use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
-use std::{fs::File, io::BufReader};
+use std::{collections::btree_map::BTreeMap, path::PathBuf};
+// use std::{fs::File, io::BufReader};
 
 use crate::loader::{DynModule, Loader};
 use crate::{
     loader::Information,
-    solidity::utils::{get_file_lines, get_line_position},
+    solidity::utils::get_line_position,
     walker::{AllFindings, Findings, Meta, MetaFinding},
 };
 
 pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     loader: Loader,
+    source_map: BTreeMap<String, Vec<usize>>,
 }
 
 impl Walker {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         loader: Loader,
+        source_map: BTreeMap<String, Vec<usize>>,
     ) -> Self {
-        Walker { artifact, loader }
+        Walker {
+            artifact,
+            loader,
+            source_map,
+        }
     }
 
     /*
@@ -44,26 +50,36 @@ impl Walker {
             // probably fine to use the compiled version, if major change then it wouldn't compile.
             let unique_id = format!("{} {}", id.name, id.identifier());
 
-            let ast: &SourceUnit = art
+            let ast: Ast = art
                 .ast
                 .as_ref()
-                .unwrap_or_else(|| panic!("no ast found for {}", unique_id));
+                .unwrap_or_else(|| panic!("no ast found for {}", unique_id))
+                .clone();
+
+            let ast: &SourceUnit = &ast.to_typed();
 
             // dedup same sources
             // TODO: is that bug from the ast ?
             if !ids.contains(&ast.id) {
                 ids.push(ast.id);
 
-                let abs_path = &ast.absolute_path.clone();
+                // dbg!(&ast);
+
+                /*let abs_path = &ast.absolute_path.clone();
                 let file = File::open(abs_path)
                     .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
                 let file = BufReader::new(file);
-                let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");
+                let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");*/
+                let lines_to_bytes = [];
                 // dbg!(&lines_to_bytes);
 
                 let nodes = &ast.nodes;
 
-                let name = &ast.absolute_path;
+                // let name = &ast.absolute_path;
+                let path = PathBuf::from(&ast.absolute_path);
+                let name = path.file_name().unwrap();
+                let name = name.to_os_string().into_string().unwrap();
+                let name = name.strip_suffix(".sol").unwrap();
 
                 let info = Information {
                     name: name.to_string(),
@@ -88,7 +104,7 @@ impl Walker {
         &self,
         module: &DynModule,
         sources: &[SourceUnitPart],
-        lines_to_bytes: &[u32],
+        _lines_to_bytes: &[usize],
         info: Information,
         findings: &mut Findings,
     ) {
@@ -103,9 +119,15 @@ impl Walker {
                     finding: finding.clone(),
                     meta: Meta {
                         file: file.clone(),
-                        line: finding
-                            .src
-                            .map(|src| get_line_position(&src, lines_to_bytes) as u32),
+                        line: finding.src.map(|src| {
+                            get_line_position(
+                                &src,
+                                &self
+                                    .source_map
+                                    .get(&info.name)
+                                    .expect("File not found in the source map"),
+                            ) as u32
+                        }),
                     },
                 })
                 .collect();
