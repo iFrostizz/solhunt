@@ -15,7 +15,12 @@ fn main() {
         .with_remappings(get_remappings(&path))
         .with_path_root(path);
 
-    let output = solidity.compile_artifacts();
+    // let output = solidity.compile_artifacts();
+    let output = solidity
+        .compile_with_foundry()
+        .expect("Compilation failed")
+        .into_artifacts()
+        .collect();
 
     let mut walker = Walker::new(output, loader, BTreeMap::new());
 

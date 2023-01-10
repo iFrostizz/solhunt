@@ -12,6 +12,18 @@ use ethers_solc::{
     Project,
     ProjectPathsConfig,
 };
+use foundry_cli::{
+    cmd::{
+        forge::{
+            build::{BuildArgs, CoreBuildArgs, ProjectPathsArgs},
+            install,
+        },
+        Cmd,
+    },
+    opts::forge::Subcommands,
+};
+use foundry_common::compile::{self, ProjectCompiler};
+use foundry_config::Config;
 use std::{
     collections::btree_map::BTreeMap,
     fs,
@@ -114,6 +126,55 @@ impl Solidity {
             force,
             ephemeral,
         }
+    }
+
+    // pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
+    //     let build_args = BuildArgs::default();
+    //     // let mut config = build_args.try_load_config_emit_warnings()?;
+    //     let mut config = Config::default();
+    //     let mut project = config.project()?;
+
+    //     let silent = false;
+
+    //     // if install::install_missing_dependencies(&mut config, &project, self.args.silent)
+    //     if install::install_missing_dependencies(&mut config, &project, silent)
+    //         && config.auto_detect_remappings
+    //     {
+    //         // need to re-configure here to also catch additional remappings
+    //         // config = self.load_config();
+    //         project = config.project()?;
+    //     }
+
+    //     /*let skip = true;
+    //     let filters = self.skip.unwrap_or_default();*/
+    //     // if self.args.silent {
+    //     if silent {
+    //         compile::suppress_compile_with_filter(&project, Vec::new())
+    //     } else {
+    //         let compiler = ProjectCompiler::with_filter(false, false, Vec::new());
+    //         compiler.compile(&project)
+    //     }
+    // }
+
+    pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
+        let project_paths_args = ProjectPathsArgs {
+            root: Some(PathBuf::from(&self.root)),
+            ..Default::default()
+        };
+
+        let core_build_args = CoreBuildArgs {
+            // TODO: remove force and use cached artifacts
+            force: true,
+            silent: false,
+            project_paths: project_paths_args,
+            ..Default::default()
+        };
+
+        let build_args = BuildArgs {
+            args: core_build_args,
+            ..Default::default()
+        };
+        build_args.run()
     }
 
     fn artifacts(&self) -> ConfigurableArtifacts {
