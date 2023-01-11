@@ -1,6 +1,8 @@
 use crate::walker::AllFindings;
 use ethers_solc::{
-    artifacts::output_selection::ContractOutputSelection,
+    artifacts::output_selection::{
+        BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
+    },
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::SolcError,
     output::ProjectCompileOutput,
@@ -18,9 +20,9 @@ use foundry_cli::{
             build::{BuildArgs, CoreBuildArgs, ProjectPathsArgs},
             install,
         },
-        Cmd,
+        Cmd, LoadConfig,
     },
-    opts::forge::Subcommands,
+    opts::forge::{CompilerArgs, Subcommands},
 };
 use foundry_common::compile::{self, ProjectCompiler};
 use foundry_config::Config;
@@ -157,6 +159,14 @@ impl Solidity {
     // }
 
     pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
+        let compiler_args = CompilerArgs {
+            // We absolutely require this to output the contracts as "text" from the compiler and generate source maps
+            extra_output: vec![ContractOutputSelection::Evm(EvmOutputSelection::ByteCode(
+                BytecodeOutputSelection::GeneratedSources,
+            ))],
+            ..Default::default()
+        };
+
         let project_paths_args = ProjectPathsArgs {
             root: Some(PathBuf::from(&self.root)),
             ..Default::default()
@@ -167,6 +177,7 @@ impl Solidity {
             force: true,
             silent: false,
             project_paths: project_paths_args,
+            compiler: compiler_args,
             ..Default::default()
         };
 
@@ -174,6 +185,7 @@ impl Solidity {
             args: core_build_args,
             ..Default::default()
         };
+        // dbg!(&build_args.try_load_config_emit_warnings().unwrap());
         build_args.run()
     }
 

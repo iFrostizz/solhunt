@@ -1,7 +1,7 @@
-use cmd::parse::get_remappings;
-
 use crate::{cmd::parse::parse, utils::formatter::format_findings};
+use cmd::parse::get_remappings;
 use core::{solidity::Solidity, walker::Walker};
+use ethers_solc::{ArtifactId, ConfigurableContractArtifact};
 use std::collections::BTreeMap;
 
 mod cmd;
@@ -16,13 +16,15 @@ fn main() {
         .with_path_root(path);
 
     // let output = solidity.compile_artifacts();
-    let output = solidity
+    let artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact> = solidity
         .compile_with_foundry()
         .expect("Compilation failed")
         .into_artifacts()
         .collect();
 
-    let mut walker = Walker::new(output, loader, BTreeMap::new());
+    dbg!(&artifacts);
+
+    let mut walker = Walker::new(artifacts, loader, BTreeMap::new());
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
@@ -37,13 +39,33 @@ mod test {
         walker::{AllFindings, Walker},
     };
     use ethers_solc::{
-        output::ProjectCompileOutput, project_util::TempProject, ArtifactId, ConfigurableArtifacts,
-        ConfigurableContractArtifact,
+        artifacts::{
+            output_selection::{BytecodeOutputSelection, ContractOutputSelection, OutputSelection},
+            Bytecode, Evm, GeneratedSource, Settings,
+        },
+        error::SolcIoError,
+        output::ProjectCompileOutput,
+        project_util::TempProject,
+        ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact, Project, ProjectBuilder,
+        ProjectPathsConfig, SolcConfig,
     };
     use std::{self, collections::BTreeMap};
 
     pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
-        let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+        // let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+        let (dir, project) = dapptools_project().unwrap();
+
+        let mut settings = Settings::default();
+        settings.output_selection = OutputSelection::default_output_selection();
+        settings.push_output_selection("storageLayout");
+        settings.push_output_selection("devdoc");
+        settings.push_output_selection("userdoc");
+        settings = settings.with_ast();
+
+        let project = project
+            .solc_config(SolcConfig { settings })
+            .set_build_info(true);
+        let project = build(dir, project).unwrap();
 
         let mut source_map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
 
@@ -68,12 +90,15 @@ mod test {
 
         println!("---------------------------------");
 
-        let output = compiled
+        // clone is dirty here
+        let output = compiled.clone().output();
+
+        let artifacts = compiled
             .into_artifacts()
             .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>()
             .into_iter()
-            .find(|(art_id, _)| {
-                // dbg!(art_id);
+            .find(|(art_id, art)| {
+                dbg!(art);
 
                 // dbg!(&art_id.name, &name);
                 // let art_id_name = art_id
@@ -96,13 +121,35 @@ mod test {
             })
             .expect("Foo testing contract not found");
 
-        let output = BTreeMap::from([(output.0, output.1)]);
+        let artifacts = BTreeMap::from([(artifacts.0, artifacts.1)]);
 
         let modules = get_all_modules();
         let loader = Loader::new(modules);
-        let mut walker = Walker::new(output.into(), loader, source_map);
+        let mut walker = Walker::new(artifacts.into(), loader, source_map);
 
         walker.traverse().expect("failed to traverse ast")
+    }
+
+    fn dapptools_project() -> eyre::Result<(tempfile::TempDir, ProjectBuilder)> {
+        let tmp_dir = tempdir("tmp_dapp")?;
+        let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
+
+        Ok((tmp_dir, Project::builder().paths(paths)))
+    }
+
+    fn build(
+        tmp_dir: tempfile::TempDir,
+        project: ProjectBuilder,
+    ) -> eyre::Result<TempProject<ConfigurableArtifacts>> {
+        let inner = project.build()?;
+        Ok(TempProject::create_new(tmp_dir, inner)?)
+    }
+
+    fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
+        tempfile::Builder::new()
+            .prefix(name)
+            .tempdir()
+            .map_err(|err| SolcIoError::new(err, name))
     }
 
     // TODO: keep compile_temp but find a solution to read the file, or only pass content

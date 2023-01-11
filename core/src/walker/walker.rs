@@ -49,6 +49,12 @@ impl Walker {
             // dbg!(&id.version, &id.name, &id.identifier()); Careful, pragma version is the COMPILED version. Should parse
             // probably fine to use the compiled version, if major change then it wouldn't compile.
             let unique_id = format!("{} {}", id.name, id.identifier());
+            dbg!(&unique_id);
+
+            /*art.generated_sources.iter().for_each(|gc| {
+                println!("{:#?}", &gc.contents);
+            });*/
+            println!("{:#?}", art.generated_sources);
 
             let ast: Ast = art
                 .ast

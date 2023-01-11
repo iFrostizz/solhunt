@@ -45,7 +45,7 @@ mod test {
         let findings = compile_and_get_findings(vec![ProjectFile::Contract(
             String::from("DummyUint256"),
             String::from(
-                "pragma solidity ^0.8.10;
+                "pragma solidity 0.8.0;
             contract DummyUint256 {
                 uint256 unint;
             }
