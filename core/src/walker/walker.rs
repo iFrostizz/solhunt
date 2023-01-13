@@ -49,12 +49,13 @@ impl Walker {
             // dbg!(&id.version, &id.name, &id.identifier()); Careful, pragma version is the COMPILED version. Should parse
             // probably fine to use the compiled version, if major change then it wouldn't compile.
             let unique_id = format!("{} {}", id.name, id.identifier());
-            dbg!(&unique_id);
+            // dbg!(&unique_id);
+            dbg!(id.identifier());
 
             /*art.generated_sources.iter().for_each(|gc| {
                 println!("{:#?}", &gc.contents);
             });*/
-            println!("{:#?}", art.generated_sources);
+            // println!("{:#?}", art.generated_sources);
 
             let ast: Ast = art
                 .ast
@@ -76,7 +77,8 @@ impl Walker {
                     .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
                 let file = BufReader::new(file);
                 let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");*/
-                let lines_to_bytes = [];
+                // let lines_to_bytes = [];
+                let lines_to_bytes = &self.source_map.get(&id.identifier()).unwrap()/*.unwrap_or(&Vec::new())*/;
                 // dbg!(&lines_to_bytes);
 
                 let nodes = &ast.nodes;
@@ -95,7 +97,7 @@ impl Walker {
                 self.loader.0.iter().for_each(|module| {
                     all_findings.entry(module.name.clone()).or_default();
                     let findings: &mut Findings = &mut Vec::new();
-                    self.visit_source(module, nodes, &lines_to_bytes, info.clone(), findings);
+                    self.visit_source(module, nodes, lines_to_bytes, info.clone(), findings);
                     all_findings
                         .entry(module.name.clone())
                         .and_modify(|f| f.append(findings));
@@ -110,7 +112,7 @@ impl Walker {
         &self,
         module: &DynModule,
         sources: &[SourceUnitPart],
-        _lines_to_bytes: &[usize],
+        lines_to_bytes: &[usize],
         info: Information,
         findings: &mut Findings,
     ) {
@@ -125,15 +127,9 @@ impl Walker {
                     finding: finding.clone(),
                     meta: Meta {
                         file: file.clone(),
-                        line: finding.src.map(|src| {
-                            get_line_position(
-                                &src,
-                                &self
-                                    .source_map
-                                    .get(&info.name)
-                                    .expect("File not found in the source map"),
-                            ) as u32
-                        }),
+                        line: finding
+                            .src
+                            .map(|src| get_line_position(&src, lines_to_bytes) as u32),
                     },
                 })
                 .collect();

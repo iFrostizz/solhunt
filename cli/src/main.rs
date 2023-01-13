@@ -1,7 +1,12 @@
 use crate::{cmd::parse::parse, utils::formatter::format_findings};
 use cmd::parse::get_remappings;
-use core::{solidity::Solidity, walker::Walker};
-use ethers_solc::{ArtifactId, ConfigurableContractArtifact};
+use core::{
+    solidity::{get_string_lines, Solidity},
+    walker::Walker,
+};
+use ethers_solc::{
+    buildinfo::BuildInfo, AggregatedCompilerOutput, ArtifactId, ConfigurableContractArtifact,
+};
 use std::collections::BTreeMap;
 
 mod cmd;
@@ -15,34 +20,86 @@ fn main() {
         .with_remappings(get_remappings(&path))
         .with_path_root(path);
 
-    // let output = solidity.compile_artifacts();
-    let artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact> = solidity
-        .compile_with_foundry()
-        .expect("Compilation failed")
+    let compiled = solidity.compile_with_foundry().expect("Compilation failed");
+    let output = compiled.clone().output();
+
+    let identifiers = get_identifiers(&output);
+    dbg!(&identifiers);
+    let source_map = build_source_maps(identifiers, output);
+
+    let artifacts = compiled
         .into_artifacts()
-        .collect();
+        .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
 
-    dbg!(&artifacts);
-
-    let mut walker = Walker::new(artifacts, loader, BTreeMap::new());
+    let mut walker = Walker::new(artifacts, loader, source_map);
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
 }
 
+// yields a vec of unique contract identifiers. Created later in the artifacts
+fn get_identifiers(output: &AggregatedCompilerOutput) -> Vec<String> {
+    output
+        .contracts
+        .iter()
+        .flat_map(|(id, contract)| {
+            let inner_ids: Vec<String> = contract
+                .into_iter()
+                .map(|(name, _)| String::from(id.to_string() + ":" + &name))
+                .collect();
+
+            inner_ids
+        })
+        .collect()
+}
+
+// create source maps to link content line with bytes offset in the file
+fn build_source_maps(
+    identifiers: Vec<String>,
+    output: AggregatedCompilerOutput,
+) -> BTreeMap<String, Vec<usize>> {
+    let mut source_map = BTreeMap::new();
+
+    // build_infos does not implement Copy so we cannot use the borrowed value
+    let build_infos = output.build_infos;
+    // TODO: this does not work
+    assert_eq!(build_infos.len(), identifiers.len());
+    build_infos.into_iter().for_each(|b| {
+        let raw_build_info = &b.1.build_info;
+        let build_info: BuildInfo = serde_json::from_str(raw_build_info).unwrap();
+        build_info
+            .input
+            .sources
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, (_, s))| {
+                // Here, we assume that contracts and sources are sorted 1:1
+                // dbg!(&p);
+                let map = get_string_lines(s.content);
+                source_map.insert(
+                    identifiers
+                        .get(i)
+                        .expect("identifier not found to build source map")
+                        .to_string(),
+                    map,
+                );
+            });
+    });
+
+    source_map
+}
+
 #[cfg(test)]
 mod test {
-    use crate::modules::loader::get_all_modules;
+    use crate::{build_source_maps, get_identifiers, modules::loader::get_all_modules};
     use core::{
         loader::Loader,
         solidity::{get_string_lines, ProjectFile},
         walker::{AllFindings, Walker},
     };
     use ethers_solc::{
-        artifacts::{
-            output_selection::{BytecodeOutputSelection, ContractOutputSelection, OutputSelection},
-            Bytecode, Evm, GeneratedSource, Settings,
-        },
+        artifacts::{output_selection::OutputSelection, Settings},
+        buildinfo::BuildInfo,
         error::SolcIoError,
         output::ProjectCompileOutput,
         project_util::TempProject,
@@ -67,8 +124,6 @@ mod test {
             .set_build_info(true);
         let project = build(dir, project).unwrap();
 
-        let mut source_map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-
         files.iter().for_each(|f| {
             let (name, content) = match f {
                 ProjectFile::Contract(name, content) => {
@@ -80,51 +135,51 @@ mod test {
                     (name, content)
                 }
             };
-
-            source_map.insert(name.clone(), get_string_lines(content.to_string()));
         });
 
         let compiled = project.compile().unwrap();
 
         assert!(!compiled.has_compiler_errors());
 
-        println!("---------------------------------");
-
         // clone is dirty here
         let output = compiled.clone().output();
 
+        let identifiers = get_identifiers(&output);
+        let source_map = build_source_maps(identifiers, output);
+
         let artifacts = compiled
             .into_artifacts()
-            .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>()
-            .into_iter()
-            .find(|(art_id, art)| {
-                dbg!(art);
+            .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
+        /*.into_iter()
+        .find(|(art_id, art)| {
+            // dbg!(art);
 
-                // dbg!(&art_id.name, &name);
-                // let art_id_name = art_id
-                //     .source
-                //     .clone()
-                //     .file_name()
-                //     .unwrap()
-                //     .to_os_string()
-                //     .into_string()
-                //     .unwrap();
+            // dbg!(&art_id.name, &name);
+            // let art_id_name = art_id
+            //     .source
+            //     .clone()
+            //     .file_name()
+            //     .unwrap()
+            //     .to_os_string()
+            //     .into_string()
+            //     .unwrap();
 
-                // let art_id_name = art_id_name.strip_suffix(".sol").unwrap();
+            // let art_id_name = art_id_name.strip_suffix(".sol").unwrap();
 
-                if let ProjectFile::Contract(name, _) = &files[0] {
-                    &art_id.name == name
-                } else {
-                    false
-                }
-                // &art_id.name == "Foo"
-            })
-            .expect("Foo testing contract not found");
+            if let ProjectFile::Contract(name, _) = &files[0] {
+                &art_id.name == name
+            } else {
+                false
+            }
+            // &art_id.name == "Foo"
+        })
+        .expect("Foo testing contract not found");*/
 
-        let artifacts = BTreeMap::from([(artifacts.0, artifacts.1)]);
+        // let artifacts = BTreeMap::from([(artifacts.0, artifacts.1)]);
 
         let modules = get_all_modules();
         let loader = Loader::new(modules);
+        // TODO: use all artifacts ?
         let mut walker = Walker::new(artifacts.into(), loader, source_map);
 
         walker.traverse().expect("failed to traverse ast")
