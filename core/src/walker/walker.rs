@@ -8,9 +8,8 @@ use std::collections::HashMap;
 use std::{collections::btree_map::BTreeMap, path::PathBuf};
 // use std::{fs::File, io::BufReader};
 
-use crate::loader::{DynModule, Loader};
 use crate::{
-    loader::Information,
+    loader::{DynModule, Information, Loader},
     solidity::utils::get_line_position,
     walker::{AllFindings, Findings, Meta, MetaFinding},
 };
@@ -48,9 +47,10 @@ impl Walker {
         for (id, art) in &self.artifact {
             // dbg!(&id.version, &id.name, &id.identifier()); Careful, pragma version is the COMPILED version. Should parse
             // probably fine to use the compiled version, if major change then it wouldn't compile.
-            let unique_id = format!("{} {}", id.name, id.identifier());
+            // let unique_id = format!("{} {}", id.name, id.identifier());
+            let unique_id = id.identifier();
             // dbg!(&unique_id);
-            dbg!(id.identifier());
+            // dbg!(id.identifier());
 
             /*art.generated_sources.iter().for_each(|gc| {
                 println!("{:#?}", &gc.contents);
@@ -78,7 +78,10 @@ impl Walker {
                 let file = BufReader::new(file);
                 let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");*/
                 // let lines_to_bytes = [];
-                let lines_to_bytes = &self.source_map.get(&id.identifier()).unwrap()/*.unwrap_or(&Vec::new())*/;
+                /*let abs_path = path_from_id(unique_id);
+                dbg!(&abs_path);*/
+                let abs_path = id.source.to_str().unwrap().to_string();
+                let lines_to_bytes = &self.source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
                 // dbg!(&lines_to_bytes);
 
                 let nodes = &ast.nodes;

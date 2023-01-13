@@ -1,4 +1,5 @@
 use ethers_solc::artifacts::ast::SourceLocation;
+use foundry_common::fs;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -19,12 +20,19 @@ macro_rules! into_ok_or_err {
     };
 }
 
-// Convert bytes source location to line & location for easier reference
+/// Convert bytes source location to line & location for easier reference
 pub fn get_line_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> usize {
     into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))))
 }
 
-// Scan the file to get the bytes position of each line start
+/// Returns the source map from an absolute file path
+pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
+    // Maybe should pass the BufReader instead ?
+    let content = fs::read_to_string(path)?;
+    Ok(get_string_lines(content))
+}
+
+/// Scan the file to get the bytes position of each line start
 pub fn get_file_lines(mut file: BufReader<File>) -> Result<Vec<usize>, std::io::Error> {
     let mut acc = vec![];
     let mut buf = String::new();
@@ -44,6 +52,7 @@ pub fn get_file_lines(mut file: BufReader<File>) -> Result<Vec<usize>, std::io::
     Ok(acc)
 }
 
+/// Build source map from the string content of a file by scanning for char return
 pub fn get_string_lines(content: String) -> Vec<usize> {
     let mut acc = vec![];
     let mut pos: usize = 0;
@@ -54,4 +63,11 @@ pub fn get_string_lines(content: String) -> Vec<usize> {
     });
 
     acc
+}
+
+pub fn path_from_id(id: String) -> String {
+    id.rsplit_once(":")
+        .expect(&format!("Malformed id `{}`", &id))
+        .0
+        .to_string()
 }

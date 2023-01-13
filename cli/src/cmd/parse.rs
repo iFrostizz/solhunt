@@ -43,7 +43,7 @@ pub fn get_working_path(add_path: String) -> PathBuf {
     path.push(current_dir().expect("could not get current path"));
     path.push(add_path);
 
-    path
+    path.canonicalize().expect("Invalid path")
 }
 
 pub fn parse() -> (PathBuf, Loader, u8) {

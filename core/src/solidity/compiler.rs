@@ -16,18 +16,13 @@ use ethers_solc::{
 };
 use foundry_cli::{
     cmd::{
-        forge::{
-            build::{BuildArgs, CoreBuildArgs, ProjectPathsArgs},
-            install,
-        },
-        Cmd, LoadConfig,
+        forge::build::{BuildArgs, CoreBuildArgs, ProjectPathsArgs},
+        Cmd,
     },
-    opts::forge::{CompilerArgs, Subcommands},
+    opts::forge::CompilerArgs,
 };
-use foundry_common::compile::{self, ProjectCompiler};
-use foundry_config::Config;
 use std::{
-    collections::btree_map::BTreeMap,
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
 };

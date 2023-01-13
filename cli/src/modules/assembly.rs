@@ -6,7 +6,7 @@ use core::{
 };
 use ethers_solc::artifacts::{
     ast::{ContractDefinitionPart, SourceUnitPart},
-    yul::{YulExpression, YulForLoop, YulStatement},
+    yul::{YulExpression, YulStatement},
     Block, Statement,
 };
 
