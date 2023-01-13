@@ -79,17 +79,11 @@ mod test {
     use crate::modules::loader::get_all_modules;
     use core::{
         loader::Loader,
-        solidity::{get_string_lines, ProjectFile},
+        solidity::ProjectFile,
         walker::{AllFindings, Walker},
     };
     use ethers_solc::{
-        artifacts::{output_selection::OutputSelection, Settings},
-        buildinfo::BuildInfo,
-        error::SolcIoError,
-        output::ProjectCompileOutput,
-        project_util::TempProject,
-        ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact, Project, ProjectBuilder,
-        ProjectPathsConfig, SolcConfig,
+        project_util::TempProject, ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact,
     };
     use std::{self, collections::BTreeMap};
 
@@ -97,17 +91,13 @@ mod test {
     pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
         let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
-        files.iter().for_each(|f| {
-            let (name, content) = match f {
-                ProjectFile::Contract(name, content) => {
-                    project.add_source(name, content).unwrap();
-                    (name, content)
-                }
-                ProjectFile::Library(name, content) => {
-                    project.add_lib(name, content).unwrap();
-                    (name, content)
-                }
-            };
+        files.iter().for_each(|f| match f {
+            ProjectFile::Contract(name, content) => {
+                project.add_source(name, content).unwrap();
+            }
+            ProjectFile::Library(name, content) => {
+                project.add_lib(name, content).unwrap();
+            }
         });
 
         let compiled = project.compile().unwrap();
