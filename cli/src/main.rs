@@ -2,7 +2,7 @@ use crate::{cmd::parse::parse, utils::formatter::format_findings};
 use cmd::parse::get_remappings;
 use core::{
     solidity::{get_path_lines, Solidity},
-    walker::Walker,
+    walker::{AllFindings, Finding, Findings, Walker},
 };
 use ethers_solc::AggregatedCompilerOutput;
 use std::collections::BTreeMap;
@@ -56,6 +56,12 @@ fn main() {
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
+}
+
+#[derive(Debug)]
+pub struct ModuleFindings {
+    pub name: String,
+    pub findings: Vec<Finding>,
 }
 
 fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<usize>> {

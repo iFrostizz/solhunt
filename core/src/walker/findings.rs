@@ -32,6 +32,7 @@ pub struct Finding {
     pub severity: Severity,
     pub src: Option<SourceLocation>, // Option<SourceLocation>,
     pub code: u32,                   // Identify finding type easily
+                                     // pub likelyhood: u8,              // 0-100% likelyhood to be correct
 }
 
 impl Finding {
@@ -74,3 +75,14 @@ pub type Findings = Vec<MetaFinding>;
 
 /// Module name -> Findings
 pub type AllFindings = HashMap<String, Findings>;
+
+// impl AllFindings {
+//     fn more_likelyhood(&self, value: u8) -> AllFindings {
+//         &self.iter().flat_map(|(_, finding)| {
+//             finding.iter().filter_map(|mf| {
+//                 let finding = mf.finding;
+//                 Some(finding.likelyhood >= value)
+//             })
+//         })
+//     }
+// }

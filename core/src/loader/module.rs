@@ -1,13 +1,15 @@
 // A module contains the matching logic to be paired with the ast
 
-use crate::walker::{Finding, Findings};
+use std::collections::HashMap;
+
+use crate::walker::{AllFindings, Finding, Findings};
 use ethers_solc::artifacts::ast::SourceUnitPart;
 use semver::Version;
 
 #[derive(Debug)]
 pub struct Module<F> {
     pub name: String,
-    pub findings: Findings,
+    pub findings: AllFindings,
     pub func: F,
 }
 
@@ -24,7 +26,7 @@ where
     pub fn new(name: impl Into<String>, func: F) -> Module<F> {
         Module {
             name: name.into(),
-            findings: Vec::new(),
+            findings: HashMap::new(),
             func,
         }
     }

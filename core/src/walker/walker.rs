@@ -1,17 +1,19 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
 use ethers_solc::{
-    artifacts::ast::{lowfidelity::Ast, SourceUnit, SourceUnitPart},
+    artifacts::{
+        ast::{lowfidelity::Ast, SourceUnit},
+        visitor::Visitable,
+    },
     ArtifactId, ConfigurableContractArtifact,
 };
 use std::collections::HashMap;
-use std::{collections::btree_map::BTreeMap, path::PathBuf};
+use std::{cell::RefCell, collections::btree_map::BTreeMap, path::PathBuf, rc::Rc};
 // use std::{fs::File, io::BufReader};
 
 use crate::{
-    loader::{DynModule, Information, Loader},
-    solidity::utils::get_line_position,
-    walker::{AllFindings, Findings, Meta, MetaFinding},
+    loader::{Information, Loader},
+    walker::AllFindings,
 };
 
 pub struct Walker {
@@ -33,63 +35,42 @@ impl Walker {
         }
     }
 
-    /*
-    For analyzing a syntax tree, we need an AST "walker" — an object to facilitate the traversal of the tree.
-        The ast module offers two walkers:
-            - ast.NodeVisitor (doesn't allow modification to the input tree)
-            - ast.NodeTransformer (allows modification)
-     */
+    // For analyzing a syntax tree, we need an AST "walker" — an object to facilitate the traversal of the tree.
+    // The ast module offers two walkers:
+    // - ast.NodeVisitor (doesn't allow modification to the input tree)
+    // - ast.NodeTransformer (allows modification)
     pub fn traverse(&mut self) -> eyre::Result<AllFindings> {
         let mut all_findings: AllFindings = HashMap::new();
 
         let mut ids: Vec<usize> = Vec::new();
 
         for (id, art) in &self.artifact {
-            // dbg!(&id.version, &id.name, &id.identifier()); Careful, pragma version is the COMPILED version. Should parse
-            // probably fine to use the compiled version, if major change then it wouldn't compile.
-            // let unique_id = format!("{} {}", id.name, id.identifier());
             let unique_id = id.identifier();
-            // dbg!(&unique_id);
-            // dbg!(id.identifier());
 
-            /*art.generated_sources.iter().for_each(|gc| {
-                println!("{:#?}", &gc.contents);
-            });*/
-            // println!("{:#?}", art.generated_sources);
-
-            let ast: Ast = art
+            let mut ast: Ast = art
                 .ast
                 .as_ref()
                 .unwrap_or_else(|| panic!("no ast found for {}", unique_id))
                 .clone();
 
-            let ast: &SourceUnit = &ast.to_typed();
+            let mut ast: SourceUnit = ast.to_typed();
+            let mut ast: Rc<RefCell<SourceUnit>> = Rc::from(RefCell::from(ast));
 
             // dedup same sources
             // TODO: is that bug from the ast ?
-            if !ids.contains(&ast.id) {
-                ids.push(ast.id);
+            let source = ast.borrow_mut();
+            if !ids.contains(&source.id) {
+                ids.push(source.id);
 
-                // dbg!(&ast);
-
-                /*let abs_path = &ast.absolute_path.clone();
-                let file = File::open(abs_path)
-                    .unwrap_or_else(|_| panic!("failed to open file at {}", abs_path));
-                let file = BufReader::new(file);
-                let lines_to_bytes = get_file_lines(file).expect("failed to parse lines");*/
-                // let lines_to_bytes = [];
-                /*let abs_path = path_from_id(unique_id);
-                dbg!(&abs_path);*/
                 let abs_path = id.source.to_str().unwrap().to_string();
                 let lines_to_bytes = &self.source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
-                // dbg!(&lines_to_bytes);
 
-                let nodes = &ast.nodes;
+                // let nodes = &ast.nodes;
 
-                // let name = &ast.absolute_path;
-                let path = PathBuf::from(&ast.absolute_path);
+                let path = PathBuf::from(&source.absolute_path);
                 let name = path.file_name().unwrap();
                 let name = name.to_os_string().into_string().unwrap();
+                // .sol is redundant
                 let name = name.strip_suffix(".sol").unwrap();
 
                 let info = Information {
@@ -97,14 +78,22 @@ impl Walker {
                     version: id.version.clone(),
                 };
 
-                self.loader.0.iter().for_each(|module| {
-                    all_findings.entry(module.name.clone()).or_default();
-                    let findings: &mut Findings = &mut Vec::new();
-                    self.visit_source(module, nodes, lines_to_bytes, info.clone(), findings);
-                    all_findings
-                        .entry(module.name.clone())
-                        .and_modify(|f| f.append(findings));
-                });
+                self.visit_source(
+                    Rc::clone(&ast),
+                    lines_to_bytes,
+                    info.clone(),
+                    &mut all_findings,
+                );
+
+                //                 self.loader.0.iter().for_each(|module| {
+                //                     // bulk of all findings from each module
+                //                     all_findings.entry(module.name.clone()).or_default();
+                //                     let findings: &mut Findings = &mut Vec::new();
+                //                     self.visit_source(module, nodes, lines_to_bytes, info.clone(), findings);
+                //                     all_findings
+                //                         .entry(module.name.clone())
+                //                         .and_modify(|f| f.append(findings));
+                //                 });
             }
         }
 
@@ -113,31 +102,67 @@ impl Walker {
 
     pub fn visit_source(
         &self,
-        module: &DynModule,
-        sources: &[SourceUnitPart],
+        source: Rc<RefCell<SourceUnit>>,
         lines_to_bytes: &[usize],
         info: Information,
-        findings: &mut Findings,
+        findings: &mut AllFindings,
     ) {
-        sources.iter().for_each(|source| {
-            let mod_findings = module.process_source(source, &info);
+        let source = source.borrow_mut();
+        source
+            .clone()
+            .visit(&mut source.clone())
+            .expect("ast traversal failed!");
 
-            let file = info.name.clone();
+        let file = info.name.clone();
 
-            let mut meta_findings: Findings = mod_findings
-                .into_iter()
-                .map(|finding| MetaFinding {
-                    finding: finding.clone(),
-                    meta: Meta {
-                        file: file.clone(),
-                        line: finding
-                            .src
-                            .map(|src| get_line_position(&src, lines_to_bytes) as u32),
-                    },
-                })
-                .collect();
+        // let mut meta_findings: Findings = findings
+        //     .iter()
+        //     .map(|(module, mod_findings)| {
+        //         mod_findings
+        //             .iter()
+        //             .map(|finding| MetaFinding {
+        //                 finding: finding.clone(),
+        //                 meta: Meta {
+        //                     file: file.clone(),
+        //                     line: finding
+        //                         .src
+        //                         .map(|src| get_line_position(&src, lines_to_bytes) as u32),
+        //                 },
+        //             })
+        //             .collect()
+        //     })
+        //     .collect();
 
-            findings.append(&mut meta_findings);
-        });
+        // findings.append(&mut meta_findings);
     }
+
+    // pub fn visit_source(
+    //     &self,
+    //     module: &DynModule,
+    //     sources: &[SourceUnitPart],
+    //     lines_to_bytes: &[usize],
+    //     info: Information,
+    //     findings: &mut Findings,
+    // ) {
+    //     sources.iter().for_each(|source| {
+    //         let mod_findings = module.process_source(source, &info);
+
+    //         let file = info.name.clone();
+
+    //         let mut meta_findings: Findings = mod_findings
+    //             .into_iter()
+    //             .map(|finding| MetaFinding {
+    //                 finding: finding.clone(),
+    //                 meta: Meta {
+    //                     file: file.clone(),
+    //                     line: finding
+    //                         .src
+    //                         .map(|src| get_line_position(&src, lines_to_bytes) as u32),
+    //                 },
+    //             })
+    //             .collect();
+
+    //         findings.append(&mut meta_findings);
+    //     });
+    // }
 }

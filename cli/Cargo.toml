@@ -13,9 +13,8 @@ clap = { version = "3.2.17", features = [
     "wrap_help",
 ] }
 core = { path = "../core" }
-# ethers-solc = { version = "0.17.0", features = ["svm-solc", "project-util"] }
-ethers-solc = { git = "https://github.com/iFrostizz/ethers-rs.git", rev = "ce3cc16", features = ["svm-solc", "project-util"] }
-# ethers-solc = { path = "/home/franfran/Projects/own/ethers-rs/ethers-solc", features = ["svm-solc", "project-util"] }
+# ethers-solc = { git = "https://github.com/iFrostizz/ethers-rs.git", rev = "ce3cc16", features = ["svm-solc", "project-util"] }
+ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc", features = ["svm-solc", "project-util"] }
 eyre = "0.6.8"
 semver = "1.0.13"
 serde = "1.0.143"

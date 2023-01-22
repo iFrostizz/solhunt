@@ -1,12 +1,45 @@
 // A silly module that finds all uint256
 
 use core::{
-    loader::{DynModule, Module},
-    walker::{Finding, Severity},
+    loader::{DynModule, Module, ModuleFindings},
+    walker::{Finding, Findings, Severity},
 };
-use ethers_solc::artifacts::ast::{ContractDefinitionPart, SourceUnitPart};
+use ethers_solc::artifacts::{
+    ast::{ContractDefinitionPart, SourceUnitPart},
+    visitor::VisitError,
+    visitor::Visitor,
+    SourceUnit, VariableDeclaration,
+};
 
-pub fn get_module() -> DynModule {
+use crate::ModuleFindings;
+
+impl Visitor for ModuleFindings {
+    type Error = VisitError;
+
+    fn visit_variable_declaration(
+        &mut self,
+        var: &mut VariableDeclaration,
+    ) -> eyre::Result<(), Self::Error> {
+        if let Some(type_id) = &var.type_descriptions.type_identifier {
+            if type_id == "t_uint256" {
+                self.findings.push(Finding {
+                    name: "uint256".to_string(),
+                    description: "We just found a uint256 yay!".to_string(),
+                    severity: Severity::Informal,
+                    src: Some(var.src.clone()),
+                    code: 0,
+                });
+            }
+
+            println!("{}", "hello");
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/*pub fn get_module() -> DynModule {
     Module::new(
         "uint256",
         Box::new(move |source, _info| {
@@ -33,7 +66,7 @@ pub fn get_module() -> DynModule {
             findings
         }),
     )
-}
+}*/
 
 #[cfg(test)]
 mod test {
