@@ -1,5 +1,11 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
+use super::{Findings, Meta, MetaFinding};
+use crate::{
+    loader::{Information, Loader},
+    solidity::get_line_position,
+    walker::AllFindings,
+};
 use ethers_solc::{
     artifacts::{
         ast::{lowfidelity::Ast, SourceUnit},
@@ -9,12 +15,6 @@ use ethers_solc::{
 };
 use std::collections::HashMap;
 use std::{collections::btree_map::BTreeMap, path::PathBuf};
-// use std::{fs::File, io::BufReader};
-
-use crate::{
-    loader::{Information, Loader},
-    walker::AllFindings,
-};
 
 pub struct Walker<V: Visitor<Error = VisitError>> {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
@@ -46,17 +46,15 @@ impl<V: Visitor<Error = VisitError>> Walker<V> {
         let mut all_findings: AllFindings = HashMap::new();
 
         let mut ids: Vec<usize> = Vec::new();
+        let source_map = &self.source_map.clone();
 
-        self.artifact.clone().iter_mut().for_each(|(id, art)| {
-
-        let mut visitor = &self.visitor;
-
+        self.artifact.iter().for_each(|(id, art)| {
             let unique_id = id.identifier();
 
             let ast: Ast = art
                 .ast
                 .as_ref()
-                .unwrap_or_else(|| panic!("no ast found for {}", unique_id))
+                .unwrap_or_else(|| panic!("no ast found for {unique_id}"))
                 .clone();
 
             let mut ast: SourceUnit = ast.to_typed();
@@ -68,7 +66,7 @@ impl<V: Visitor<Error = VisitError>> Walker<V> {
                 ids.push(ast.id);
 
                 let abs_path = id.source.to_str().unwrap().to_string();
-                let lines_to_bytes = &self.source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
+                let lines_to_bytes = &source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
 
                 // let nodes = &ast.nodes;
 
@@ -83,94 +81,48 @@ impl<V: Visitor<Error = VisitError>> Walker<V> {
                     version: id.version.clone(),
                 };
 
-                self.visit_source(
+                visit_source(
                     &mut ast,
-                    visitor,
+                    &mut self.visitor,
                     lines_to_bytes,
-                    info.clone(),
+                    info,
                     &mut all_findings,
                 );
-
-                //                 self.loader.0.iter().for_each(|module| {
-                //                     // bulk of all findings from each module
-                //                     all_findings.entry(module.name.clone()).or_default();
-                //                     let findings: &mut Findings = &mut Vec::new();
-                //                     self.visit_source(module, nodes, lines_to_bytes, info.clone(), findings);
-                //                     all_findings
-                //                         .entry(module.name.clone())
-                //                         .and_modify(|f| f.append(findings));
-                //                 });
             }
-        }
-        );
+        });
 
         Ok(all_findings)
     }
+}
 
-    pub fn visit_source(
-        &mut self,
-        source: &mut SourceUnit,
-        visitor: &mut V,
-        lines_to_bytes: &[usize],
-        info: Information,
-        findings: &mut AllFindings,
-    ) {
-        // let source = source.borrow_mut();
-        source
-            .clone()
-            .visit(visitor)
-            .expect("ast traversal failed!");
+pub fn visit_source<V: Visitor<Error = VisitError>>(
+    source: &mut SourceUnit,
+    visitor: &mut V,
+    lines_to_bytes: &[usize],
+    info: Information,
+    findings: &mut AllFindings,
+) {
+    source
+        .clone()
+        .visit(visitor)
+        .expect("ast traversal failed!");
 
-        let file = info.name.clone();
+    let file = info.name;
 
-        // let mut meta_findings: Findings = findings
-        //     .iter()
-        //     .map(|(module, mod_findings)| {
-        //         mod_findings
-        //             .iter()
-        //             .map(|finding| MetaFinding {
-        //                 finding: finding.clone(),
-        //                 meta: Meta {
-        //                     file: file.clone(),
-        //                     line: finding
-        //                         .src
-        //                         .map(|src| get_line_position(&src, lines_to_bytes) as u32),
-        //                 },
-        //             })
-        //             .collect()
-        //     })
-        //     .collect();
-
-        // findings.append(&mut meta_findings);
-    }
-
-    // pub fn visit_source(
-    //     &self,
-    //     module: &DynModule,
-    //     sources: &[SourceUnitPart],
-    //     lines_to_bytes: &[usize],
-    //     info: Information,
-    //     findings: &mut Findings,
-    // ) {
-    //     sources.iter().for_each(|source| {
-    //         let mod_findings = module.process_source(source, &info);
-
-    //         let file = info.name.clone();
-
-    //         let mut meta_findings: Findings = mod_findings
-    //             .into_iter()
-    //             .map(|finding| MetaFinding {
-    //                 finding: finding.clone(),
-    //                 meta: Meta {
-    //                     file: file.clone(),
-    //                     line: finding
-    //                         .src
-    //                         .map(|src| get_line_position(&src, lines_to_bytes) as u32),
-    //                 },
-    //             })
-    //             .collect();
-
-    //         findings.append(&mut meta_findings);
-    //     });
-    // }
+    visitor.0.findings.iter().for_each(|finding| {
+        let meta_finding = MetaFinding {
+            finding: finding.clone(),
+            meta: Meta {
+                file: file.clone(),
+                line: finding
+                    .src
+                    .clone()
+                    .map(|src| get_line_position(&src, lines_to_bytes) as u32),
+            },
+        };
+        findings
+            .entry(finding.name.clone())
+            .and_modify(|f| f.push(meta_finding.clone()))
+            .or_insert(vec![meta_finding]);
+    });
 }

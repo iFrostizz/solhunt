@@ -9,19 +9,14 @@ use ethers_solc::artifacts::{
     ast::{ContractDefinitionPart, SourceUnitPart},
     visitor::VisitError,
     visitor::Visitor,
-    SourceUnit, VariableDeclaration,
+    VariableDeclaration,
 };
 
-impl Visitor for ModuleFindings {
-    type Error = VisitError;
+#[derive(Default)]
+pub struct Uint256Module(ModuleFindings);
 
-    fn visit_source_unit(
-        &mut self,
-        _source_unit: &mut SourceUnit,
-    ) -> eyre::Result<(), Self::Error> {
-        println!("Hello, world!");
-        Ok(())
-    }
+impl Visitor for Uint256Module {
+    type Error = VisitError;
 
     fn visit_variable_declaration(
         &mut self,
@@ -29,7 +24,7 @@ impl Visitor for ModuleFindings {
     ) -> eyre::Result<(), Self::Error> {
         if let Some(type_id) = &var.type_descriptions.type_identifier {
             if type_id == "t_uint256" {
-                self.findings.push(Finding {
+                self.0.findings.push(Finding {
                     name: "uint256".to_string(),
                     description: "We just found a uint256 yay!".to_string(),
                     severity: Severity::Informal,
@@ -37,12 +32,8 @@ impl Visitor for ModuleFindings {
                     code: 0,
                 });
             }
-
-            println!("{}", "hello");
-            Ok(())
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 }
 

@@ -6,6 +6,12 @@ use crate::walker::{AllFindings, Finding, Findings};
 use ethers_solc::artifacts::ast::SourceUnitPart;
 use semver::Version;
 
+#[derive(Debug, Default, Clone)]
+pub struct ModuleFindings {
+    pub name: String,
+    pub findings: Vec<Finding>,
+}
+
 #[derive(Debug)]
 pub struct Module<F> {
     pub name: String,

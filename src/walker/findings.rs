@@ -51,7 +51,7 @@ pub struct Meta {
     pub line: Option<u32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MetaFinding {
     pub finding: Finding,
     pub meta: Meta,
@@ -64,7 +64,7 @@ impl MetaFinding {
             self.meta.file.clone(),
             self.meta
                 .line
-                .map(|line| format!("l{}", line))
+                .map(|line| format!("l{line}"))
                 .unwrap_or_default(),
             self.finding.format()
         ))

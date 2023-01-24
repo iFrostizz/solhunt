@@ -1,11 +1,13 @@
 use crate::{
     cmd::parse::parse,
+    loader::ModuleFindings,
     solidity::{get_path_lines, Solidity},
     utils::formatter::format_findings,
     walker::{Finding, Walker},
 };
 use cmd::parse::get_remappings;
 use ethers_solc::AggregatedCompilerOutput;
+use modules::uint256::Uint256Module;
 use std::collections::BTreeMap;
 
 mod cmd;
@@ -52,17 +54,11 @@ fn main() {
         })
         .collect();
 
-    let visitor = ModuleFindings::default();
+    let visitor = Uint256Module::default();
     let mut walker = Walker::new(artifacts, loader, source_map, visitor);
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct ModuleFindings {
-    pub name: String,
-    pub findings: Vec<Finding>,
 }
 
 fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<usize>> {
@@ -122,7 +118,7 @@ mod test {
 
         let modules = get_all_modules();
         let loader = Loader::new(modules);
-        let visitor = ModuleFindings::default();
+        let visitor = Uint256Module::default();
         let mut walker = Walker::new(artifacts, loader, source_map, visitor);
 
         walker.traverse().expect("failed to traverse ast")
