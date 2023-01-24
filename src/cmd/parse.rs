@@ -1,6 +1,8 @@
-use crate::modules::loader::get_all_modules;
+use crate::{
+    loader::{DynModule, Loader},
+    modules::loader::get_all_modules,
+};
 use clap::Parser;
-use core::loader::{DynModule, Loader};
 use ethers_solc::remappings::{RelativeRemapping, Remapping};
 
 use serde::Serialize;

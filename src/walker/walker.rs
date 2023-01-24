@@ -3,12 +3,12 @@
 use ethers_solc::{
     artifacts::{
         ast::{lowfidelity::Ast, SourceUnit},
-        visitor::Visitable,
+        visitor::{VisitError, Visitable, Visitor},
     },
     ArtifactId, ConfigurableContractArtifact,
 };
 use std::collections::HashMap;
-use std::{cell::RefCell, collections::btree_map::BTreeMap, path::PathBuf, rc::Rc};
+use std::{collections::btree_map::BTreeMap, path::PathBuf};
 // use std::{fs::File, io::BufReader};
 
 use crate::{
@@ -16,22 +16,25 @@ use crate::{
     walker::AllFindings,
 };
 
-pub struct Walker {
+pub struct Walker<V: Visitor<Error = VisitError>> {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     loader: Loader,
     source_map: BTreeMap<String, Vec<usize>>,
+    visitor: V,
 }
 
-impl Walker {
+impl<V: Visitor<Error = VisitError>> Walker<V> {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         loader: Loader,
         source_map: BTreeMap<String, Vec<usize>>,
+        visitor: V,
     ) -> Self {
         Walker {
             artifact,
             loader,
             source_map,
+            visitor,
         }
     }
 
@@ -44,30 +47,32 @@ impl Walker {
 
         let mut ids: Vec<usize> = Vec::new();
 
-        for (id, art) in &self.artifact {
+        self.artifact.clone().iter_mut().for_each(|(id, art)| {
+
+        let mut visitor = &self.visitor;
+
             let unique_id = id.identifier();
 
-            let mut ast: Ast = art
+            let ast: Ast = art
                 .ast
                 .as_ref()
                 .unwrap_or_else(|| panic!("no ast found for {}", unique_id))
                 .clone();
 
             let mut ast: SourceUnit = ast.to_typed();
-            let mut ast: Rc<RefCell<SourceUnit>> = Rc::from(RefCell::from(ast));
 
             // dedup same sources
             // TODO: is that bug from the ast ?
-            let source = ast.borrow_mut();
-            if !ids.contains(&source.id) {
-                ids.push(source.id);
+            // let source = ast.borrow_mut();
+            if !ids.contains(&ast.id) {
+                ids.push(ast.id);
 
                 let abs_path = id.source.to_str().unwrap().to_string();
                 let lines_to_bytes = &self.source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
 
                 // let nodes = &ast.nodes;
 
-                let path = PathBuf::from(&source.absolute_path);
+                let path = PathBuf::from(&ast.absolute_path);
                 let name = path.file_name().unwrap();
                 let name = name.to_os_string().into_string().unwrap();
                 // .sol is redundant
@@ -79,7 +84,8 @@ impl Walker {
                 };
 
                 self.visit_source(
-                    Rc::clone(&ast),
+                    &mut ast,
+                    visitor,
                     lines_to_bytes,
                     info.clone(),
                     &mut all_findings,
@@ -96,21 +102,23 @@ impl Walker {
                 //                 });
             }
         }
+        );
 
         Ok(all_findings)
     }
 
     pub fn visit_source(
-        &self,
-        source: Rc<RefCell<SourceUnit>>,
+        &mut self,
+        source: &mut SourceUnit,
+        visitor: &mut V,
         lines_to_bytes: &[usize],
         info: Information,
         findings: &mut AllFindings,
     ) {
-        let source = source.borrow_mut();
+        // let source = source.borrow_mut();
         source
             .clone()
-            .visit(&mut source.clone())
+            .visit(visitor)
             .expect("ast traversal failed!");
 
         let file = info.name.clone();

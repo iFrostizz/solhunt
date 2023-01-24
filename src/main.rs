@@ -1,15 +1,19 @@
-use crate::{cmd::parse::parse, utils::formatter::format_findings};
-use cmd::parse::get_remappings;
-use core::{
+use crate::{
+    cmd::parse::parse,
     solidity::{get_path_lines, Solidity},
-    walker::{AllFindings, Finding, Findings, Walker},
+    utils::formatter::format_findings,
+    walker::{Finding, Walker},
 };
+use cmd::parse::get_remappings;
 use ethers_solc::AggregatedCompilerOutput;
 use std::collections::BTreeMap;
 
 mod cmd;
+mod loader;
 mod modules;
+mod solidity;
 mod utils;
+mod walker;
 
 fn main() {
     // TODO: configurable
@@ -41,24 +45,21 @@ fn main() {
                     .next()
                     .expect("Failed to get first folder");
                 // only take included folders
-                if included_folders.contains(&first_folder.to_string_lossy().to_string()) {
-                    true
-                } else {
-                    false
-                }
+                included_folders.contains(&first_folder.to_string_lossy().to_string())
             } else {
                 false
             }
         })
         .collect();
 
-    let mut walker = Walker::new(artifacts, loader, source_map);
+    let visitor = ModuleFindings::default();
+    let mut walker = Walker::new(artifacts, loader, source_map, visitor);
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct ModuleFindings {
     pub name: String,
     pub findings: Vec<Finding>,
@@ -73,7 +74,7 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
             (
                 abs_path.clone(),
                 get_path_lines(abs_path.clone())
-                    .expect(&format!("Source map failed for {}", &abs_path)),
+                    .unwrap_or_else(|_| panic!("Source map failed for {}", &abs_path)),
             )
         })
         .collect()
@@ -82,9 +83,9 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::modules::loader::get_all_modules;
-    use core::{
+    use crate::{
         loader::Loader,
+        modules::loader::get_all_modules,
         solidity::ProjectFile,
         walker::{AllFindings, Walker},
     };
@@ -121,7 +122,8 @@ mod test {
 
         let modules = get_all_modules();
         let loader = Loader::new(modules);
-        let mut walker = Walker::new(artifacts.into(), loader, source_map);
+        let visitor = ModuleFindings::default();
+        let mut walker = Walker::new(artifacts, loader, source_map, visitor);
 
         walker.traverse().expect("failed to traverse ast")
     }

@@ -1,6 +1,6 @@
 // Module that finds for external and dangerous calls
 
-use core::{
+use crate::{
     loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
@@ -94,8 +94,10 @@ fn recurse_assembly_statements(stat: &YulStatement) -> Vec<Finding> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test::{compile_and_get_findings, has_with_code, lines_for_findings_with_code};
-    use core::solidity::ProjectFile;
+    use crate::{
+        solidity::ProjectFile,
+        test::{compile_and_get_findings, has_with_code, lines_for_findings_with_code},
+    };
 
     #[test]
     fn with_extcodesize() {

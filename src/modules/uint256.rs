@@ -1,8 +1,9 @@
 // A silly module that finds all uint256
 
-use core::{
-    loader::{DynModule, Module, ModuleFindings},
-    walker::{Finding, Findings, Severity},
+use crate::{
+    loader::{DynModule, Module},
+    walker::{Finding, Severity},
+    ModuleFindings,
 };
 use ethers_solc::artifacts::{
     ast::{ContractDefinitionPart, SourceUnitPart},
@@ -11,10 +12,16 @@ use ethers_solc::artifacts::{
     SourceUnit, VariableDeclaration,
 };
 
-use crate::ModuleFindings;
-
 impl Visitor for ModuleFindings {
     type Error = VisitError;
+
+    fn visit_source_unit(
+        &mut self,
+        _source_unit: &mut SourceUnit,
+    ) -> eyre::Result<(), Self::Error> {
+        println!("Hello, world!");
+        Ok(())
+    }
 
     fn visit_variable_declaration(
         &mut self,
@@ -39,7 +46,7 @@ impl Visitor for ModuleFindings {
     }
 }
 
-/*pub fn get_module() -> DynModule {
+pub fn get_module() -> DynModule {
     Module::new(
         "uint256",
         Box::new(move |source, _info| {
@@ -66,15 +73,17 @@ impl Visitor for ModuleFindings {
             findings
         }),
     )
-}*/
+}
 
 #[cfg(test)]
 mod test {
-    use crate::test::{compile_and_get_findings, has_with_code};
-    use core::solidity::ProjectFile;
+    use crate::{
+        solidity::ProjectFile,
+        test::{compile_and_get_findings, has_with_code},
+    };
 
     #[test]
-    fn can_find_dummy_uin256() {
+    fn can_find_dummy_uint256() {
         let findings = compile_and_get_findings(vec![ProjectFile::Contract(
             String::from("DummyUint256"),
             String::from(

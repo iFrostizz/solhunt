@@ -1,7 +1,7 @@
 // Check if overflow may occur in unchecked or < 16.8.0 versions of solc
 
 // use crate::utils::int_as_bytes;
-use core::{
+use crate::{
     loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
@@ -175,10 +175,12 @@ fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::test::{
-        compile_and_get_findings, has_with_code, has_with_module, lines_for_findings_with_code,
+    use crate::{
+        solidity::ProjectFile,
+        test::{
+            compile_and_get_findings, has_with_code, has_with_module, lines_for_findings_with_code,
+        },
     };
-    use core::solidity::ProjectFile;
 
     #[test]
     fn can_find_overflow_old_ver() {

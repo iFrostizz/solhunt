@@ -1,4 +1,4 @@
-use core::walker::{AllFindings, MetaFinding, Severity};
+use crate::walker::{AllFindings, MetaFinding, Severity};
 
 // TODO: display sort by severity
 pub fn format_findings(findings: AllFindings, verbosity: u8) {

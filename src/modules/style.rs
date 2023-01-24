@@ -2,7 +2,7 @@
 // No remaining TODOs: https://code4rena.com/reports/2022-06-badger/#n-02-open-todos
 // hardhat's console.log
 
-use core::loader::{DynModule, Module};
+use crate::loader::{DynModule, Module};
 
 pub fn get_module() -> DynModule {
     Module::new("style", Box::new(|_node, _info| vec![]))

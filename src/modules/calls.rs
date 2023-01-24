@@ -1,6 +1,6 @@
 // Module that finds for external and dangerous calls
 
-use core::{
+use crate::{
     loader::{DynModule, Module},
     walker::{Finding, Severity},
 };
@@ -130,8 +130,10 @@ fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> 
 
 #[cfg(test)]
 mod tests {
-    use crate::test::{compile_and_get_findings, lines_for_findings_with_code};
-    use core::solidity::ProjectFile;
+    use crate::{
+        solidity::ProjectFile,
+        test::{compile_and_get_findings, lines_for_findings_with_code},
+    };
 
     #[test]
     fn can_find_call() {

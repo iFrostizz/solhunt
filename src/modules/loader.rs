@@ -1,5 +1,7 @@
-use crate::modules::{assembly, calls, erc20, overflow, oz, style, uint256};
-use core::loader::DynModule;
+use crate::{
+    loader::DynModule,
+    modules::{assembly, calls, erc20, overflow, oz, style, uint256},
+};
 
 pub fn get_all_modules() -> Vec<DynModule> {
     vec![
