@@ -1,30 +1,28 @@
 // A silly module that finds all uint256
 
-use crate::{
-    loader::{DynModule, Module},
-    walker::{Finding, Severity},
-    ModuleFindings,
-};
+use crate::walker::{Finding, Severity};
 use ethers_solc::artifacts::{
-    ast::{ContractDefinitionPart, SourceUnitPart},
-    visitor::VisitError,
-    visitor::Visitor,
+    visitor::{VisitError, Visitor},
     VariableDeclaration,
 };
 
 #[derive(Default)]
-pub struct Uint256Module(ModuleFindings);
+pub struct DetectionModule {
+    findings: Vec<Finding>,
+}
 
-impl Visitor for Uint256Module {
-    type Error = VisitError;
+impl Visitor<Vec<Finding>> for DetectionModule {
+    fn shared_data(&mut self) -> &Vec<Finding> {
+        &self.findings
+    }
 
     fn visit_variable_declaration(
         &mut self,
         var: &mut VariableDeclaration,
-    ) -> eyre::Result<(), Self::Error> {
+    ) -> eyre::Result<(), VisitError> {
         if let Some(type_id) = &var.type_descriptions.type_identifier {
             if type_id == "t_uint256" {
-                self.0.findings.push(Finding {
+                self.findings.push(Finding {
                     name: "uint256".to_string(),
                     description: "We just found a uint256 yay!".to_string(),
                     severity: Severity::Informal,
@@ -35,35 +33,6 @@ impl Visitor for Uint256Module {
         }
         Ok(())
     }
-}
-
-pub fn get_module() -> DynModule {
-    Module::new(
-        "uint256",
-        Box::new(move |source, _info| {
-            let mut findings: Vec<Finding> = Vec::new();
-
-            if let SourceUnitPart::ContractDefinition(def) = source {
-                def.nodes.iter().for_each(|node| {
-                    if let ContractDefinitionPart::VariableDeclaration(var) = node {
-                        if let Some(type_id) = &var.type_descriptions.type_identifier {
-                            if type_id == "t_uint256" {
-                                findings.push(Finding {
-                                    name: "uint256".to_string(),
-                                    description: "We just found a uint256 yay!".to_string(),
-                                    severity: Severity::Informal,
-                                    src: Some(var.src.clone()),
-                                    code: 0,
-                                });
-                            }
-                        }
-                    }
-                })
-            }
-
-            findings
-        }),
-    )
 }
 
 #[cfg(test)]

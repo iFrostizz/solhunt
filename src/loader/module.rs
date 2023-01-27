@@ -2,7 +2,10 @@
 
 use std::collections::HashMap;
 
-use crate::walker::{AllFindings, Finding, Findings};
+use crate::{
+    modules::*,
+    walker::{AllFindings, Finding},
+};
 use ethers_solc::artifacts::ast::SourceUnitPart;
 use semver::Version;
 
@@ -47,3 +50,40 @@ where
 }
 
 pub type DynModule = Module<Box<dyn Fn(&SourceUnitPart, &Information) -> Vec<Finding>>>;
+
+// #[macro_export]
+// macro_rules! get_all_visitors {
+//     ($directory:expr) => {
+//         let mut visitors = Vec::new();
+
+//         for entry in fs::read_dir($directory).unwrap() {
+//             let entry = entry.unwrap();
+//             let path = entry.path();
+//             if path.is_file() {
+//                 let file_name = path.file_name().unwrap().to_str().unwrap();
+//                 if file_name.ends_with(".rs") && file_name != "mod.rs" {
+//                     let struct_name = &file_name[..file_name.len() - 3];
+//                     println!("importing struct {} from file {:?}", struct_name, file_name);
+
+//                     visitors.push(Box::<$directory::DetectionModule>::default());
+//                 }
+//             }
+//         }
+
+//         visitors
+//     };
+// }
+
+pub fn get_all_visitors(
+) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
+    // Vec::new()
+    vec![
+        Box::<uint256::DetectionModule>::default(),
+        Box::<assembly::DetectionModule>::default(),
+        Box::<calls::DetectionModule>::default(),
+        // Box::<erc20::DetectionModule>::default(),
+        Box::<overflow::DetectionModule>::default(),
+        // Box::<oz::DetectionModule>::default(),
+        // Box::<style::DetectionModule>::default(),
+    ]
+}

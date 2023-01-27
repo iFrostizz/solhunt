@@ -1,40 +1,33 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
-use super::{Findings, Meta, MetaFinding};
-use crate::{
-    loader::{Information, Loader},
-    solidity::get_line_position,
-    walker::AllFindings,
-};
+use super::{Finding, Meta, MetaFinding};
+use crate::{loader::Information, solidity::get_line_position, walker::AllFindings};
 use ethers_solc::{
     artifacts::{
         ast::{lowfidelity::Ast, SourceUnit},
-        visitor::{VisitError, Visitable, Visitor},
+        visitor::{Visitable, Visitor},
     },
     ArtifactId, ConfigurableContractArtifact,
 };
 use std::collections::HashMap;
 use std::{collections::btree_map::BTreeMap, path::PathBuf};
 
-pub struct Walker<V: Visitor<Error = VisitError>> {
+pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-    loader: Loader,
     source_map: BTreeMap<String, Vec<usize>>,
-    visitor: V,
+    visitors: Box<Vec<Box<dyn Visitor<Vec<Finding>>>>>,
 }
 
-impl<V: Visitor<Error = VisitError>> Walker<V> {
+impl Walker {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-        loader: Loader,
         source_map: BTreeMap<String, Vec<usize>>,
-        visitor: V,
+        visitors: Box<Vec<Box<dyn Visitor<Vec<Finding>>>>>,
     ) -> Self {
         Walker {
             artifact,
-            loader,
             source_map,
-            visitor,
+            visitors,
         }
     }
 
@@ -81,13 +74,23 @@ impl<V: Visitor<Error = VisitError>> Walker<V> {
                     version: id.version.clone(),
                 };
 
-                visit_source(
-                    &mut ast,
-                    &mut self.visitor,
-                    lines_to_bytes,
-                    info,
-                    &mut all_findings,
-                );
+                self.visitors.iter_mut().for_each(|visitor| {
+                    visit_source::<Vec<Finding>>(
+                        &mut ast,
+                        visitor,
+                        lines_to_bytes,
+                        info.clone(),
+                        &mut all_findings,
+                    );
+                });
+
+                // visit_source(
+                //     &mut ast,
+                //     &mut self.visitors,
+                //     lines_to_bytes,
+                //     info,
+                //     &mut all_findings,
+                // );
             }
         });
 
@@ -95,21 +98,25 @@ impl<V: Visitor<Error = VisitError>> Walker<V> {
     }
 }
 
-pub fn visit_source<V: Visitor<Error = VisitError>>(
+pub fn visit_source<D>(
     source: &mut SourceUnit,
-    visitor: &mut V,
+    visitor: &mut Box<dyn Visitor<Vec<Finding>>>,
     lines_to_bytes: &[usize],
     info: Information,
     findings: &mut AllFindings,
 ) {
     source
         .clone()
-        .visit(visitor)
+        .visit(visitor.as_mut())
         .expect("ast traversal failed!");
 
     let file = info.name;
 
-    visitor.0.findings.iter().for_each(|finding| {
+    let data = visitor.shared_data();
+
+    // println!("{:#?}", data);
+
+    data.iter().for_each(|finding| {
         let meta_finding = MetaFinding {
             finding: finding.clone(),
             meta: Meta {

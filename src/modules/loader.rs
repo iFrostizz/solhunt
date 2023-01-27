@@ -5,12 +5,12 @@ use crate::{
 
 pub fn get_all_modules() -> Vec<DynModule> {
     vec![
-        erc20::get_module(),
-        overflow::get_module(),
-        oz::get_module(),
-        style::get_module(),
-        uint256::get_module(),
-        calls::get_module(),
-        assembly::get_module(),
+        // erc20::get_module(),
+        // overflow::get_module(),
+        // oz::get_module(),
+        // style::get_module(),
+        // uint256::get_module(),
+        // calls::get_module(),
+        // assembly::get_module(),
     ]
 }

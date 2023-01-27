@@ -1,95 +1,57 @@
 // Module that finds for external and dangerous calls
 
-use crate::{
-    loader::{DynModule, Module},
-    walker::{Finding, Severity},
-};
+use crate::walker::{Finding, Severity};
 use ethers_solc::artifacts::{
-    ast::{ContractDefinitionPart, SourceUnitPart},
-    yul::{YulExpression, YulStatement},
-    Block, Statement,
+    visitor::{VisitError, Visitable, Visitor},
+    yul::YulFunctionCall,
+    InlineAssembly,
 };
 
-pub fn get_module() -> DynModule {
-    Module::new(
-        "assembly",
-        Box::new(move |source, _info| {
-            let mut findings: Vec<Finding> = Vec::new();
-
-            if let SourceUnitPart::ContractDefinition(def) = source {
-                def.nodes.iter().for_each(|node| {
-                    if let ContractDefinitionPart::FunctionDefinition(func) = node {
-                        if let Some(body) = &func.body {
-                            findings.append(&mut parse_body(body));
-                        }
-                    }
-                });
-            }
-
-            findings
-        }),
-    )
+#[derive(Default)]
+pub struct DetectionModule {
+    findings: Vec<Finding>,
 }
 
-fn parse_body(body: &Block) -> Vec<Finding> {
-    let mut findings = Vec::new();
-
-    body.statements
-        .iter()
-        .for_each(|stat| findings.append(&mut check_for_assembly(stat)));
-
-    findings
-}
-
-fn check_for_assembly(stat: &Statement) -> Vec<Finding> {
-    let mut findings = Vec::new();
-
-    if let Statement::InlineAssembly(in_ass) = stat {
-        findings.push(Finding {
-            name: "assembly".to_owned(),
-            description: "usage of inline assembly, take extra care here".to_owned(),
+impl Visitor<Vec<Finding>> for DetectionModule {
+    fn visit_inline_assembly(
+        &mut self,
+        inline_assembly: &mut InlineAssembly,
+    ) -> eyre::Result<(), VisitError> {
+        self.findings.push(Finding {
+            name: "assembly".to_string(),
+            description: "usage of inline assembly, take extra care here".to_string(),
             severity: Severity::Informal,
-            src: Some(in_ass.src.clone()),
+            src: Some(inline_assembly.src.clone()),
             code: 0,
         });
 
-        in_ass
-            .ast
-            .statements
-            .iter()
-            .for_each(|s| findings.append(&mut recurse_assembly_statements(s)));
+        // don't disrupt current ast traversal
+        inline_assembly.visit(self)
     }
 
-    findings
-}
+    fn visit_yul_function_call(
+        &mut self,
+        function_call: &mut YulFunctionCall,
+    ) -> eyre::Result<(), VisitError> {
+        let func_name = &function_call.function_name;
 
-fn recurse_assembly_statements(stat: &YulStatement) -> Vec<Finding> {
-    let mut findings = Vec::new();
-
-    if let YulStatement::YulAssignment(yul_ass) = stat {
-        if let YulExpression::YulFunctionCall(function_call) = &yul_ass.value {
-            let func_name = &function_call.function_name;
-
-            if func_name.name == "extcodesize" {
-                findings.push(Finding {
-                    name: "assembly".to_owned(),
-                    description: "using extcodesize. Can be an issue if determining if EOA."
-                        .to_owned(),
-                    severity: Severity::Medium,
-                    src: Some(func_name.src.clone()),
-                    code: 1,
-                });
-            }
+        if func_name.name == "extcodesize" {
+            self.findings.push(Finding {
+                name: "assembly".to_string(),
+                description: "using extcodesize. Can be an issue if determining if EOA."
+                    .to_string(),
+                severity: Severity::Medium,
+                src: Some(func_name.src.clone()),
+                code: 1,
+            });
         }
-    } else if let YulStatement::YulForLoop(for_loop) = stat {
-        for_loop
-            .body
-            .statements
-            .iter()
-            .for_each(|s| findings.append(&mut recurse_assembly_statements(&s)));
+
+        function_call.visit(self)
     }
 
-    findings
+    fn shared_data(&mut self) -> &Vec<Finding> {
+        &self.findings
+    }
 }
 
 #[cfg(test)]

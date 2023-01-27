@@ -1,13 +1,13 @@
 use crate::{
     cmd::parse::parse,
-    loader::ModuleFindings,
     solidity::{get_path_lines, Solidity},
     utils::formatter::format_findings,
-    walker::{Finding, Walker},
+    walker::Walker,
 };
 use cmd::parse::get_remappings;
 use ethers_solc::AggregatedCompilerOutput;
-use modules::uint256::Uint256Module;
+use loader::get_all_visitors;
+
 use std::collections::BTreeMap;
 
 mod cmd;
@@ -54,8 +54,9 @@ fn main() {
         })
         .collect();
 
-    let visitor = Uint256Module::default();
-    let mut walker = Walker::new(artifacts, loader, source_map, visitor);
+    let visitors = get_all_visitors();
+
+    let mut walker = Walker::new(artifacts, source_map, Box::new(visitors));
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
@@ -78,12 +79,11 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
 
 #[cfg(test)]
 mod test {
+    #[macro_use]
     use super::*;
     use crate::{
-        loader::Loader,
-        modules::loader::get_all_modules,
         solidity::ProjectFile,
-        walker::{AllFindings, Walker},
+        walker::{AllFindings, Finding, Walker},
     };
     use ethers_solc::{
         project_util::TempProject, ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact,
@@ -116,16 +116,22 @@ mod test {
             .into_artifacts()
             .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
 
-        let modules = get_all_modules();
-        let loader = Loader::new(modules);
-        let visitor = Uint256Module::default();
-        let mut walker = Walker::new(artifacts, loader, source_map, visitor);
+        // let visitors: Vec<
+        //     Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>,
+        // > = get_all_visitors!("./modules");
+
+        let visitors = get_all_visitors();
+
+        let mut walker = Walker::new(artifacts, source_map, Box::new(visitors));
 
         walker.traverse().expect("failed to traverse ast")
     }
 
     pub fn has_with_module(all_findings: &AllFindings, name: &str) -> bool {
-        !all_findings.get(name).unwrap().is_empty()
+        match all_findings.get(name) {
+            Some(val) => !val.is_empty(),
+            None => false,
+        }
     }
 
     // TODO: be more specific with file line and multiple findings

@@ -1,46 +1,34 @@
 // Module that finds for external and dangerous calls
 
-use crate::{
-    loader::{DynModule, Module},
-    walker::{Finding, Severity},
-};
+use crate::walker::{Finding, Severity};
 use ethers_solc::artifacts::{
-    ast::{ContractDefinitionPart, SourceUnitPart},
-    Block, ContractKind, Expression, ParameterList, Statement, TypeName,
+    visitor::{VisitError, Visitor},
+    Block, Expression, ParameterList, Statement, TypeName,
 };
 use std::collections::HashMap;
 
-pub fn get_module() -> DynModule {
-    Module::new(
-        "calls",
-        Box::new(move |source, _info| {
-            let mut findings: Vec<Finding> = Vec::new();
+#[derive(Default)]
+pub struct DetectionModule {
+    findings: Vec<Finding>,
+}
 
-            if let SourceUnitPart::ContractDefinition(def) = source {
-                // println!("{:#?}", def);
+impl Visitor<Vec<Finding>> for DetectionModule {
+    fn shared_data(&mut self) -> &Vec<Finding> {
+        &self.findings
+    }
 
-                if def.kind == ContractKind::Contract {
-                    // dbg!(&source);
+    fn visit_function_definition(
+        &mut self,
+        function_definition: &mut ethers_solc::artifacts::FunctionDefinition,
+    ) -> eyre::Result<(), VisitError> {
+        let data = parse_params(&function_definition.parameters);
 
-                    def.nodes.iter().for_each(|node| {
-                        if let ContractDefinitionPart::FunctionDefinition(func) = node {
-                            // parse_func(func);
-                            // dbg!(&func);
+        if let Some(body) = &function_definition.body {
+            self.findings.append(&mut parse_body(body, &data));
+        }
 
-                            let data = parse_params(&func.parameters);
-                            // dbg!(&data);
-
-                            if let Some(body) = &func.body {
-                                findings.append(&mut parse_body(body, &data));
-                            }
-                        }
-                    });
-                }
-            }
-
-            findings
-        }),
-    )
+        Ok(())
+    }
 }
 
 fn parse_params(params: &ParameterList) -> HashMap<String, String> {

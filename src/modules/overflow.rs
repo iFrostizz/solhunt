@@ -3,16 +3,133 @@
 // use crate::utils::int_as_bytes;
 use crate::{
     loader::{DynModule, Module},
-    walker::{Finding, Severity},
+    walker::{version_from_string_literals, Finding, Severity},
 };
 use ethers_solc::artifacts::{
     ast::{
         AssignmentOperator::{AddAssign, MulAssign, SubAssign},
         ContractDefinitionPart, Expression, SourceUnitPart, Statement,
     },
-    Block,
+    visitor::{VisitError, Visitor},
+    Assignment, Block, FunctionDefinition, PragmaDirective, UncheckedBlock,
 };
 use semver::{Error, Version};
+
+#[derive(Default)]
+pub struct DetectionModule {
+    findings: Vec<Finding>,
+    version: Option<Version>,
+}
+
+impl Visitor<Vec<Finding>> for DetectionModule {
+    fn visit_pragma_directive(
+        &mut self,
+        pragma_directive: &mut PragmaDirective,
+    ) -> eyre::Result<(), VisitError> {
+        let sem_ver = version_from_string_literals(pragma_directive.literals.clone());
+
+        if sem_ver.minor < 8 {
+            self.findings.push(Finding {
+                    name: "overflow".to_string(),
+                    description: "Looks like this contract is < 0.8.0, there is no built-in overflow check, be careful!".to_string(),
+                    severity: Severity::Informal, // no real finding so it's informal for now
+                    src: None, // SourceLocation::from_str("0:0:0").unwrap(),
+                    code: 0,
+                })
+        } // else will need to check for "unchecked"
+
+        self.version = Some(sem_ver);
+
+        Ok(())
+    }
+
+    fn visit_assignment(&mut self, assignment: &mut Assignment) -> eyre::Result<(), VisitError> {
+        // println!("{:#?}", assignment);
+        // match assignment.operator {
+        //     // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
+        //     AddAssign | MulAssign => self.findings.push(Finding {
+        //         name: "overflow".to_string(),
+        //         description: "Overflow may happen".to_string(),
+        //         severity: Severity::Medium,
+        //         src: Some(assignment.src.clone()),
+        //         code: 1,
+        //     }),
+        //     SubAssign => self.findings.push(Finding {
+        //         name: "overflow".to_string(),
+        //         description: "Underflow may happen".to_string(),
+        //         severity: Severity::Medium,
+        //         src: Some(assignment.src.clone()),
+        //         code: 2,
+        //     }),
+        //     _ => (),
+        // }
+
+        Ok(())
+    }
+
+    fn visit_unchecked_block(
+        &mut self,
+        unchecked_block: &mut UncheckedBlock,
+    ) -> eyre::Result<(), VisitError> {
+        // self.findings.push(Finding {
+        //     name: "overflow".to_string(),
+        //     description: "Unchecked block, so extra care here".to_string(),
+        //     severity: Severity::Informal,
+        //     src: Some(unchecked_block.src.clone()),
+        //     code: 3,
+        // });
+
+        Ok(())
+    }
+
+    fn visit_function_definition(
+        &mut self,
+        function_definition: &mut FunctionDefinition,
+    ) -> eyre::Result<(), VisitError> {
+        if let Some(body) = &function_definition.body {
+            if let Some(version) = self.version.clone() {
+                if version.minor < 8 {
+                    self.findings.append(&mut parse_body(body));
+                } else {
+                    // search for some unchecked
+                    // dbg!(&func);
+                    self.findings.append(&mut search_unchecked(body));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn shared_data(&mut self) -> &Vec<Finding> {
+        &self.findings
+    }
+}
+
+// pub fn search_overflow(assignment: &mut Assignment) -> Vec<Finding> {
+//     let mut findings = Vec::new();
+
+//     match &assignment.operator {
+//         // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
+//         AddAssign | MulAssign => findings.push(Finding {
+//             name: "Overflow".to_string(),
+//             description: "Overflow may happen".to_string(),
+//             severity: Severity::Medium,
+//             src: Some(assignment.src.clone()),
+//             code: 1,
+//         }),
+//         SubAssign => findings.push(Finding {
+//             name: "Underflow".to_string(),
+//             description: "Underflow may happen".to_string(),
+//             severity: Severity::Medium,
+//             src: Some(assignment.src.clone()),
+//             code: 2,
+//         }),
+//         _ => (),
+//     }
+
+//     findings
+// }
 
 pub fn get_module() -> DynModule {
     Module::new(
@@ -23,7 +140,7 @@ pub fn get_module() -> DynModule {
 
             if info.version.minor < 8 {
                 findings.push(Finding {
-                    name: "No built-il overflow check".to_string(),
+                    name: "overflow".to_string(),
                     description: "Looks like this contract is < 0.8.0, there is no built-in overflow check, be careful!".to_string(),
                     severity: Severity::Informal, // no real finding so it's informal for now
                     src: None, // SourceLocation::from_str("0:0:0").unwrap(),
@@ -85,14 +202,14 @@ fn check_overflow_stat(stat: &Statement) -> Vec<Finding> {
             match &ass.operator {
                 // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
                 AddAssign | MulAssign => findings.push(Finding {
-                    name: "Overflow".to_string(),
+                    name: "overflow".to_string(),
                     description: "Overflow may happen".to_string(),
                     severity: Severity::Medium,
                     src: Some(ass.src.clone()),
                     code: 1,
                 }),
                 SubAssign => findings.push(Finding {
-                    name: "Underflow".to_string(),
+                    name: "overflow".to_string(),
                     description: "Underflow may happen".to_string(),
                     severity: Severity::Medium,
                     src: Some(ass.src.clone()),
@@ -137,7 +254,7 @@ fn search_unchecked(body: &Block) -> Vec<Finding> {
 
             if let Statement::UncheckedBlock(block) = stat {
                 i_findings.push(Finding {
-                    name: "Unchecked".to_string(),
+                    name: "overflow".to_string(),
                     description: "Unchecked block, so extra care here".to_string(),
                     severity: Severity::Informal,
                     src: Some(block.src.clone()),
