@@ -1,32 +1,44 @@
 // Module that finds for external and dangerous calls
 
-use crate::walker::{Finding, Severity};
-use ethers_solc::artifacts::{
-    visitor::{VisitError, Visitor},
-    Block, Expression, ParameterList, Statement, TypeName,
+use crate::{
+    build_visitor,
+    walker::{FindingKey, Severity},
 };
-use std::collections::HashMap;
+use ethers_solc::artifacts::{
+    Block, Expression, FunctionDefinition, ParameterList, Statement, TypeName,
+};
+use std::collections::{BTreeMap, HashMap};
 
-#[derive(Default)]
-pub struct DetectionModule {
-    findings: Vec<Finding>,
-}
-
-impl Visitor<Vec<Finding>> for DetectionModule {
-    fn shared_data(&mut self) -> &Vec<Finding> {
-        &self.findings
-    }
+build_visitor! {
+    BTreeMap::from([
+       (
+           0,
+           FindingKey {
+               description: "external call detected".to_string(),
+               severity: Severity::Informal
+           }
+       ),
+       (
+           1,
+           FindingKey {
+               description: "external call with arbitrary address".to_string(),
+               severity: Severity::Medium
+           }
+       )
+    ]),
 
     fn visit_function_definition(
         &mut self,
-        function_definition: &mut ethers_solc::artifacts::FunctionDefinition,
-    ) -> eyre::Result<(), VisitError> {
+        function_definition: &mut FunctionDefinition
+    ) {
         let data = parse_params(&function_definition.parameters);
 
         if let Some(body) = &function_definition.body {
-            self.findings.append(&mut parse_body(body, &data));
+            self.push_findings(parse_body(body, &data));
         }
 
+        // doing it manually ?
+        // TODO: Keep track of the function params without doing it manually
         Ok(())
     }
 }
@@ -43,9 +55,11 @@ fn parse_params(params: &ParameterList) -> HashMap<String, String> {
                     }
                 }
                 TypeName::ArrayTypeName(_type_name) => {
-                    println!("todo");
+                    // todo!()
                 }
-                _ => println!("todo"),
+                _ => {
+                    // todo!()
+                }
             }
         }
     }
@@ -53,7 +67,7 @@ fn parse_params(params: &ParameterList) -> HashMap<String, String> {
     data
 }
 
-fn parse_body(body: &Block, data: &HashMap<String, String>) -> Vec<Finding> {
+fn parse_body(body: &Block, data: &HashMap<String, String>) -> Vec<PushedFinding> {
     let mut findings = Vec::new();
 
     body.statements
@@ -63,16 +77,13 @@ fn parse_body(body: &Block, data: &HashMap<String, String>) -> Vec<Finding> {
     findings
 }
 
-fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> Vec<Finding> {
+fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> Vec<PushedFinding> {
     let mut findings = Vec::new();
 
     if let Statement::ExpressionStatement(expr) = stat {
         if let Expression::FunctionCall(call) = &expr.expression {
             // dbg!(&call);
-            findings.push(Finding {
-                name: "calls".to_owned(),
-                description: "external call detected".to_owned(),
-                severity: Severity::Informal,
+            findings.push(PushedFinding {
                 src: Some(call.src.clone()),
                 code: 0,
             });
@@ -82,10 +93,7 @@ fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> 
                 if let Expression::Identifier(identifier) = &mem.expression {
                     if let Some(arb_type) = data.get(&identifier.name) {
                         if arb_type == "address" {
-                            findings.push(Finding {
-                                name: "calls".to_owned(),
-                                description: "external call with arbitrary address".to_owned(),
-                                severity: Severity::Medium,
+                            findings.push(PushedFinding {
                                 src: Some(call.src.clone()),
                                 code: 1,
                             });
@@ -158,7 +166,7 @@ contract Call {
 interface Coll {
     function setStuff() external;
 }
-            
+
 contract CallInt {
     Coll to;
 
@@ -192,7 +200,7 @@ contract Coll {
                 val = _val;
     }
 }
-            
+
 contract CallContract {
     Coll to;
 
@@ -219,7 +227,7 @@ contract CallContract {
             String::from("Arbitrary"),
             String::from(
                 "pragma solidity ^0.8.0;
-            
+
 contract Arbitrary {
 
     function doTheThing(address to) public {

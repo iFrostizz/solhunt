@@ -1,7 +1,7 @@
 mod findings;
 mod parser;
-mod walker;
+mod traversal;
 
 pub use findings::*;
 pub use parser::*;
-pub use walker::*;
+pub use traversal::*;

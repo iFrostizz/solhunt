@@ -12,24 +12,35 @@ pub mod uint256;
 /// Build an implementation of a Visitor, without the boiler-plate
 #[macro_export]
 macro_rules! build_visitor {
-    ($(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block)*) => {
-        // ($(fn $func_name:ident ($($opt:expr),*) $(-> $return_type:ty)* $block:block)*) => {
-        use ethers_solc::artifacts::visitor::{Visitor, VisitError, Visitable};
-        use ethers_solc::artifacts::*;
-        use $crate::walker::{Finding, FindingMap};
+    ($map:expr, $(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block)*) => {
+        // compiler complains for Visitable, but actually needed.
+        #[allow(unused)]
+        use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *};
+        use $crate::{walker::{Finding, FindingMap}, loader::PushedFinding};
         use ethers_solc::artifacts::ast::SourceLocation;
 
-        // TODO: populate the f_map on startup
-        // Can either make a hook in the visitor or in the Default implementation
-        #[derive(Default)]
         pub struct DetectionModule {
             findings: Vec<Finding>,
             findings_map: FindingMap
         }
 
+        /// populate the f_map on startup in order to specify the finding codes only
+        impl Default for DetectionModule {
+            fn default() -> Self {
+                Self {
+                    findings: Vec::new(),
+                    findings_map: $map,
+
+                }
+            }
+        }
+
         trait FindingsPusher {
             fn new(findings_map: FindingMap) -> Self;
-            fn push_finding(&mut self, src: Option<SourceLocation>, code: u32);        }
+            fn push_finding(&mut self, src: Option<SourceLocation>, code: u32);
+            fn push_findings(&mut self, f: Vec<PushedFinding>);
+            fn p_finding(&mut self, src: Option<SourceLocation>, code: u32);
+        }
 
         impl FindingsPusher for DetectionModule {
             fn new(findings_map: FindingMap) -> Self {
@@ -37,10 +48,19 @@ macro_rules! build_visitor {
                     findings: Vec::new(),
                     findings_map
                 }
-
             }
 
             fn push_finding(&mut self, src: Option<SourceLocation>, code: u32) {
+                self.p_finding(src, code);
+            }
+
+            fn push_findings(&mut self, findings: Vec<PushedFinding>) {
+                findings.iter().for_each(|f| {
+                    self.p_finding(f.src.clone(), f.code);
+                });
+            }
+
+            fn p_finding(&mut self, src: Option<SourceLocation>, code: u32) {
                 let name = module_path!();
                 let name = name.rsplit_once(":").expect("Should call from modules").1.to_string();
 
@@ -52,12 +72,11 @@ macro_rules! build_visitor {
                     severity: f_key.severity.clone(),
                     description: f_key.description.clone(),
                     src
-
                 };
 
                 self.findings.push(finding);
-            }
 
+            }
         }
 
         impl Visitor<Vec<Finding>> for DetectionModule {
@@ -65,30 +84,11 @@ macro_rules! build_visitor {
                 &self.findings
             }
 
-            // TODO: rework the findings pushing with a map of finding code to description and severity
-            // fn push_finding(&mut self, src: Option<SourceLocation>, code: u32) {
-
-            //     let name = module_path!();
-            //     let name = name.rsplit_once(':').expect("failed to split name from odules").[1];
-
-            //     let finding = Finding {
-            //         name,
-            //         description,
-            //         severity,
-            //         src,
-            //         code
-            //     };
-
-            //     self.findings.push(finding);
-            // }
-
-            // [$($func_name),*]
-
             $(
                 fn $func_name(&mut $self, $($param : $type),*) -> Result<(), VisitError> $body
                 )*
         }
-    };
+    }
 }
 
 #[macro_export]

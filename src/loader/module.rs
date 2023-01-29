@@ -5,6 +5,7 @@ use crate::{
     walker::{AllFindings, Finding},
 };
 
+use ethers_solc::artifacts::ast::SourceLocation;
 use semver::Version;
 
 #[derive(Debug, Default, Clone)]
@@ -24,6 +25,12 @@ pub struct Module<F> {
 pub struct Information {
     pub name: String,
     pub version: Version,
+}
+
+#[derive(Debug)]
+pub struct PushedFinding {
+    pub src: Option<SourceLocation>,
+    pub code: u32,
 }
 
 // #[macro_export]

@@ -60,8 +60,6 @@ impl Walker {
                 let abs_path = id.source.to_str().unwrap().to_string();
                 let lines_to_bytes = &source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
 
-                // let nodes = &ast.nodes;
-
                 let path = PathBuf::from(&ast.absolute_path);
                 let name = path.file_name().unwrap();
                 let name = name.to_os_string().into_string().unwrap();

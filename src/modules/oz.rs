@@ -5,35 +5,21 @@ use crate::{
     build_visitor,
     walker::{FindingKey, Severity},
 };
-use lazy_static::lazy_static;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-lazy_static! {
-    static ref FINDINGS_MAP: HashMap<u32, FindingKey> = {
-        let mut map = HashMap::new();
-        map.insert(
-            0,
+build_visitor! {
+    BTreeMap::from([
+                   (0,
             FindingKey {
                 description: "usage of transfer for an ERC20 token, use safeTransfer instead"
                     .to_string(),
                 severity: Severity::Medium,
-            },
-        );
-        map
-    };
-}
+            })
 
-build_visitor! {
+    ]),
+
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
         if member_access.member_name == "transfer" {
-            // self.findings.push(Finding {
-            //     name: "oz".to_string(),
-            //     description: "usage of transfer for an ERC20 token, use safeTransfer instead".to_string(),
-            //     severity: Severity::Medium,
-            //     src: Some(member_access.src.clone()),
-            //     code: 0
-            // });
-
             self.push_finding(Some(member_access.src.clone()), 0)
         }
 
