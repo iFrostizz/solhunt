@@ -1,46 +1,59 @@
 // Check if overflow may occur in unchecked or < 16.8.0 versions of solc
 
 // use crate::utils::int_as_bytes;
-use crate::walker::{version_from_string_literals, Finding, Severity};
+use crate::{build_visitor, walker::version_from_string_literals};
 use ethers_solc::artifacts::{
     ast::{
         AssignmentOperator::{AddAssign, MulAssign, SubAssign},
         Expression, Statement,
     },
-    visitor::{VisitError, Visitable, Visitor},
-    Assignment, Block, FunctionDefinition, PragmaDirective, UncheckedBlock,
+    Block,
 };
-use semver::{Error, Version};
+use semver::Error;
 
-#[derive(Default)]
-pub struct DetectionModule {
-    findings: Vec<Finding>,
-    version: Option<Version>,
-}
-
-impl Visitor<Vec<Finding>> for DetectionModule {
-    fn visit_pragma_directive(
-        &mut self,
-        pragma_directive: &mut PragmaDirective,
-    ) -> eyre::Result<(), VisitError> {
+build_visitor!(
+    BTreeMap::from([
+        (
+            0,
+            FindingKey {
+                description: "Looks like this contract is < 0.8.0".to_string(),
+                severity: Severity::Informal
+            }
+        ),
+        (
+            1,
+            FindingKey {
+                description: "Overflow may happen".to_string(),
+                severity: Severity::Medium
+            }
+        ),
+        (
+            2,
+            FindingKey {
+                description: "Underflow may happen".to_string(),
+                severity: Severity::Medium
+            }
+        ),
+        (
+            3,
+            FindingKey {
+                description: "Unchecked block".to_string(),
+                severity: Severity::Informal
+            }
+        )
+    ]),
+    fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
         let sem_ver = version_from_string_literals(pragma_directive.literals.clone());
 
         if sem_ver.minor < 8 {
-            self.findings.push(Finding {
-                    name: "overflow".to_string(),
-                    description: "Looks like this contract is < 0.8.0, there is no built-in overflow check, be careful!".to_string(),
-                    severity: Severity::Informal, // no real finding so it's informal for now
-                    src: None, // SourceLocation::from_str("0:0:0").unwrap(),
-                    code: 0,
-                })
+            self.push_finding(None, 0);
         } // else will need to check for "unchecked"
 
         self.version = Some(sem_ver);
 
         pragma_directive.visit(self)
-    }
-
-    fn visit_assignment(&mut self, assignment: &mut Assignment) -> eyre::Result<(), VisitError> {
+    },
+    fn visit_assignment(&mut self, assignment: &mut Assignment) {
         // println!("{:#?}", assignment);
         // match assignment.operator {
         //     // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
@@ -62,55 +75,38 @@ impl Visitor<Vec<Finding>> for DetectionModule {
         // }
 
         assignment.visit(self)
-    }
-
-    fn visit_unchecked_block(
-        &mut self,
-        unchecked_block: &mut UncheckedBlock,
-    ) -> eyre::Result<(), VisitError> {
+    },
+    fn visit_unchecked_block(&mut self, unchecked_block: &mut UncheckedBlock) {
         // We know for sure that the version is > 0.8.0
-        self.findings.push(Finding {
-            name: "overflow".to_string(),
-            description: "Unchecked block, so extra care here".to_string(),
-            severity: Severity::Informal,
-            src: Some(unchecked_block.src.clone()),
-            code: 3,
-        });
+        self.push_finding(Some(unchecked_block.src.clone()), 3);
 
         unchecked_block.statements.iter().for_each(|s| {
-            self.findings.append(&mut check_overflow_stat(s));
+            self.push_findings(check_overflow_stat(s));
         });
 
         unchecked_block.visit(self)
-    }
-
-    fn visit_function_definition(
-        &mut self,
-        function_definition: &mut FunctionDefinition,
-    ) -> eyre::Result<(), VisitError> {
+    },
+    fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
         if let Some(body) = &function_definition.body {
             if let Some(version) = self.version.clone() {
                 if version.minor < 8 {
-                    self.findings.append(&mut parse_body(body));
+                    self.push_findings(parse_body(body));
                 }
             }
         }
 
         function_definition.visit(self)
-    }
+    },
+    fn visit_statement(&mut self, statement: &mut Statement) {
+        let findings = check_overflow_stat(statement);
 
-    fn visit_statement(&mut self, statement: &mut Statement) -> eyre::Result<(), VisitError> {
-        self.findings.append(&mut check_overflow_stat(statement));
+        self.push_findings(findings);
 
         statement.visit(self)
     }
+);
 
-    fn shared_data(&mut self) -> &Vec<Finding> {
-        &self.findings
-    }
-}
-
-fn check_overflow_stat(stat: &Statement) -> Vec<Finding> {
+fn check_overflow_stat(stat: &Statement) -> Vec<PushedFinding> {
     let mut findings = Vec::new();
 
     if let Statement::ExpressionStatement(expr) = stat {
@@ -136,19 +132,13 @@ fn check_overflow_stat(stat: &Statement) -> Vec<Finding> {
 
             match &ass.operator {
                 // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
-                AddAssign | MulAssign => findings.push(Finding {
-                    name: "overflow".to_string(),
-                    description: "Overflow may happen".to_string(),
-                    severity: Severity::Medium,
-                    src: Some(ass.src.clone()),
+                AddAssign | MulAssign => findings.push(PushedFinding {
                     code: 1,
-                }),
-                SubAssign => findings.push(Finding {
-                    name: "overflow".to_string(),
-                    description: "Underflow may happen".to_string(),
-                    severity: Severity::Medium,
                     src: Some(ass.src.clone()),
+                }),
+                SubAssign => findings.push(PushedFinding {
                     code: 2,
+                    src: Some(ass.src.clone()),
                 }),
                 _ => (),
             }
@@ -162,7 +152,7 @@ fn check_overflow_stat(stat: &Statement) -> Vec<Finding> {
     findings
 }
 
-fn parse_body(body: &Block) -> Vec<Finding> {
+fn parse_body(body: &Block) -> Vec<PushedFinding> {
     let mut findings = Vec::new();
 
     body.statements.iter().for_each(|stat| {
@@ -171,14 +161,6 @@ fn parse_body(body: &Block) -> Vec<Finding> {
 
     findings
 }
-
-/*fn search_over_in_unchecked(stat: &Statement) -> Vec<Finding> {
-    let mut findings = Vec::new();
-
-    stat.statements.iter().for_each()
-
-    findings
-}*/
 
 #[allow(unused)]
 fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {

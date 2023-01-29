@@ -1,55 +1,37 @@
-use crate::{
-    get_path,
-    walker::{Finding, FindingMap, Severity},
-};
-use ethers_solc::artifacts::{
-    visitor::{VisitError, Visitable, Visitor},
-    MemberAccess,
-};
+use crate::build_visitor;
 
-#[derive(Default)]
-pub struct DetectionModule {
-    pub findings: Vec<Finding>,
-    pub f_map: FindingMap,
-}
-
-impl Visitor<Vec<Finding>> for DetectionModule {
-    fn shared_data(&mut self) -> &Vec<Finding> {
-        &self.findings
-    }
-
-    fn visit_member_access(
-        &mut self,
-        member_access: &mut MemberAccess,
-    ) -> eyre::Result<(), VisitError> {
-        get_path!();
-        // dbg!(&member_access);
+build_visitor!(
+    BTreeMap::from([
+        (
+            0,
+            FindingKey {
+                description: "usage of deprecated chainlink oracle feed function".to_string(),
+                severity: Severity::Medium,
+            }
+        ),
+        (
+            1,
+            FindingKey {
+                description: "stale price from chainlink oracle".to_string(),
+                severity: Severity::Medium,
+            }
+        )
+    ]),
+    fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
         if let Some(id) = &member_access.type_descriptions.type_identifier {
             if id.ends_with("returns$_t_int256_$") && member_access.member_name == "latestAnswer" {
-                self.findings.push(Finding {
-                    name: "chainlink".to_string(),
-                    description: "usage of deprecated chainlink oracle feed function".to_string(),
-                    severity: Severity::Medium,
-                    src: Some(member_access.src.clone()),
-                    code: 0,
-                })
+                self.push_finding(Some(member_access.src.clone()), 0)
             } else if id
                 .ends_with("returns$_t_uint80_$_t_int256_$_t_uint256_$_t_uint256_$_t_uint80_$")
                 && member_access.member_name == "latestRoundData"
             {
-                self.findings.push(Finding {
-                    name: "chainlink".to_string(),
-                    description: "stale price from chainlink oracle".to_string(),
-                    severity: Severity::Medium,
-                    src: Some(member_access.src.clone()),
-                    code: 1,
-                })
+                self.push_finding(Some(member_access.src.clone()), 1)
             }
         }
 
         member_access.visit(self)
     }
-}
+);
 
 #[cfg(test)]
 mod tests {

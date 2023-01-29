@@ -12,14 +12,19 @@ pub mod uint256;
 /// Build an implementation of a Visitor, without the boiler-plate
 #[macro_export]
 macro_rules! build_visitor {
-    ($map:expr, $(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block)*) => {
-        // compiler complains for Visitable, but actually needed.
+    ($map:expr, $(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block),*) => {
+        // compiler complains for Visitable, but is actually needed.
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *};
-        use $crate::{walker::{Finding, FindingMap}, loader::PushedFinding};
+        #[allow(unused)]
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity}, loader::PushedFinding};
         use ethers_solc::artifacts::ast::SourceLocation;
+        use semver::{Version};
+        use std::collections::BTreeMap;
 
+        #[allow(dead_code)]
         pub struct DetectionModule {
+            version: Option<Version>,
             findings: Vec<Finding>,
             findings_map: FindingMap
         }
@@ -30,7 +35,7 @@ macro_rules! build_visitor {
                 Self {
                     findings: Vec::new(),
                     findings_map: $map,
-
+                    version: None
                 }
             }
         }
@@ -46,7 +51,8 @@ macro_rules! build_visitor {
             fn new(findings_map: FindingMap) -> Self {
                 Self {
                     findings: Vec::new(),
-                    findings_map
+                    findings_map,
+                    version: None
                 }
             }
 
@@ -75,7 +81,6 @@ macro_rules! build_visitor {
                 };
 
                 self.findings.push(finding);
-
             }
         }
 
@@ -86,31 +91,7 @@ macro_rules! build_visitor {
 
             $(
                 fn $func_name(&mut $self, $($param : $type),*) -> Result<(), VisitError> $body
-                )*
+            )*
         }
     }
 }
-
-#[macro_export]
-macro_rules! get_path {
-    () => {
-        println!("{}", module_path!());
-    };
-}
-
-// macro_rules! build_visitor {
-//     ($functions:tt) => {
-//         #[derive(Default)]
-//         pub struct DetectionModule {
-//             findings: Vec<Finding>,
-//         }
-
-//         impl Visitor<Vec<Finding>> for DetectionModule {
-//             fn shared_data(&mut self) -> &Vec<Finding> {
-//                 &self.findings
-//             }
-
-//             $functions
-//         }
-//     };
-// }

@@ -57,6 +57,7 @@ pub struct PushedFinding {
 // }
 
 // TODO: automate this !
+// TODO: write benches for detection modules and only run *one* visitor
 pub fn get_all_visitors(
 ) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
     // Vec::new()
@@ -67,7 +68,7 @@ pub fn get_all_visitors(
         // Box::<erc20::DetectionModule>::default(),
         Box::<overflow::DetectionModule>::default(),
         Box::<oz::DetectionModule>::default(),
-        // Box::<style::DetectionModule>::default(),
         Box::<chainlink::DetectionModule>::default(),
+        // Box::<style::DetectionModule>::default(),
     ]
 }

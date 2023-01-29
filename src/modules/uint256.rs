@@ -1,42 +1,26 @@
 // A silly module that finds all uint256
 
-use crate::walker::{Finding, Severity};
-use ethers_solc::artifacts::{
-    visitor::{VisitError, Visitable, Visitor},
-    VariableDeclaration,
-};
+use crate::build_visitor;
+use ethers_solc::artifacts::VariableDeclaration;
 
-#[derive(Default)]
-pub struct DetectionModule {
-    findings: Vec<Finding>,
-}
-
-// TODO: macro to push findings from correct detection module
-// e.g. avoid to write the name of the module where it's detected from
-impl Visitor<Vec<Finding>> for DetectionModule {
-    fn shared_data(&mut self) -> &Vec<Finding> {
-        &self.findings
-    }
-
-    fn visit_variable_declaration(
-        &mut self,
-        var: &mut VariableDeclaration,
-    ) -> eyre::Result<(), VisitError> {
+build_visitor!(
+    BTreeMap::from([(
+        0,
+        FindingKey {
+            description: "We just found a uint256 yay!".to_string(),
+            severity: Severity::Informal
+        }
+    )]),
+    fn visit_variable_declaration(&mut self, var: &mut VariableDeclaration) {
         if let Some(type_id) = &var.type_descriptions.type_identifier {
             if type_id == "t_uint256" {
-                self.findings.push(Finding {
-                    name: "uint256".to_string(),
-                    description: "We just found a uint256 yay!".to_string(),
-                    severity: Severity::Informal,
-                    src: Some(var.src.clone()),
-                    code: 0,
-                });
+                self.push_finding(Some(var.src.clone()), 0);
             }
         }
 
         var.visit(self)
     }
-}
+);
 
 #[cfg(test)]
 mod test {

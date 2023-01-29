@@ -1,13 +1,10 @@
 // Module that finds for external and dangerous calls
 
-use crate::{
-    build_visitor,
-    walker::{FindingKey, Severity},
-};
+use crate::build_visitor;
 use ethers_solc::artifacts::{
     Block, Expression, FunctionDefinition, ParameterList, Statement, TypeName,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 build_visitor! {
     BTreeMap::from([

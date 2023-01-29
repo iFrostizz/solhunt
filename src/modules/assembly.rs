@@ -1,22 +1,27 @@
 // Module that finds for external and dangerous calls
 
-use crate::walker::{Finding, Severity};
-use ethers_solc::artifacts::{
-    visitor::{VisitError, Visitable, Visitor},
-    yul::YulFunctionCall,
-    InlineAssembly,
-};
+use crate::build_visitor;
+use ethers_solc::artifacts::{yul::YulFunctionCall, InlineAssembly};
 
-#[derive(Default)]
-pub struct DetectionModule {
-    findings: Vec<Finding>,
-}
-
-impl Visitor<Vec<Finding>> for DetectionModule {
-    fn visit_inline_assembly(
-        &mut self,
-        inline_assembly: &mut InlineAssembly,
-    ) -> eyre::Result<(), VisitError> {
+build_visitor!(
+    BTreeMap::from([
+        (
+            0,
+            FindingKey {
+                description: "usage of inline assembly, take extra care here".to_string(),
+                severity: Severity::Informal
+            }
+        ),
+        (
+            1,
+            FindingKey {
+                description: "using extcodesize. Can be an issue if determining if EOA."
+                    .to_string(),
+                severity: Severity::Medium
+            }
+        )
+    ]),
+    fn visit_inline_assembly(&mut self, inline_assembly: &mut InlineAssembly) {
         self.findings.push(Finding {
             name: "assembly".to_string(),
             description: "usage of inline assembly, take extra care here".to_string(),
@@ -27,12 +32,8 @@ impl Visitor<Vec<Finding>> for DetectionModule {
 
         // don't disrupt current ast traversal
         inline_assembly.visit(self)
-    }
-
-    fn visit_yul_function_call(
-        &mut self,
-        function_call: &mut YulFunctionCall,
-    ) -> eyre::Result<(), VisitError> {
+    },
+    fn visit_yul_function_call(&mut self, function_call: &mut YulFunctionCall) {
         let func_name = &function_call.function_name;
 
         if func_name.name == "extcodesize" {
@@ -48,11 +49,7 @@ impl Visitor<Vec<Finding>> for DetectionModule {
 
         function_call.visit(self)
     }
-
-    fn shared_data(&mut self) -> &Vec<Finding> {
-        &self.findings
-    }
-}
+);
 
 #[cfg(test)]
 mod tests {
