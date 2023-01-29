@@ -37,8 +37,8 @@ pub struct Finding {
 
 #[derive(Debug, Clone)]
 pub struct FindingKey {
-    description: String,
-    severity: Severity,
+    pub description: String,
+    pub severity: Severity,
 }
 
 pub type FindingMap = BTreeMap<u32, FindingKey>;

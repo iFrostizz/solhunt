@@ -9,8 +9,8 @@ use ethers_solc::artifacts::{
 
 #[derive(Default)]
 pub struct DetectionModule {
-    findings: Vec<Finding>,
-    f_map: FindingMap,
+    pub findings: Vec<Finding>,
+    pub f_map: FindingMap,
 }
 
 impl Visitor<Vec<Finding>> for DetectionModule {

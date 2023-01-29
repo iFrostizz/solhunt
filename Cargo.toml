@@ -24,3 +24,4 @@ foundry-cli = { path = "/home/franfran/Projects/utils/foundry/cli" }
 foundry-config = { path = "/home/franfran/Projects/utils/foundry/config" }
 foundry-common = { path = "/home/franfran/Projects/utils/foundry/common" }
 yansi = "0.5.1"
+lazy_static = "1.4.0"

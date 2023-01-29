@@ -8,24 +8,56 @@ pub mod oz;
 pub mod style;
 pub mod uint256;
 
-// TODO: this does not work
-// Food for thoughts:
-// https://stackoverflow.com/questions/39986539/how-can-i-use-a-macro-to-create-an-array-of-function-names-starting-from-a-colle
-// https://users.rust-lang.org/t/macro-for-option-arguments/70726/2
+// TODO: add the map in the macro arguments
+/// Build an implementation of a Visitor, without the boiler-plate
 #[macro_export]
 macro_rules! build_visitor {
     ($(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block)*) => {
         // ($(fn $func_name:ident ($($opt:expr),*) $(-> $return_type:ty)* $block:block)*) => {
         use ethers_solc::artifacts::visitor::{Visitor, VisitError, Visitable};
         use ethers_solc::artifacts::*;
-        use $crate::walker::Finding;
-        // use ethers_solc::artifacts::ast::SourceLocation;
+        use $crate::walker::{Finding, FindingMap};
+        use ethers_solc::artifacts::ast::SourceLocation;
 
         // TODO: populate the f_map on startup
         // Can either make a hook in the visitor or in the Default implementation
         #[derive(Default)]
         pub struct DetectionModule {
             findings: Vec<Finding>,
+            findings_map: FindingMap
+        }
+
+        trait FindingsPusher {
+            fn new(findings_map: FindingMap) -> Self;
+            fn push_finding(&mut self, src: Option<SourceLocation>, code: u32);        }
+
+        impl FindingsPusher for DetectionModule {
+            fn new(findings_map: FindingMap) -> Self {
+                Self {
+                    findings: Vec::new(),
+                    findings_map
+                }
+
+            }
+
+            fn push_finding(&mut self, src: Option<SourceLocation>, code: u32) {
+                let name = module_path!();
+                let name = name.rsplit_once(":").expect("Should call from modules").1.to_string();
+
+                let f_key = &self.findings_map.get(&code).expect("Unrecognized finding code");
+
+                let finding = Finding {
+                    name,
+                    code,
+                    severity: f_key.severity.clone(),
+                    description: f_key.description.clone(),
+                    src
+
+                };
+
+                self.findings.push(finding);
+            }
+
         }
 
         impl Visitor<Vec<Finding>> for DetectionModule {
