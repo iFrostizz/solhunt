@@ -1,4 +1,7 @@
-use crate::walker::{Finding, Severity};
+use crate::{
+    get_path,
+    walker::{Finding, FindingMap, Severity},
+};
 use ethers_solc::artifacts::{
     visitor::{VisitError, Visitable, Visitor},
     MemberAccess,
@@ -7,6 +10,7 @@ use ethers_solc::artifacts::{
 #[derive(Default)]
 pub struct DetectionModule {
     findings: Vec<Finding>,
+    f_map: FindingMap,
 }
 
 impl Visitor<Vec<Finding>> for DetectionModule {
@@ -18,7 +22,8 @@ impl Visitor<Vec<Finding>> for DetectionModule {
         &mut self,
         member_access: &mut MemberAccess,
     ) -> eyre::Result<(), VisitError> {
-        dbg!(&member_access);
+        get_path!();
+        // dbg!(&member_access);
         if let Some(id) = &member_access.type_descriptions.type_identifier {
             if id.ends_with("returns$_t_int256_$") && member_access.member_name == "latestAnswer" {
                 self.findings.push(Finding {

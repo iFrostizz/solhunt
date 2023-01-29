@@ -116,9 +116,11 @@ pub fn visit_source<D>(
                     .map(|src| get_line_position(&src, lines_to_bytes) as u32),
             },
         };
-        findings
-            .entry(finding.name.clone())
-            .and_modify(|f| f.push(meta_finding.clone()))
-            .or_insert(vec![meta_finding]);
+        std::collections::hash_map::Entry::or_insert(
+            findings
+                .entry(finding.name.clone())
+                .and_modify(|f| f.push(meta_finding.clone())),
+            vec![meta_finding],
+        );
     });
 }

@@ -59,7 +59,7 @@ pub fn get_all_visitors(
         Box::<calls::DetectionModule>::default(),
         // Box::<erc20::DetectionModule>::default(),
         Box::<overflow::DetectionModule>::default(),
-        // Box::<oz::DetectionModule>::default(),
+        Box::<oz::DetectionModule>::default(),
         // Box::<style::DetectionModule>::default(),
         Box::<chainlink::DetectionModule>::default(),
     ]

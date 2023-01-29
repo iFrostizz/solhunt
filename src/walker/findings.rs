@@ -1,7 +1,7 @@
 // Store findings and do whatever with them
 
 use ethers_solc::artifacts::ast::SourceLocation;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use yansi::Paint;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -34,6 +34,14 @@ pub struct Finding {
     pub code: u32,                   // Identify finding type easily
                                      // pub likelyhood: u8,              // 0-100% likelyhood to be correct
 }
+
+#[derive(Debug, Clone)]
+pub struct FindingKey {
+    description: String,
+    severity: Severity,
+}
+
+pub type FindingMap = BTreeMap<u32, FindingKey>;
 
 impl Finding {
     pub fn format(&self) -> String {
