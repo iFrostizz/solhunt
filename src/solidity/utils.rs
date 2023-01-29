@@ -1,8 +1,9 @@
-use ethers_solc::artifacts::ast::SourceLocation;
+use ethers_solc::artifacts::{ast::SourceLocation, TypeDescriptions, Visibility};
 use foundry_common::fs;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
+    str::FromStr,
 };
 
 pub struct Position {

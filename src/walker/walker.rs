@@ -15,14 +15,14 @@ use std::{collections::btree_map::BTreeMap, path::PathBuf};
 pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, Vec<usize>>,
-    visitors: Box<Vec<Box<dyn Visitor<Vec<Finding>>>>>,
+    visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
 }
 
 impl Walker {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         source_map: BTreeMap<String, Vec<usize>>,
-        visitors: Box<Vec<Box<dyn Visitor<Vec<Finding>>>>>,
+        visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
     ) -> Self {
         Walker {
             artifact,

@@ -74,6 +74,7 @@ pub type DynModule = Module<Box<dyn Fn(&SourceUnitPart, &Information) -> Vec<Fin
 //     };
 // }
 
+// TODO: automate this !
 pub fn get_all_visitors(
 ) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
     // Vec::new()
@@ -85,5 +86,6 @@ pub fn get_all_visitors(
         Box::<overflow::DetectionModule>::default(),
         // Box::<oz::DetectionModule>::default(),
         // Box::<style::DetectionModule>::default(),
+        Box::<chainlink::DetectionModule>::default(),
     ]
 }

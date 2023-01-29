@@ -18,10 +18,10 @@ mod utils;
 mod walker;
 
 fn main() {
-    // TODO: configurable
+    // TODO: configurable with glob
     let included_folders: Vec<String> = vec![String::from("src")];
 
-    let (path, loader, verbosity) = parse();
+    let (path, _loader, verbosity) = parse();
 
     let solidity = Solidity::default()
         .with_remappings(get_remappings(&path))
@@ -56,7 +56,7 @@ fn main() {
 
     let visitors = get_all_visitors();
 
-    let mut walker = Walker::new(artifacts, source_map, Box::new(visitors));
+    let mut walker = Walker::new(artifacts, source_map, visitors);
 
     let all_findings = walker.traverse().expect("failed to traverse ast");
     format_findings(all_findings, verbosity);
@@ -83,12 +83,12 @@ mod test {
     use super::*;
     use crate::{
         solidity::ProjectFile,
-        walker::{AllFindings, Finding, Walker},
+        walker::{AllFindings, Walker},
     };
     use ethers_solc::{
         project_util::TempProject, ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact,
     };
-    use std::{self, collections::BTreeMap};
+    use std::{self, collections::BTreeMap, env};
 
     /// Tests utils to compile a temp project similar to reality
     pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
@@ -105,7 +105,12 @@ mod test {
 
         let compiled = project.compile().unwrap();
 
-        assert!(!compiled.has_compiler_errors());
+        if compiled.has_compiler_errors() {
+            compiled.output().errors.iter().for_each(|err| {
+                println!("{:#?}", err.message);
+            });
+            panic!("Fix compiler errors first");
+        }
 
         // clone is dirty here
         let output = compiled.clone().output();
@@ -116,13 +121,22 @@ mod test {
             .into_artifacts()
             .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
 
+        if let Some(debug) = env::var_os("DEBUG") {
+            if debug == "true" || debug == "True" || debug == "TRUE" {
+                // println!("{:#?}", project.root);
+                artifacts.iter().for_each(|(_, art)| {
+                    println!("{:#?}", art.ast);
+                });
+            }
+        };
+
         // let visitors: Vec<
         //     Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>,
         // > = get_all_visitors!("./modules");
 
         let visitors = get_all_visitors();
 
-        let mut walker = Walker::new(artifacts, source_map, Box::new(visitors));
+        let mut walker = Walker::new(artifacts, source_map, visitors);
 
         walker.traverse().expect("failed to traverse ast")
     }
@@ -150,13 +164,17 @@ mod test {
         code: u32,
         line: u32,
     ) -> bool {
-        all_findings.get(name).unwrap().iter().any(|mf| {
-            if let Some(l) = mf.meta.line {
-                mf.finding.code == code && l == line
-            } else {
-                false
-            }
-        })
+        all_findings
+            .get(name)
+            .unwrap_or(&Vec::new())
+            .iter()
+            .any(|mf| {
+                if let Some(l) = mf.meta.line {
+                    mf.finding.code == code && l == line
+                } else {
+                    false
+                }
+            })
     }
 
     /*pub fn get_findings_with_code_at_line(

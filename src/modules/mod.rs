@@ -1,5 +1,6 @@
 pub mod assembly;
 pub mod calls;
+pub mod chainlink;
 pub mod erc20;
 pub mod loader;
 pub mod overflow;

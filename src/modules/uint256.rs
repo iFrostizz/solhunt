@@ -2,8 +2,8 @@
 
 use crate::walker::{Finding, Severity};
 use ethers_solc::artifacts::{
-    visitor::{VisitError, Visitor},
-    VariableDeclaration,
+    visitor::{VisitError, Visitable, Visitor},
+    MemberAccess, VariableDeclaration,
 };
 
 #[derive(Default)]
@@ -11,6 +11,8 @@ pub struct DetectionModule {
     findings: Vec<Finding>,
 }
 
+// TODO: macro to push findings from correct detection module
+// e.g. avoid to write the name of the module where it's detected from
 impl Visitor<Vec<Finding>> for DetectionModule {
     fn shared_data(&mut self) -> &Vec<Finding> {
         &self.findings
@@ -23,7 +25,7 @@ impl Visitor<Vec<Finding>> for DetectionModule {
         if let Some(type_id) = &var.type_descriptions.type_identifier {
             if type_id == "t_uint256" {
                 self.findings.push(Finding {
-                    name: "uint256".to_string(),
+                    name: "chainlink".to_string(),
                     description: "We just found a uint256 yay!".to_string(),
                     severity: Severity::Informal,
                     src: Some(var.src.clone()),
@@ -31,7 +33,8 @@ impl Visitor<Vec<Finding>> for DetectionModule {
                 });
             }
         }
-        Ok(())
+
+        var.visit(self)
     }
 }
 
@@ -39,7 +42,7 @@ impl Visitor<Vec<Finding>> for DetectionModule {
 mod test {
     use crate::{
         solidity::ProjectFile,
-        test::{compile_and_get_findings, has_with_code},
+        test::{compile_and_get_findings, has_with_code, has_with_code_at_line},
     };
 
     #[test]

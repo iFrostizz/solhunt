@@ -33,6 +33,7 @@ pub struct AllFindingsAndSourceMap {
     pub source_map: Vec<usize>,
 }
 
+#[allow(unused)]
 pub enum ProjectFile {
     Contract(String, String),
     Library(String, String),
@@ -88,6 +89,7 @@ impl Default for Solidity {
 }
 
 impl Solidity {
+    #[allow(unused)]
     pub fn new(
         root: String,
         _libs: Vec<String>,
@@ -279,11 +281,14 @@ impl Solidity {
         self.root = root.into_os_string().into_string().unwrap();
         self
     }
+
+    #[allow(unused)]
     pub fn with_root(mut self, root: String) -> Self {
         self.root = root;
         self
     }
 
+    #[allow(unused)]
     pub fn ephemeral(mut self, ephemeral: bool) -> Self {
         self.ephemeral = ephemeral;
         self
@@ -340,13 +345,12 @@ impl Solidity {
         //     panic!();
         // }
 
-        let compiled = project.compile().unwrap();
-
         // dbg!(&compiled);
 
-        compiled
+        project.compile().unwrap()
     }
 
+    #[allow(unused)]
     pub fn compile_artifacts(&self) -> BTreeMap<ArtifactId, ConfigurableContractArtifact> {
         let compiled = self.compile();
 
@@ -354,6 +358,7 @@ impl Solidity {
     }
 
     // get path of all .sol files
+    #[allow(unused)]
     pub fn get_sol_files(&self, path: PathBuf) -> Vec<PathBuf> {
         let mut files = Vec::new();
 
@@ -364,6 +369,7 @@ impl Solidity {
     }
 
     // could do caching, but explicitely excluding directory is probably good enough ?
+    #[allow(unused)]
     pub fn visit_dirs(&self, dir: &Path, files: &mut Vec<PathBuf>) -> eyre::Result<()> {
         if dir.is_dir() {
             for entry in fs::read_dir(dir)? {
@@ -388,6 +394,7 @@ impl Solidity {
         Ok(())
     }
 
+    #[allow(unused)]
     pub fn is_sol_file(&self, path: &Path) -> bool {
         if path.is_file() {
             match path.extension() {

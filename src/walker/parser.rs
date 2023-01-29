@@ -1,11 +1,12 @@
-use semver::{Version, VersionReq};
+use semver::Version;
 use serde_json::value::Value;
 
+#[allow(unused)]
 pub fn version_from_literals(literals: Value) -> Version {
     let literals: Vec<String> = serde_json::from_value(literals).unwrap();
     // dbg!(&literals);
     let joined = literals.join("");
-    let mut split: Vec<&str> = joined.split(".").collect();
+    let mut split: Vec<&str> = joined.split('.').collect();
     split[0] = "0";
 
     Version::parse(&split.join(".")).unwrap()
@@ -20,7 +21,7 @@ pub fn version_from_string_literals(literals: Vec<String>) -> Version {
         pragma.remove(0);
     }
 
-    let mut pragma: String = pragma.iter().map(|v| v.to_string()).collect();
+    let pragma: String = pragma.iter().map(|v| v.to_string()).collect();
 
     Version::parse(&pragma).expect("failed to parse the sem ver")
 }
