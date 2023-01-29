@@ -21,7 +21,7 @@ fn main() {
     // TODO: configurable with glob
     let included_folders: Vec<String> = vec![String::from("src")];
 
-    let (path, _loader, verbosity) = parse();
+    let (path, verbosity) = parse();
 
     let solidity = Solidity::default()
         .with_remappings(get_remappings(&path))
@@ -79,7 +79,6 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
 
 #[cfg(test)]
 mod test {
-    #[macro_use]
     use super::*;
     use crate::{
         solidity::ProjectFile,
@@ -148,7 +147,6 @@ mod test {
         }
     }
 
-    // TODO: be more specific with file line and multiple findings
     pub fn has_with_code(all_findings: &AllFindings, name: &str, code: u32) -> bool {
         all_findings
             .get(name)

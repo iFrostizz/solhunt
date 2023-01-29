@@ -89,44 +89,6 @@ impl Default for Solidity {
 }
 
 impl Solidity {
-    #[allow(unused)]
-    pub fn new(
-        root: String,
-        _libs: Vec<String>,
-        allow_paths: Vec<String>,
-        include_paths: Vec<String>,
-        src: PathBuf,
-        test: PathBuf,
-        auto_detect_remappings: bool,
-        script: PathBuf,
-        cache: bool,
-        out: PathBuf,
-        libraries: Vec<String>,
-        force: bool,
-        ephemeral: bool,
-    ) -> Self {
-        Self {
-            root,
-            libs: Default::default(),
-            allow_paths,
-            build_info_path: None,
-            include_paths,
-            extra_output: Default::default(),
-            extra_output_files: Default::default(),
-            cache_path: Default::default(),
-            src,
-            test,
-            auto_detect_remappings,
-            script,
-            cache,
-            libraries,
-            out,
-            remappings: Default::default(),
-            force,
-            ephemeral,
-        }
-    }
-
     // pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
     //     let build_args = BuildArgs::default();
     //     // let mut config = build_args.try_load_config_emit_warnings()?;

@@ -1,11 +1,11 @@
-use ethers_solc::artifacts::{ast::SourceLocation, TypeDescriptions, Visibility};
+use ethers_solc::artifacts::ast::SourceLocation;
 use foundry_common::fs;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    str::FromStr,
 };
 
+#[allow(unused)]
 pub struct Position {
     pub line: u32, // line num
                    // pub position: u32, // horizontal pos
@@ -34,6 +34,7 @@ pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
 }
 
 /// Scan the file to get the bytes position of each line start
+#[allow(unused)]
 pub fn get_file_lines(mut file: BufReader<File>) -> Result<Vec<usize>, std::io::Error> {
     let mut acc = vec![];
     let mut buf = String::new();
@@ -66,9 +67,11 @@ pub fn get_string_lines(content: String) -> Vec<usize> {
     acc
 }
 
+/// Extract the path from the unique identifier
+#[allow(unused)]
 pub fn path_from_id(id: String) -> String {
-    id.rsplit_once(":")
-        .expect(&format!("Malformed id `{}`", &id))
+    id.rsplit_once(':')
+        .unwrap_or_else(|| panic!("Malformed id `{}`", &id))
         .0
         .to_string()
 }

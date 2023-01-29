@@ -54,7 +54,6 @@ impl Walker {
 
             // dedup same sources
             // TODO: is that bug from the ast ?
-            // let source = ast.borrow_mut();
             if !ids.contains(&ast.id) {
                 ids.push(ast.id);
 
@@ -83,14 +82,6 @@ impl Walker {
                         &mut all_findings,
                     );
                 });
-
-                // visit_source(
-                //     &mut ast,
-                //     &mut self.visitors,
-                //     lines_to_bytes,
-                //     info,
-                //     &mut all_findings,
-                // );
             }
         });
 
@@ -113,8 +104,6 @@ pub fn visit_source<D>(
     let file = info.name;
 
     let data = visitor.shared_data();
-
-    // println!("{:#?}", data);
 
     data.iter().for_each(|finding| {
         let meta_finding = MetaFinding {

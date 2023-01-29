@@ -1,7 +1,3 @@
-use crate::{
-    loader::{DynModule, Loader},
-    modules::loader::get_all_modules,
-};
 use clap::Parser;
 use ethers_solc::remappings::{RelativeRemapping, Remapping};
 
@@ -48,33 +44,33 @@ pub fn get_working_path(add_path: String) -> PathBuf {
     path.canonicalize().expect("Invalid path")
 }
 
-pub fn parse() -> (PathBuf, Loader, u8) {
+pub fn parse() -> (PathBuf, u8) {
     let args = Cmd::parse();
 
-    let all_modules = get_all_modules(); // get em' all before loading only those that we want
+    // let all_modules = get_all_modules(); // get em' all before loading only those that we want
 
-    // Only those specified
-    let modules: Vec<DynModule> = match args.modules {
-        Some(modules_names) => all_modules
-            .into_iter()
-            .filter(|module| modules_names.contains(&module.name))
-            .collect(),
-        None => all_modules, // don't touch if not specified
-    };
+    // // Only those specified
+    // let modules: Vec<DynModule> = match args.modules {
+    //     Some(modules_names) => all_modules
+    //         .into_iter()
+    //         .filter(|module| modules_names.contains(&module.name))
+    //         .collect(),
+    //     None => all_modules, // don't touch if not specified
+    // };
 
-    // Remove those we don't want
-    let modules: Vec<DynModule> = match args.except_modules {
-        Some(modules_names) => modules
-            .into_iter()
-            .filter(|module| !modules_names.contains(&module.name))
-            .collect(),
+    // // Remove those we don't want
+    // let modules: Vec<DynModule> = match args.except_modules {
+    //     Some(modules_names) => modules
+    //         .into_iter()
+    //         .filter(|module| !modules_names.contains(&module.name))
+    //         .collect(),
 
-        None => modules,
-    };
+    //     None => modules,
+    // };
 
-    let loader = Loader::new(modules);
+    // let loader = Loader::new(modules);
 
-    (get_working_path(args.path), loader, args.verbosity)
+    (get_working_path(args.path), args.verbosity)
 }
 
 pub fn get_remappings(path: &Path) -> Vec<RelativeRemapping> {

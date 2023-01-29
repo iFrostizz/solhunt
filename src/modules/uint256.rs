@@ -3,7 +3,7 @@
 use crate::walker::{Finding, Severity};
 use ethers_solc::artifacts::{
     visitor::{VisitError, Visitable, Visitor},
-    MemberAccess, VariableDeclaration,
+    VariableDeclaration,
 };
 
 #[derive(Default)]
@@ -25,7 +25,7 @@ impl Visitor<Vec<Finding>> for DetectionModule {
         if let Some(type_id) = &var.type_descriptions.type_identifier {
             if type_id == "t_uint256" {
                 self.findings.push(Finding {
-                    name: "chainlink".to_string(),
+                    name: "uint256".to_string(),
                     description: "We just found a uint256 yay!".to_string(),
                     severity: Severity::Informal,
                     src: Some(var.src.clone()),
@@ -42,7 +42,7 @@ impl Visitor<Vec<Finding>> for DetectionModule {
 mod test {
     use crate::{
         solidity::ProjectFile,
-        test::{compile_and_get_findings, has_with_code, has_with_code_at_line},
+        test::{compile_and_get_findings, has_with_code},
     };
 
     #[test]
