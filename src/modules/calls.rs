@@ -21,6 +21,13 @@ build_visitor! {
                description: "external call with arbitrary address".to_string(),
                severity: Severity::Medium
            }
+       ),
+       (
+           2,
+           FindingKey {
+               description: "delegatecall in a loop".to_string(),
+               severity: Severity::High
+           }
        )
     ]),
 
@@ -31,11 +38,32 @@ build_visitor! {
         let data = parse_params(&function_definition.parameters);
 
         if let Some(body) = &function_definition.body {
+            // TODO: move to visitors pattern
             self.push_findings(parse_body(body, &data));
         }
 
-        // doing it manually ?
-        // TODO: Keep track of the function params without doing it manually
+        function_definition.visit(self)
+    },
+
+    fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
+        if (self.inside.for_loop || self.inside.while_loop) && member_access.member_name == "delegatecall" {
+            self.push_finding(Some(member_access.src.clone()), 2);
+        }
+
+        member_access.visit(self)
+    },
+
+    fn visit_for_statement(&mut self, for_statement: &mut ForStatement) {
+        self.inside.for_loop = true;
+        for_statement.visit(self)?;
+        self.inside.for_loop = false;
+        Ok(())
+    },
+
+    fn visit_while_statement(&mut self, while_statement: &mut WhileStatement) {
+        self.inside.while_loop = true;
+        while_statement.visit(self)?;
+        self.inside.while_loop = false;
         Ok(())
     }
 }
@@ -235,5 +263,27 @@ contract Arbitrary {
         )]);
 
         assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
+    }
+
+    // https://github.com/Picodes/4naly3er/blob/main/src/issues/H/delegateCallInLoop.ts
+    // TODO: add payable function condition ? Security concecrn here is the msg.value
+    #[test]
+    fn delegatecall_in_loop() {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("DelegateCallLoop"),
+            String::from(
+                r#"pragma solidity ^0.8.0;
+
+contract DelegateCallLoop {
+    function causeTrouble(address to) public {
+        for (uint256 i; i < 10; i++) {
+            to.delegatecall("");
+        }
+    }
+}"#,
+            ),
+        )]);
+
+        assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![6]);
     }
 }

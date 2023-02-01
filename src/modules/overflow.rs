@@ -1,15 +1,10 @@
-// Check if overflow may occur in unchecked or < 16.8.0 versions of solc
+// Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
-// use crate::utils::int_as_bytes;
 use crate::{build_visitor, walker::version_from_string_literals};
-use ethers_solc::artifacts::{
-    ast::{
-        AssignmentOperator::{AddAssign, MulAssign, SubAssign},
-        Expression, Statement,
-    },
-    Block,
+use ethers_solc::artifacts::ast::{
+    AssignmentOperator::{AddAssign, MulAssign, SubAssign},
+    Expression,
 };
-use semver::Error;
 
 build_visitor!(
     BTreeMap::from([
@@ -54,7 +49,6 @@ build_visitor!(
         pragma_directive.visit(self)
     },
     fn visit_assignment(&mut self, assignment: &mut Assignment) {
-        // println!("{:#?}", assignment);
         // match assignment.operator {
         //     // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
         //     AddAssign | MulAssign => self.findings.push(Finding {
@@ -77,105 +71,55 @@ build_visitor!(
         assignment.visit(self)
     },
     fn visit_unchecked_block(&mut self, unchecked_block: &mut UncheckedBlock) {
-        // We know for sure that the version is > 0.8.0
+        self.inside.unchecked = true;
         self.push_finding(Some(unchecked_block.src.clone()), 3);
+        unchecked_block.visit(self)?;
+        self.inside.unchecked = false;
 
-        unchecked_block.statements.iter().for_each(|s| {
-            self.push_findings(check_overflow_stat(s));
-        });
+        Ok(())
+    },
+    fn visit_expression_statement(&mut self, expression_statement: &mut ExpressionStatement) {
+        if self.inside.unchecked || matches!(&self.version, Some(version) if version.minor < 8) {
+            if let Expression::Assignment(ass) = &expression_statement.expression {
+                /*let lhs = &ass.lhs;
+                let rhs = &ass.rhs;
 
-        unchecked_block.visit(self)
+                if let Expression::IndexAccess(idx) = lhs {
+                    if let Some(typ) = &idx.type_descriptions.type_string {
+                        if let Some(bytes) = int_as_bytes(typ) {
+                            if bytes <= 64 {}
+                        }
+                    }
+                }
+
+                if let Expression::IndexAccess(idx) = rhs {
+                    if let Some(typ) = &idx.type_descriptions.type_string {
+                        if let Some(bytes) = int_as_bytes(typ) {
+                            if bytes <= 64 {}
+                        }
+                    }
+                }*/
+
+                match &ass.operator {
+                    // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
+                    AddAssign | MulAssign => self.push_finding(Some(ass.src.clone()), 1),
+                    SubAssign => self.push_finding(Some(ass.src.clone()), 2),
+                    _ => (),
+                }
+            } else {
+                // unimplemented!("Overflow module: Expression TBD");
+            }
+        }
+        Ok(())
     },
     fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
-        if let Some(body) = &function_definition.body {
-            if let Some(version) = self.version.clone() {
-                if version.minor < 8 {
-                    self.push_findings(parse_body(body));
-                }
-            }
-        }
+        self.inside.function = true;
+        function_definition.visit(self)?;
+        self.inside.function = false;
 
-        function_definition.visit(self)
-    },
-    fn visit_statement(&mut self, statement: &mut Statement) {
-        let findings = check_overflow_stat(statement);
-
-        self.push_findings(findings);
-
-        statement.visit(self)
+        Ok(())
     }
 );
-
-fn check_overflow_stat(stat: &Statement) -> Vec<PushedFinding> {
-    let mut findings = Vec::new();
-
-    if let Statement::ExpressionStatement(expr) = stat {
-        if let Expression::Assignment(ass) = &expr.expression {
-            /*let lhs = &ass.lhs;
-            let rhs = &ass.rhs;
-
-            if let Expression::IndexAccess(idx) = lhs {
-                if let Some(typ) = &idx.type_descriptions.type_string {
-                    if let Some(bytes) = int_as_bytes(typ) {
-                        if bytes <= 64 {}
-                    }
-                }
-            }
-
-            if let Expression::IndexAccess(idx) = rhs {
-                if let Some(typ) = &idx.type_descriptions.type_string {
-                    if let Some(bytes) = int_as_bytes(typ) {
-                        if bytes <= 64 {}
-                    }
-                }
-            }*/
-
-            match &ass.operator {
-                // TODO: if uses AddAssign and msg.value, it's probably fine, if > u64 (20 ETH doesn't hold in u64)
-                AddAssign | MulAssign => findings.push(PushedFinding {
-                    code: 1,
-                    src: Some(ass.src.clone()),
-                }),
-                SubAssign => findings.push(PushedFinding {
-                    code: 2,
-                    src: Some(ass.src.clone()),
-                }),
-                _ => (),
-            }
-        } else {
-            // unimplemented!("Overflow module: Expression TBD");
-        }
-    } else {
-        // unimplemented!("Overflow module: Statement TBD");
-    }
-
-    findings
-}
-
-fn parse_body(body: &Block) -> Vec<PushedFinding> {
-    let mut findings = Vec::new();
-
-    body.statements.iter().for_each(|stat| {
-        findings.append(&mut check_overflow_stat(stat));
-    });
-
-    findings
-}
-
-#[allow(unused)]
-fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
-    Version::parse(
-        literals
-            .iter()
-            .flat_map(|literal| {
-                literal
-                    .chars()
-                    .filter(|char| char.is_ascii_digit() || char.to_string() == ".")
-            })
-            .collect::<String>()
-            .as_str(),
-    )
-}
 
 #[cfg(test)]
 mod test {

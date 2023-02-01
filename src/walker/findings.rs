@@ -94,3 +94,11 @@ pub type AllFindings = HashMap<String, Findings>;
 //         })
 //     }
 // }
+
+#[derive(Debug, Default)]
+pub struct Inside {
+    pub function: bool,
+    pub unchecked: bool,
+    pub for_loop: bool,
+    pub while_loop: bool,
+}

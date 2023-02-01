@@ -1,5 +1,6 @@
 use ethers_solc::artifacts::ast::SourceLocation;
 use foundry_common::fs;
+use semver::{Error, Version};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -74,4 +75,19 @@ pub fn path_from_id(id: String) -> String {
         .unwrap_or_else(|| panic!("Malformed id `{}`", &id))
         .0
         .to_string()
+}
+
+#[allow(unused)]
+fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
+    Version::parse(
+        literals
+            .iter()
+            .flat_map(|literal| {
+                literal
+                    .chars()
+                    .filter(|char| char.is_ascii_digit() || char.to_string() == ".")
+            })
+            .collect::<String>()
+            .as_str(),
+    )
 }

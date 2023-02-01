@@ -36,23 +36,25 @@ pub struct PushedFinding {
 // #[macro_export]
 // macro_rules! get_all_visitors {
 //     ($directory:expr) => {
-//         let mut visitors = Vec::new();
+//         // ($obj:ty, ($_foo:ident, $_bar:ident, $_baz:ident), $body:expr) => {
+//         fn get_all_visitors(
+//         ) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
+//             let mut visitors = Vec::new();
 
-//         for entry in fs::read_dir($directory).unwrap() {
-//             let entry = entry.unwrap();
-//             let path = entry.path();
-//             if path.is_file() {
-//                 let file_name = path.file_name().unwrap().to_str().unwrap();
-//                 if file_name.ends_with(".rs") && file_name != "mod.rs" {
-//                     let struct_name = &file_name[..file_name.len() - 3];
-//                     println!("importing struct {} from file {:?}", struct_name, file_name);
+//             for entry in fs::read_dir($directory).unwrap() {
+//                 let entry = entry.unwrap();
+//                 let path = entry.path();
+//                 if path.is_file() {
+//                     let file_name = path.file_name().unwrap().to_str().unwrap();
+//                     if file_name.ends_with(".rs") && file_name != "mod.rs" {
+//                         // let struct_name = &file_name[..file_name.len() - 3];
+//                         // println!("importing struct {} from file {:?}", struct_name, file_name);
 
-//                     visitors.push(Box::<$directory::DetectionModule>::default());
+//                         visitors.push(Box::<$directory::DetectionModule>::default());
+//                     }
 //                 }
 //             }
 //         }
-
-//         visitors
 //     };
 // }
 

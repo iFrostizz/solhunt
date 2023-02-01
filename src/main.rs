@@ -1,5 +1,6 @@
 use crate::{
     cmd::parse::parse,
+    // loader::get_all_visitors,
     solidity::{get_path_lines, Solidity},
     utils::formatter::format_findings,
     walker::Walker,
@@ -106,9 +107,10 @@ mod test {
 
         if compiled.has_compiler_errors() {
             compiled.output().errors.iter().for_each(|err| {
-                println!("{:#?}", err.message);
+                // TODO: write line and position with err.src
+                println!("{:#?} {:#?}", err.message, err.source_location);
             });
-            panic!("Fix compiler errors first");
+            panic!("Please fix compiler errors first");
         }
 
         // clone is dirty here

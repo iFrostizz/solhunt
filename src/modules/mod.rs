@@ -8,7 +8,6 @@ pub mod oz;
 pub mod style;
 pub mod uint256;
 
-// TODO: add the map in the macro arguments
 /// Build an implementation of a Visitor, without the boiler-plate
 #[macro_export]
 macro_rules! build_visitor {
@@ -17,16 +16,18 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity}, loader::PushedFinding};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding};
         use ethers_solc::artifacts::ast::SourceLocation;
         use semver::{Version};
-        use std::collections::BTreeMap;
+        use std::{collections::BTreeMap};
 
         #[allow(dead_code)]
         pub struct DetectionModule {
             version: Option<Version>,
             findings: Vec<Finding>,
-            findings_map: FindingMap
+            findings_map: FindingMap,
+            /// wether or not the visitor is inside a function
+            pub inside: Inside,
         }
 
         /// populate the f_map on startup in order to specify the finding codes only
@@ -35,7 +36,8 @@ macro_rules! build_visitor {
                 Self {
                     findings: Vec::new(),
                     findings_map: $map,
-                    version: None
+                    version: None,
+                    inside: Default::default()
                 }
             }
         }
@@ -52,7 +54,8 @@ macro_rules! build_visitor {
                 Self {
                     findings: Vec::new(),
                     findings_map,
-                    version: None
+                    version: None,
+                    inside: Default::default()
                 }
             }
 
