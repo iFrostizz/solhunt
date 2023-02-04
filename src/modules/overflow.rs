@@ -38,9 +38,9 @@ build_visitor!(
         )
     ]),
     fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
-        let sem_ver = version_from_string_literals(pragma_directive.literals.clone());
+        let sem_ver = version_from_string_literals(pragma_directive.literals.clone()).unwrap();
 
-        if sem_ver.minor < 8 {
+        if sem_ver.matches(&Version::new(0, 8, 0)) {
             self.push_finding(None, 0);
         } // else will need to check for "unchecked"
 
@@ -79,7 +79,9 @@ build_visitor!(
         Ok(())
     },
     fn visit_expression_statement(&mut self, expression_statement: &mut ExpressionStatement) {
-        if self.inside.unchecked || matches!(&self.version, Some(version) if version.minor < 8) {
+        if self.inside.unchecked
+            || matches!(&self.version, Some(version) if version.matches(&Version::new(0, 8, 0)))
+        {
             if let Expression::Assignment(ass) = &expression_statement.expression {
                 /*let lhs = &ass.lhs;
                 let rhs = &ass.rhs;

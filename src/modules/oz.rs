@@ -5,12 +5,12 @@ use crate::build_visitor;
 
 build_visitor! {
     BTreeMap::from([
-                   (0,
+       (0,
             FindingKey {
-                description: "usage of transfer for an ERC20 token, use safeTransfer instead"
-                    .to_string(),
+                description: "usage of transfer for an ERC20 token, use safeTransfer instead" .to_string(),
                 severity: Severity::Medium,
-            })
+            }
+        )
 
     ]),
 
@@ -25,10 +25,7 @@ build_visitor! {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        solidity::ProjectFile,
-        test::{compile_and_get_findings, lines_for_findings_with_code},
-    };
+    use super::*;
 
     #[test]
     fn usage_of_transfer() {

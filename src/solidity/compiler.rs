@@ -138,7 +138,7 @@ impl Solidity {
 
         let core_build_args = CoreBuildArgs {
             // TODO: remove force and use cached artifacts
-            force: true,
+            force: false,
             silent: false,
             project_paths: project_paths_args,
             compiler: compiler_args,

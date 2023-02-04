@@ -1,5 +1,7 @@
+pub mod address_zero;
 pub mod assembly;
 pub mod calls;
+pub mod centralization;
 pub mod chainlink;
 pub mod erc20;
 pub mod loader;
@@ -14,16 +16,17 @@ macro_rules! build_visitor {
     ($map:expr, $(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block),*) => {
         // compiler complains for Visitable, but is actually needed.
         #[allow(unused)]
-        use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *};
+        use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::*};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding, solidity::ProjectFile, test::{compile_and_get_findings, lines_for_findings_with_code}};
         use ethers_solc::artifacts::ast::SourceLocation;
-        use semver::{Version};
+        #[allow(unused)]
+        use semver::{Version, VersionReq};
         use std::{collections::BTreeMap};
 
         #[allow(dead_code)]
         pub struct DetectionModule {
-            version: Option<Version>,
+            version: Option<VersionReq>,
             findings: Vec<Finding>,
             findings_map: FindingMap,
             /// wether or not the visitor is inside a function

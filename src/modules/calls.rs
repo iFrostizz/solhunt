@@ -1,9 +1,9 @@
 // Module that finds for external and dangerous calls
 
 use crate::build_visitor;
-use ethers_solc::artifacts::{
-    Block, Expression, FunctionDefinition, ParameterList, Statement, TypeName,
-};
+// use ethers_solc::artifacts::{
+//     Block, Expression, FunctionDefinition, ParameterList, Statement, TypeName,
+// };
 use std::collections::HashMap;
 
 build_visitor! {
@@ -268,13 +268,13 @@ contract Arbitrary {
     // https://github.com/Picodes/4naly3er/blob/main/src/issues/H/delegateCallInLoop.ts
     // TODO: add payable function condition ? Security concecrn here is the msg.value
     #[test]
-    fn delegatecall_in_loop() {
+    fn delegatecall_in_for_loop() {
         let findings = compile_and_get_findings(vec![ProjectFile::Contract(
             String::from("DelegateCallLoop"),
             String::from(
                 r#"pragma solidity ^0.8.0;
 
-contract DelegateCallLoop {
+contract DelegateCallForLoop {
     function causeTrouble(address to) public {
         for (uint256 i; i < 10; i++) {
             to.delegatecall("");
@@ -285,5 +285,26 @@ contract DelegateCallLoop {
         )]);
 
         assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![6]);
+    }
+
+    #[test]
+    fn delegatecall_in_while_loop() {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("DelegateCallLoop"),
+            String::from(
+                r#"pragma solidity ^0.8.0;
+
+contract DelegateCallWhileLoop {
+    function causeTrouble(address to) public {
+        uint256 i = 0;
+        while (i < 10) {
+            to.delegatecall("");
+        }
+    }
+}"#,
+            ),
+        )]);
+
+        assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![7]);
     }
 }

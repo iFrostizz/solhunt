@@ -67,10 +67,12 @@ pub fn get_all_visitors(
         Box::<uint256::DetectionModule>::default(),
         Box::<assembly::DetectionModule>::default(),
         Box::<calls::DetectionModule>::default(),
-        // Box::<erc20::DetectionModule>::default(),
+        Box::<erc20::DetectionModule>::default(),
         Box::<overflow::DetectionModule>::default(),
         Box::<oz::DetectionModule>::default(),
         Box::<chainlink::DetectionModule>::default(),
-        // Box::<style::DetectionModule>::default(),
+        Box::<style::DetectionModule>::default(),
+        Box::<centralization::DetectionModule>::default(),
+        Box::<address_zero::DetectionModule>::default(),
     ]
 }

@@ -17,7 +17,9 @@ build_visitor!(
             }
         )
     ]),
+    // TODO: actually not visited by Visitor
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
+        dbg!(&member_access);
         if let Some(id) = &member_access.type_descriptions.type_identifier {
             if id.ends_with("returns$_t_int256_$") && member_access.member_name == "latestAnswer" {
                 self.push_finding(Some(member_access.src.clone()), 0)

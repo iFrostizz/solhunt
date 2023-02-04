@@ -78,7 +78,6 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
         .collect()
 }
 
-#[cfg(test)]
 mod test {
     use super::*;
     use crate::{

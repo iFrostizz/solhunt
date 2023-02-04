@@ -58,7 +58,7 @@ impl Walker {
                 ids.push(ast.id);
 
                 let abs_path = id.source.to_str().unwrap().to_string();
-                let lines_to_bytes = &source_map.get(&abs_path).unwrap()/*.unwrap_or(&Vec::new())*/;
+                let lines_to_bytes = source_map.get(&abs_path).unwrap_or(&Vec::new()).clone();
 
                 let path = PathBuf::from(&ast.absolute_path);
                 let name = path.file_name().unwrap();
@@ -75,7 +75,7 @@ impl Walker {
                     visit_source::<Vec<Finding>>(
                         &mut ast,
                         visitor,
-                        lines_to_bytes,
+                        &lines_to_bytes,
                         info.clone(),
                         &mut all_findings,
                     );
