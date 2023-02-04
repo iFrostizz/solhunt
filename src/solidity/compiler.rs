@@ -117,6 +117,7 @@ impl Solidity {
     //     }
     // }
 
+    // TODO: when foundry uses cache, it does not return the artifacts
     pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
         let compiler_args = CompilerArgs {
             // We absolutely require this to output the contracts as "text" from the compiler and generate source maps
@@ -124,24 +125,39 @@ impl Solidity {
                 ContractOutputSelection::Evm(EvmOutputSelection::ByteCode(
                     BytecodeOutputSelection::GeneratedSources,
                 )),
-                ContractOutputSelection::StorageLayout,
-                ContractOutputSelection::DevDoc,
-                ContractOutputSelection::UserDoc,
+                // ContractOutputSelection::StorageLayout,
+                // ContractOutputSelection::DevDoc,
+                // ContractOutputSelection::UserDoc,
             ],
             ..Default::default()
         };
 
+        // build from single file
+        let is_contract = self.root.ends_with(".sol");
+
         let project_paths_args = ProjectPathsArgs {
-            root: Some(PathBuf::from(&self.root)),
+            root: if is_contract {
+                None
+            } else {
+                Some(PathBuf::from(&self.root))
+            },
+            contracts: if is_contract {
+                Some(PathBuf::from(&self.root))
+            } else {
+                None
+            },
             ..Default::default()
         };
 
         let core_build_args = CoreBuildArgs {
             // TODO: remove force and use cached artifacts
-            force: false,
+            // If it uses cache, no ProjectCompileOutput will be returned
+            // so we may need to pull the artifacts
+            force: true,
             silent: false,
             project_paths: project_paths_args,
             compiler: compiler_args,
+            build_info: true,
             ..Default::default()
         };
 

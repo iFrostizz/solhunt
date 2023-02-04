@@ -27,6 +27,13 @@ pub fn get_line_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> usiz
     into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))))
 }
 
+/// Convert bytes source location to line & location for easier reference
+pub fn get_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> (usize, usize) {
+    let line = into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))));
+
+    (line, src.index.unwrap_or(0))
+}
+
 /// Returns the source map from an absolute file path
 pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
     // Maybe should pass the BufReader instead ?

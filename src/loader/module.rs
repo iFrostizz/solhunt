@@ -30,7 +30,7 @@ pub struct Information {
 #[derive(Debug)]
 pub struct PushedFinding {
     pub src: Option<SourceLocation>,
-    pub code: u32,
+    pub code: usize,
 }
 
 // #[macro_export]
@@ -64,7 +64,7 @@ pub fn get_all_visitors(
 ) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
     // Vec::new()
     vec![
-        Box::<uint256::DetectionModule>::default(),
+        // Box::<uint256::DetectionModule>::default(),
         Box::<assembly::DetectionModule>::default(),
         Box::<calls::DetectionModule>::default(),
         Box::<erc20::DetectionModule>::default(),

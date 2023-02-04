@@ -22,7 +22,7 @@ build_visitor! {
         function_definition.visit(self)
     },
     fn visit_modifier_invocation(&mut self, modifier_invocation: &mut ModifierInvocation) {
-        dbg!(&modifier_invocation);
+        // dbg!(&modifier_invocation);
         if let IdentifierOrIdentifierPath::IdentifierPath(modifier) = &modifier_invocation.modifier_name {
             let name = &modifier.name;
             // TODO: onlyRole

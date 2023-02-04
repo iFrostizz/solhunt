@@ -46,9 +46,9 @@ macro_rules! build_visitor {
 
         trait FindingsPusher {
             fn new(findings_map: FindingMap) -> Self;
-            fn push_finding(&mut self, src: Option<SourceLocation>, code: u32);
+            fn push_finding(&mut self, src: Option<SourceLocation>, code: usize);
             fn push_findings(&mut self, f: Vec<PushedFinding>);
-            fn p_finding(&mut self, src: Option<SourceLocation>, code: u32);
+            fn p_finding(&mut self, src: Option<SourceLocation>, code: usize);
         }
 
         impl FindingsPusher for DetectionModule {
@@ -61,7 +61,7 @@ macro_rules! build_visitor {
                 }
             }
 
-            fn push_finding(&mut self, src: Option<SourceLocation>, code: u32) {
+            fn push_finding(&mut self, src: Option<SourceLocation>, code: usize) {
                 self.p_finding(src, code);
             }
 
@@ -71,7 +71,7 @@ macro_rules! build_visitor {
                 });
             }
 
-            fn p_finding(&mut self, src: Option<SourceLocation>, code: u32) {
+            fn p_finding(&mut self, src: Option<SourceLocation>, code: usize) {
                 let name = module_path!();
                 let name = name.rsplit_once(":").expect("Should call from modules").1.to_string();
 

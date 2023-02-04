@@ -3,10 +3,13 @@ use ethers_solc::remappings::{RelativeRemapping, Remapping};
 
 use serde::Serialize;
 use std::{
+    collections::HashMap,
     env::current_dir,
     fs,
     path::{Path, PathBuf},
 };
+
+use crate::walker::Severity;
 
 #[derive(Parser, Debug, Serialize)]
 #[clap(author, version, about, long_about = None)]
@@ -19,6 +22,7 @@ pub struct Cmd {
     pub modules: Option<Vec<String>>,
     #[clap(short, long, help = "Exclude these modules")]
     pub except_modules: Option<Vec<String>>,
+    // TODO: use "hmgi" instead and let max verbosity by default
     // TODO: allow configuring of ignored directories through a .toml file
     // source, foundry: foundry/common/src/evm.rs
     /// Verbosity
@@ -31,9 +35,10 @@ pub struct Cmd {
     /// - 2: Also print Gas
     /// - 3: Also print informal / code style
     /// - 4: Print tracing logs
-    #[clap(long, short, parse(from_occurrences), verbatim_doc_comment)]
-    #[serde(skip)]
-    pub verbosity: u8, // TODO: use "hmgi" instead
+    // #[clap(long, short, parse(from_occurrences), verbatim_doc_comment)]
+    // #[serde(skip)]
+    // pub verbosity: u8,
+    pub verbosity: Option<String>,
 }
 
 pub fn get_working_path(add_path: String) -> PathBuf {
@@ -44,9 +49,10 @@ pub fn get_working_path(add_path: String) -> PathBuf {
     path.canonicalize().expect("Invalid path")
 }
 
-pub fn parse() -> (PathBuf, u8) {
+pub fn parse() -> (PathBuf, Vec<Severity>) {
     let args = Cmd::parse();
 
+    // TODO: filter based on rust module name
     // let all_modules = get_all_modules(); // get em' all before loading only those that we want
 
     // // Only those specified
@@ -68,9 +74,29 @@ pub fn parse() -> (PathBuf, u8) {
     //     None => modules,
     // };
 
-    // let loader = Loader::new(modules);
+    let verbosity = if let Some(args_verb) = args.verbosity {
+        let mut severities = HashMap::from([
+            ('h', Severity::High),
+            ('m', Severity::Medium),
+            ('l', Severity::Low),
+            ('g', Severity::Gas),
+            ('i', Severity::Informal),
+        ]);
 
-    (get_working_path(args.path), args.verbosity)
+        args_verb
+            .chars()
+            .filter_map(|c| severities.remove(&c))
+            .collect()
+    } else {
+        vec![
+            Severity::Informal,
+            Severity::Gas,
+            Severity::Medium,
+            Severity::High,
+        ]
+    };
+
+    (get_working_path(args.path), verbosity)
 }
 
 pub fn get_remappings(path: &Path) -> Vec<RelativeRemapping> {

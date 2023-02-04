@@ -31,7 +31,7 @@ pub struct Finding {
     pub description: String,
     pub severity: Severity,
     pub src: Option<SourceLocation>, // Option<SourceLocation>,
-    pub code: u32,                   // Identify finding type easily
+    pub code: usize,                 // Identify finding type easily
                                      // pub likelyhood: u8,              // 0-100% likelyhood to be correct
 }
 
@@ -41,7 +41,7 @@ pub struct FindingKey {
     pub severity: Severity,
 }
 
-pub type FindingMap = BTreeMap<u32, FindingKey>;
+pub type FindingMap = BTreeMap<usize, FindingKey>;
 
 impl Finding {
     pub fn format(&self) -> String {
@@ -56,7 +56,8 @@ impl Finding {
 #[derive(Debug, Clone)]
 pub struct Meta {
     pub file: String,
-    pub line: Option<u32>,
+    pub line: Option<usize>,
+    pub index: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -68,12 +69,13 @@ pub struct MetaFinding {
 impl MetaFinding {
     pub fn format(&self) -> String {
         self.finding.severity.format(format!(
-            "{} {} {}",
+            "{} {}:{} {}",
             self.meta.file.clone(),
             self.meta
                 .line
                 .map(|line| format!("l{line}"))
                 .unwrap_or_default(),
+            self.meta.index.map(|index| index).unwrap_or_default(),
             self.finding.format()
         ))
     }

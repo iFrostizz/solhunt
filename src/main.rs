@@ -8,7 +8,6 @@ use crate::{
 use cmd::parse::get_remappings;
 use ethers_solc::AggregatedCompilerOutput;
 use loader::get_all_visitors;
-
 use std::collections::BTreeMap;
 
 mod cmd;
@@ -59,7 +58,12 @@ fn main() {
 
     let mut walker = Walker::new(artifacts, source_map, visitors);
 
+    println!("Starting the analysis...");
+
     let all_findings = walker.traverse().expect("failed to traverse ast");
+    let num_findings = all_findings.len();
+    println!("Caught {num_findings} findings");
+
     format_findings(all_findings, verbosity);
 }
 
@@ -153,7 +157,7 @@ mod test {
     }
 
     #[allow(unused)]
-    pub fn has_with_code(all_findings: &AllFindings, name: &str, code: u32) -> bool {
+    pub fn has_with_code(all_findings: &AllFindings, name: &str, code: usize) -> bool {
         all_findings
             .get(name)
             .unwrap_or(&Vec::new())
@@ -165,8 +169,8 @@ mod test {
     pub fn has_with_code_at_line(
         all_findings: &AllFindings,
         name: &str,
-        code: u32,
-        line: u32,
+        code: usize,
+        line: usize,
     ) -> bool {
         all_findings
             .get(name)
@@ -184,7 +188,7 @@ mod test {
     /*pub fn get_findings_with_code_at_line(
         all_findings: &AllFindings,
         name: &str,
-        code: u32,
+        code: usize,
     ) -> Vec<MetaFinding> {
         all_findings
             .get(name)
@@ -195,20 +199,20 @@ mod test {
     }*/
 
     #[allow(dead_code)]
-    pub fn findings_with_code(all_findings: &AllFindings, name: &str, code: u32) -> u32 {
+    pub fn findings_with_code(all_findings: &AllFindings, name: &str, code: usize) -> usize {
         all_findings
             .get(name)
             .unwrap()
             .iter()
             .filter(|mf| mf.finding.code == code)
-            .count() as u32
+            .count()
     }
 
     pub fn lines_for_findings_with_code(
         all_findings: &AllFindings,
         name: &str,
-        code: u32,
-    ) -> Vec<u32> {
+        code: usize,
+    ) -> Vec<usize> {
         all_findings
             .get(name)
             .unwrap_or(&Vec::new())
