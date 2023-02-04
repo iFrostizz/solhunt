@@ -125,7 +125,10 @@ mod test {
             if debug == "true" || debug == "True" || debug == "TRUE" {
                 // println!("{:#?}", project.root);
                 artifacts.iter().for_each(|(_, art)| {
-                    println!("{:#?}", art.ast);
+                    // println!("{:#?}", art.ast);
+                    if let Some(ast) = &art.ast {
+                        println!("{:#?}", ast.clone().to_typed());
+                    }
                 });
             }
         };
@@ -141,6 +144,7 @@ mod test {
         walker.traverse().expect("failed to traverse ast")
     }
 
+    #[allow(unused)]
     pub fn has_with_module(all_findings: &AllFindings, name: &str) -> bool {
         match all_findings.get(name) {
             Some(val) => !val.is_empty(),
@@ -148,6 +152,7 @@ mod test {
         }
     }
 
+    #[allow(unused)]
     pub fn has_with_code(all_findings: &AllFindings, name: &str, code: u32) -> bool {
         all_findings
             .get(name)

@@ -40,8 +40,9 @@ build_visitor!(
     fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
         let sem_ver = version_from_string_literals(pragma_directive.literals.clone()).unwrap();
 
+        // TODO: won't work if >0.9.0;
         if sem_ver.matches(&Version::new(0, 8, 0)) {
-            self.push_finding(None, 0);
+            self.push_finding(Some(pragma_directive.src.clone()), 0);
         } // else will need to check for "unchecked"
 
         self.version = Some(sem_ver);
@@ -155,7 +156,11 @@ contract OldVerCheck {
             ),
         )]);
 
-        assert!(has_with_code(&findings, "overflow", 0)); // ver
+        // TODO: check if any version under 0.8.0 can be selected
+        assert_eq!(
+            lines_for_findings_with_code(&findings, "overflow", 0),
+            vec![0]
+        ); // ver
         assert_eq!(
             lines_for_findings_with_code(&findings, "overflow", 1),
             vec![6]

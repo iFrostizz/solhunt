@@ -13,14 +13,16 @@ build_visitor! {
              )
         ]
     ),
-    // fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
-    //     function_definition.modifiers.iter().for_each(|m| {
-    //     });
+    fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
+        // function_definition.modifiers.iter().for_each(|m| {
+        // });
 
-    //     function_definition.visit(self)
-    // },
+        // dbg!(&function_definition);
+
+        function_definition.visit(self)
+    },
     fn visit_modifier_invocation(&mut self, modifier_invocation: &mut ModifierInvocation) {
-        // dbg!(&modifier_invocation);
+        dbg!(&modifier_invocation);
         if let IdentifierOrIdentifierPath::IdentifierPath(modifier) = &modifier_invocation.modifier_name {
             let name = &modifier.name;
             // TODO: onlyRole
@@ -73,7 +75,7 @@ contract OnlyOwnerModifer is Ownable {
             ),
         )]);
 
-        // found at l.22 but is actually at 21.
+        // TODO: found at l.22 but is actually at 21.
         assert_eq!(
             lines_for_findings_with_code(&findings, "centralization", 0),
             vec![21]

@@ -17,9 +17,17 @@ build_visitor!(
             }
         )
     ]),
+    fn visit_source_unit(&mut self, source_unit: &mut SourceUnit) {
+        source_unit.visit(self)
+    },
+    fn visit_expression(&mut self, expression: &mut Expression) {
+        // TODO: if kind is functioncall ...
+        // dbg!(&expression);
+
+        expression.visit(self)
+    },
     // TODO: actually not visited by Visitor
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
-        dbg!(&member_access);
         if let Some(id) = &member_access.type_descriptions.type_identifier {
             if id.ends_with("returns$_t_int256_$") && member_access.member_name == "latestAnswer" {
                 self.push_finding(Some(member_access.src.clone()), 0)
@@ -37,10 +45,7 @@ build_visitor!(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        solidity::ProjectFile,
-        test::{compile_and_get_findings, lines_for_findings_with_code},
-    };
+    use super::*;
 
     #[test]
     fn deprecated_chainlink_feed() {
@@ -68,6 +73,7 @@ contract DeprecatedChainlink {
         );
     }
 
+    // does not extract the tuple timestamp
     // https://github.com/code-423n4/2022-04-jpegd-findings/issues/54
     // https://github.com/code-423n4/2021-12-yetifinance-findings/issues/91
     #[test]
@@ -83,7 +89,7 @@ interface AggregatorInterface {
 
 contract StalePrice {
     function getPrice(AggregatorInterface oracle) public view returns (int256) {
-        (,int256 price, , ,) = oracle.latestRoundData();
+       (,int256 price, , ,) = oracle.latestRoundData();
         return price;
     }
 }",
