@@ -20,14 +20,11 @@ macro_rules! into_ok_or_err {
 
 /// Convert bytes source location to line for easier reference
 pub fn get_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> usize {
-    let line = into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))));
-
-    line
+    into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))))
 }
 
 /// Returns the source map from an absolute file path
 pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
-    // Maybe should pass the BufReader instead ?
     let content = fs::read_to_string(path)?;
     Ok(get_string_lines(content))
 }
@@ -36,7 +33,7 @@ pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
 pub fn get_string_lines(content: String) -> Vec<usize> {
     // index => bytes_offset
     // always starts at 0 (content start)
-    let mut acc = vec![0];
+    let mut acc = vec![];
 
     let bytes = content.as_bytes();
 
@@ -93,9 +90,8 @@ fn correct_source_maps() {
 
     let source_map = get_string_lines(content);
 
-    assert_eq!(source_map.len(), 2);
-    assert_eq!(source_map[0], 0);
-    assert_eq!(source_map[1], 13);
+    assert_eq!(source_map.len(), 1);
+    assert_eq!(source_map[0], 13);
 
     // Solhunt is a\n
     // new static analyzer,\n
@@ -110,10 +106,9 @@ and it's fast!",
 
     let source_map = get_string_lines(content);
 
-    assert_eq!(source_map.len(), 5);
-    assert_eq!(source_map[0], 0);
-    assert_eq!(source_map[1], 13);
-    assert_eq!(source_map[2], 34);
-    assert_eq!(source_map[3], 52);
-    assert_eq!(source_map[4], 70);
+    assert_eq!(source_map.len(), 4);
+    assert_eq!(source_map[0], 13);
+    assert_eq!(source_map[1], 34);
+    assert_eq!(source_map[2], 52);
+    assert_eq!(source_map[3], 70);
 }

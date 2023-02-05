@@ -1,6 +1,6 @@
 // Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
-use crate::{build_visitor, walker::version_from_string_literals};
+use crate::{build_visitor, walker::smallest_version_from_literals};
 use ethers_solc::artifacts::ast::{
     AssignmentOperator::{AddAssign, MulAssign, SubAssign},
     Expression,
@@ -38,10 +38,9 @@ build_visitor!(
         )
     ]),
     fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
-        let sem_ver = version_from_string_literals(pragma_directive.literals.clone()).unwrap();
+        let sem_ver = smallest_version_from_literals(pragma_directive.literals.clone()).unwrap();
 
-        // TODO: won't work if >0.9.0;
-        if sem_ver.matches(&Version::new(0, 8, 0)) {
+        if sem_ver.minor < 8 {
             self.push_finding(Some(pragma_directive.src.clone()), 0);
         } // else will need to check for "unchecked"
 
@@ -80,9 +79,7 @@ build_visitor!(
         Ok(())
     },
     fn visit_expression_statement(&mut self, expression_statement: &mut ExpressionStatement) {
-        if self.inside.unchecked
-            || matches!(&self.version, Some(version) if version.matches(&Version::new(0, 8, 0)))
-        {
+        if self.inside.unchecked || matches!(&self.version, Some(version) if version.minor < 8) {
             if let Expression::Assignment(ass) = &expression_statement.expression {
                 /*let lhs = &ass.lhs;
                 let rhs = &ass.rhs;
@@ -159,7 +156,7 @@ contract OldVerCheck {
         // TODO: check if any version under 0.8.0 can be selected
         assert_eq!(
             lines_for_findings_with_code(&findings, "overflow", 0),
-            vec![0]
+            vec![1]
         ); // ver
         assert_eq!(
             lines_for_findings_with_code(&findings, "overflow", 1),

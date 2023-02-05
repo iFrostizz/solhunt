@@ -75,5 +75,6 @@ pub fn get_all_visitors(
         Box::<centralization::DetectionModule>::default(),
         Box::<address_zero::DetectionModule>::default(),
         Box::<encode_packed::DetectionModule>::default(),
+        Box::<misc::DetectionModule>::default(),
     ]
 }

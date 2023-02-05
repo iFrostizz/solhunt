@@ -1,7 +1,6 @@
 // A silly module that finds all uint256
 
 use crate::build_visitor;
-use ethers_solc::artifacts::VariableDeclaration;
 
 build_visitor!(
     BTreeMap::from([(
@@ -22,26 +21,30 @@ build_visitor!(
     }
 );
 
-#[cfg(test)]
-mod test {
-    // use crate::{
-    //     solidity::ProjectFile,
-    //     test::{compile_and_get_findings, has_with_code},
-    // };
+// #[cfg(test)]
+// mod test {
+//     use crate::{
+//         solidity::ProjectFile,
+//         test::{compile_and_get_findings, lines_for_findings_with_code},
+//     };
 
-    // #[test]
-    // fn can_find_dummy_uint256() {
-    //     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-    //         String::from("DummyUint256"),
-    //         String::from(
-    //             "pragma solidity 0.8.0;
-    //         contract DummyUint256 {
-    //             uint256 unint;
-    //         }
-    //         ",
-    //         ),
-    //     )]);
+//     #[test]
+//     fn can_find_dummy_uint256() {
+//         let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//             String::from("DummyUint256"),
+//             String::from(
+//                 "pragma solidity 0.8.0;
 
-    //     assert!(has_with_code(&findings, "uint256", 0));
-    // }
-}
+//             contract DummyUint256 {
+//                 uint256 unint;
+//             }
+//             ",
+//             ),
+//         )]);
+
+//         assert_eq!(
+//             lines_for_findings_with_code(&findings, "uint256", 0),
+//             vec![4]
+//         );
+//     }
+// }

@@ -6,6 +6,7 @@ pub mod centralization;
 pub mod chainlink;
 pub mod encode_packed;
 pub mod erc20;
+pub mod misc;
 pub mod overflow;
 pub mod oz;
 pub mod style;
@@ -27,7 +28,7 @@ macro_rules! build_visitor {
 
         #[allow(dead_code)]
         pub struct DetectionModule {
-            version: Option<VersionReq>,
+            version: Option<Version>,
             findings: Vec<Finding>,
             findings_map: FindingMap,
             /// wether or not the visitor is inside a function
