@@ -1,8 +1,10 @@
+// TODO: automate this!
 pub mod address_zero;
 pub mod assembly;
 pub mod calls;
 pub mod centralization;
 pub mod chainlink;
+pub mod encode_packed;
 pub mod erc20;
 pub mod overflow;
 pub mod oz;

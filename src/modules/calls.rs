@@ -1,10 +1,9 @@
 // Module that finds for external and dangerous calls
 
 use crate::build_visitor;
-// use ethers_solc::artifacts::{
-//     Block, Expression, FunctionDefinition, ParameterList, Statement, TypeName,
-// };
 use std::collections::HashMap;
+
+// TODO: make it more visitor-pattern idiomatic
 
 build_visitor! {
     BTreeMap::from([
