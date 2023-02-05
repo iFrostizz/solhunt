@@ -1,5 +1,33 @@
 use semver::{Version, VersionReq};
 
+// https://docs.soliditylang.org/en/v0.8.17/layout-of-source-files.html?#version-pragma
+pub fn smallest_version_from_literals(literals: Vec<String>) -> Result<Version, semver::Error> {
+    let mut pragma = literals;
+    assert_eq!(pragma.remove(0), "solidity");
+
+    let maybe_upper = pragma.remove(0);
+
+    let version_str = if maybe_upper == "^" || maybe_upper == ">=" {
+        // version is eq or more than ...
+        pragma[0].clone() + &pragma[1]
+    } else {
+        // fixed pragma
+        maybe_upper + &pragma[0]
+    };
+
+    Version::parse(&version_str)
+}
+
+pub fn is_unspecific_version(literals: Vec<String>) -> bool {
+    let mut pragma = literals;
+    assert_eq!(pragma.remove(0), "solidity");
+
+    let maybe_upper = pragma.remove(0);
+
+    maybe_upper == "^" || maybe_upper == ">="
+}
+
+#[allow(unused)]
 pub fn version_from_string_literals(literals: Vec<String>) -> Result<VersionReq, semver::Error> {
     let mut pragma = literals;
     assert_eq!(pragma.remove(0), "solidity");
@@ -19,7 +47,7 @@ pub fn version_from_string_literals(literals: Vec<String>) -> Result<VersionReq,
 }
 
 #[test]
-fn parses_version_from_literals_1() {
+fn parses_version_req_from_literals_1() {
     let ver = version_from_string_literals(vec![
         String::from("solidity"),
         String::from("^"),
@@ -33,7 +61,7 @@ fn parses_version_from_literals_1() {
 }
 
 #[test]
-fn parses_version_from_literals_2() {
+fn parses_version_req_from_literals_2() {
     let ver = version_from_string_literals(vec![
         String::from("solidity"),
         String::from(">="),
@@ -52,4 +80,36 @@ fn parses_version_from_literals_2() {
     assert!(ver.matches(&Version::new(0, 8, 18)));
     assert!(!ver.matches(&Version::new(0, 9, 0)));
     assert!(!ver.matches(&Version::new(0, 9, 1)));
+}
+
+#[test]
+fn finds_smallest_version() {
+    let ver = smallest_version_from_literals(vec![
+        String::from("solidity"),
+        String::from("^"),
+        String::from("0.8"),
+        String::from(".4"),
+    ])
+    .unwrap();
+
+    assert_eq!(ver, Version::new(0, 8, 4));
+    assert_eq!(ver.major, 0);
+    assert_eq!(ver.minor, 8);
+    assert_eq!(ver.patch, 4);
+
+    let ver = smallest_version_from_literals(vec![
+        String::from("solidity"),
+        String::from(">="),
+        String::from("0.4"),
+        String::from(".22"),
+        String::from("<"),
+        String::from("0.9"),
+        String::from(".0"),
+    ])
+    .unwrap();
+
+    assert_eq!(ver, Version::new(0, 4, 22));
+    assert_eq!(ver.major, 0);
+    assert_eq!(ver.minor, 4);
+    assert_eq!(ver.patch, 22);
 }
