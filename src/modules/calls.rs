@@ -242,7 +242,7 @@ contract CallContract {
 
         assert_eq!(
             lines_for_findings_with_code(&findings, "calls", 0),
-            vec![19]
+            vec![18]
         );
     }
 

@@ -71,7 +71,7 @@ mod tests {
 
         assert_eq!(
             lines_for_findings_with_code(&findings, "address_zero", 0),
-            vec![8]
+            vec![7]
         );
     }
 }

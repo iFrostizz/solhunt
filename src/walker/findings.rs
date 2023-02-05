@@ -57,7 +57,7 @@ impl Finding {
 pub struct Meta {
     pub file: String,
     pub line: Option<usize>,
-    pub index: Option<usize>,
+    pub position: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +75,7 @@ impl MetaFinding {
                 .line
                 .map(|line| format!("l{line}"))
                 .unwrap_or_default(),
-            self.meta.index.map(|index| index).unwrap_or_default(),
+            self.meta.position.unwrap_or_default(),
             self.finding.format()
         ))
     }

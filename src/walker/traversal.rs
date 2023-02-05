@@ -1,11 +1,7 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
 use super::{Finding, Meta, MetaFinding};
-use crate::{
-    loader::Information,
-    solidity::{get_line_position, get_position},
-    walker::AllFindings,
-};
+use crate::{loader::Information, solidity::get_position, walker::AllFindings};
 use ethers_solc::{
     artifacts::{
         ast::{lowfidelity::Ast, SourceLocation, SourceUnit},
@@ -108,20 +104,22 @@ pub fn visit_source<D>(
     let data = visitor.shared_data();
 
     data.iter().for_each(|finding| {
-        let loc = get_position(
-            finding.src.as_ref().unwrap_or(&SourceLocation {
-                start: Some(0),
-                length: Some(0),
-                index: Some(0),
-            }),
-            lines_to_bytes,
-        );
+        let src = finding.src.as_ref().unwrap_or(&SourceLocation {
+            start: Some(0),
+            length: Some(0),
+            index: Some(0),
+        });
+
+        let line = get_position(src, lines_to_bytes);
+
+        let position = src.start.map(|start| lines_to_bytes[line] - start);
+
         let meta_finding = MetaFinding {
             finding: finding.clone(),
             meta: Meta {
                 file: file.clone(),
-                line: Some(loc.0),
-                index: Some(loc.1),
+                line: Some(line),
+                position,
             },
         };
         std::collections::hash_map::Entry::or_insert(

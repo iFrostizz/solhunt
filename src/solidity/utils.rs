@@ -1,10 +1,6 @@
 use ethers_solc::artifacts::ast::SourceLocation;
 use foundry_common::fs;
 use semver::{Error, Version};
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
 
 #[allow(unused)]
 pub struct Position {
@@ -22,16 +18,11 @@ macro_rules! into_ok_or_err {
     };
 }
 
-/// Convert bytes source location to line & location for easier reference
-pub fn get_line_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> usize {
-    into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))))
-}
-
-/// Convert bytes source location to line & location for easier reference
-pub fn get_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> (usize, usize) {
+/// Convert bytes source location to line for easier reference
+pub fn get_position(src: &SourceLocation, lines_to_bytes: &[usize]) -> usize {
     let line = into_ok_or_err!(lines_to_bytes.binary_search(&(src.start.unwrap_or(0))));
 
-    (line, src.index.unwrap_or(0))
+    line
 }
 
 /// Returns the source map from an absolute file path
@@ -41,36 +32,30 @@ pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
     Ok(get_string_lines(content))
 }
 
-/// Scan the file to get the bytes position of each line start
-#[allow(unused)]
-pub fn get_file_lines(mut file: BufReader<File>) -> Result<Vec<usize>, std::io::Error> {
-    let mut acc = vec![];
-    let mut buf = String::new();
-    let mut pos: usize = 0;
-
-    loop {
-        match file.read_line(&mut buf)? {
-            0 => break,
-            n => {
-                acc.push(pos);
-                pos += n;
-            }
-        }
-        buf.clear();
-    }
-
-    Ok(acc)
-}
-
 /// Build source map from the string content of a file by scanning for char return
 pub fn get_string_lines(content: String) -> Vec<usize> {
-    let mut acc = vec![];
-    let mut pos: usize = 0;
+    // index => bytes_offset
+    // always starts at 0 (content start)
+    let mut acc = vec![0];
 
-    content.lines().for_each(|l| {
-        acc.push(pos);
-        pos += l.len();
-    });
+    let bytes = content.as_bytes();
+
+    for (i, b) in bytes.iter().enumerate() {
+        if b == &b'\n' {
+            // LF (\n)
+            acc.push(i + 1);
+        } else if b == &b'\r' {
+            if let Some(next_b) = bytes.get(i + 1) {
+                if next_b == &b'\r' {
+                    // CRLF (\r\n)
+                    acc.push(i + 1);
+
+                    // also skip this char
+                    continue;
+                }
+            }
+        }
+    }
 
     acc
 }
@@ -97,4 +82,38 @@ fn parse_literals(literals: Vec<String>) -> Result<Version, Error> {
             .collect::<String>()
             .as_str(),
     )
+}
+
+#[test]
+fn correct_source_maps() {
+    let content = String::from(
+        "Hello, world
+    Goodbye, world",
+    );
+
+    let source_map = get_string_lines(content);
+
+    assert_eq!(source_map.len(), 2);
+    assert_eq!(source_map[0], 0);
+    assert_eq!(source_map[1], 13);
+
+    // Solhunt is a\n
+    // new static analyzer,\n
+    // ...
+    let content = String::from(
+        "Solhunt is a
+new static analyzer,
+it lets you write
+detection modules
+and it's fast!",
+    );
+
+    let source_map = get_string_lines(content);
+
+    assert_eq!(source_map.len(), 5);
+    assert_eq!(source_map[0], 0);
+    assert_eq!(source_map[1], 13);
+    assert_eq!(source_map[2], 34);
+    assert_eq!(source_map[3], 52);
+    assert_eq!(source_map[4], 70);
 }
