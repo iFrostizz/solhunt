@@ -13,7 +13,7 @@ build_visitor! {
         ),
         (1,
             FindingKey {
-                description: "Unsafe ERC20 operation(s), use `safeTransfer` instead" .to_string(),
+                description: "Unsafe ERC20 operation(s), use `safeIncreaseAllowance` instead" .to_string(),
                 severity: Severity::Low,
             }
         ),
@@ -26,10 +26,13 @@ build_visitor! {
     ]),
 
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
+        dbg!(&member_access);
         let unsafe_ops = vec!["transfer".to_owned(), "transferFrom".to_owned(), "approve".to_owned()];
         let mem_name = &member_access.member_name;
         if (unsafe_ops).contains(mem_name) {
             self.push_finding(Some(member_access.src.clone()), 0)
+        } else if mem_name == "safeApprove" {
+            self.push_finding(Some(member_access.src.clone()), 1)
         }
 
         member_access.visit(self)
@@ -65,5 +68,28 @@ contract SafeTransfer {
             lines_for_findings_with_code(&findings, "erc20", 0),
             vec![11]
         );
+    }
+
+    // https://github.com/Picodes/4naly3er/blob/main/src/issues/L/deprecatedFunctions.ts
+    #[test]
+    fn deprecated_safe_approve() {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("SafeApprove"),
+            String::from(
+                "pragma solidity ^0.8.0;
+
+interface IERC20 {
+    function safeApprove(address, uint256) external;
+}
+
+contract SafeApprove {
+    function approve(IERC20 token) public {
+        token.safeApprove(address(0), 123456); 
+    }
+}",
+            ),
+        )]);
+
+        assert_eq!(lines_for_findings_with_code(&findings, "erc20", 1), vec![9]);
     }
 }

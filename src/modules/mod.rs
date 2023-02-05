@@ -9,6 +9,7 @@ pub mod erc20;
 pub mod misc;
 pub mod overflow;
 pub mod oz;
+pub mod proxy;
 pub mod style;
 pub mod uint256;
 
