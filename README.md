@@ -1,8 +1,8 @@
-# Solhunt
+<img src="./images/solhunt.png" alt="Solhunt" align="right" width="120" height="120" />
 
-<img src="./images/solhunt.png" alt="*your weapon of choice*" width="100" height="100" style="float: right;"/>
+## Solhunt
 
-This tool is a static analyzer currently shaped for Solidity. It aims to be a tool to find the most common vulnerabilities before starting a manual audit.
+Solhunt is currently a Solidity static analyzer. It aims to be a tool used to find the most common vulnerabilities before starting a manual audit.
 
 It has been built with modularity in mind. You can build new detection modules and build the binary again. Also, please open a PR with your custom detection modules !
 
