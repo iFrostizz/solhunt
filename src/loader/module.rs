@@ -65,17 +65,17 @@ pub fn get_all_visitors(
     // Vec::new()
     vec![
         // Box::<uint256::DetectionModule>::default(),
-        Box::<assembly::DetectionModule>::default(),
-        Box::<calls::DetectionModule>::default(),
-        Box::<erc20::DetectionModule>::default(),
-        Box::<overflow::DetectionModule>::default(),
+        Box::<medium::assembly::DetectionModule>::default(),
+        Box::<high::calls::DetectionModule>::default(),
+        Box::<low::erc20::DetectionModule>::default(),
+        Box::<medium::overflow::DetectionModule>::default(),
         Box::<oz::DetectionModule>::default(),
-        Box::<chainlink::DetectionModule>::default(),
-        Box::<style::DetectionModule>::default(),
-        Box::<centralization::DetectionModule>::default(),
-        Box::<address_zero::DetectionModule>::default(),
-        Box::<encode_packed::DetectionModule>::default(),
-        Box::<misc::DetectionModule>::default(),
-        Box::<proxy::DetectionModule>::default(),
+        Box::<medium::chainlink::DetectionModule>::default(),
+        Box::<info::style::DetectionModule>::default(),
+        Box::<medium::centralization::DetectionModule>::default(),
+        Box::<gas::address_zero::DetectionModule>::default(),
+        Box::<medium::encode_packed::DetectionModule>::default(),
+        Box::<low::misc::DetectionModule>::default(),
+        Box::<medium::proxy::DetectionModule>::default(),
     ]
 }

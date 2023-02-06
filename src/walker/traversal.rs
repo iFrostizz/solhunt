@@ -110,16 +110,15 @@ pub fn visit_source<D>(
             index: Some(0),
         });
 
-        let line_index = get_position(src, lines_to_bytes);
-
-        let position = src.start.map(|start| lines_to_bytes[line_index] - start);
+        let start = src.start.unwrap_or(0);
+        let position = get_position(start, lines_to_bytes);
 
         let meta_finding = MetaFinding {
             finding: finding.clone(),
             meta: Meta {
                 file: file.clone(),
-                line: Some(line_index + 1),
-                position,
+                line: Some(position.0),
+                position: Some(position.1),
             },
         };
         std::collections::hash_map::Entry::or_insert(

@@ -26,7 +26,6 @@ build_visitor! {
     ]),
 
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
-        dbg!(&member_access);
         let unsafe_ops = vec!["transfer".to_owned(), "transferFrom".to_owned(), "approve".to_owned()];
         let mem_name = &member_access.member_name;
         if (unsafe_ops).contains(mem_name) {

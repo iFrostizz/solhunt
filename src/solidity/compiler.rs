@@ -33,7 +33,6 @@ pub struct AllFindingsAndSourceMap {
     pub source_map: Vec<usize>,
 }
 
-#[allow(unused)]
 pub enum ProjectFile {
     Contract(String, String),
     Library(String, String),
