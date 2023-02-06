@@ -4,8 +4,6 @@ use revm::{
     EVM,
 };
 
-use crate::test::compile_single_contract;
-
 pub struct GasComparer {
     contracts: (String, String),
     from: B160,
@@ -15,6 +13,7 @@ pub struct GasComparer {
 }
 
 impl GasComparer {
+    #[cfg(test)]
     pub fn new(
         contract_from: String,
         contract_to: String,
@@ -22,7 +21,7 @@ impl GasComparer {
         data: Bytes,
         value: U256,
     ) -> Self {
-        let mut cache_db = InMemoryDB::default();
+        let cache_db = InMemoryDB::default();
         let mut evm = EVM::new();
         evm.database(cache_db);
 
@@ -37,6 +36,7 @@ impl GasComparer {
 
     /// Run the gas metering on the "from" and the "to" contract
     /// Returns (from, to) gas usage
+    #[cfg(test)]
     pub fn run(&mut self) -> (u64, u64) {
         let gas_from = self.gas_meter(self.contracts.0.clone());
         let gas_to = self.gas_meter(self.contracts.1.clone());
@@ -45,17 +45,19 @@ impl GasComparer {
     }
 
     /// Deploys a contract and runs a call to it, return the used gas
+    #[cfg(test)]
     pub fn gas_meter(&mut self, contract: String) -> u64 {
         let addr = self.deploy(contract);
 
         self.evm.env.tx.caller = self.from;
         self.evm.env.tx.transact_to = TransactTo::Call(addr);
         self.evm.env.tx.data = self.data.clone();
+        self.evm.env.tx.value = self.value;
 
         let exec = self.evm.transact_commit().unwrap();
 
         if let ExecutionResult::Success { gas_used, .. } = exec {
-            return gas_used;
+            gas_used - 21000
         } else {
             panic!("gas metering failed!");
         }
@@ -63,7 +65,10 @@ impl GasComparer {
 
     // TODO: better error handling
     /// Compiles and deploys a contract from source and return the address
+    #[cfg(test)]
     pub fn deploy(&mut self, contract: String) -> B160 {
+        use crate::test::compile_single_contract;
+
         let bytecode = compile_single_contract(contract);
 
         self.evm.env.tx.caller = self.from;
@@ -72,10 +77,12 @@ impl GasComparer {
 
         let exec = self.evm.transact_commit().unwrap();
 
-        if let ExecutionResult::Success { output, .. } = exec {
-            if let Output::Create(_, create) = output {
-                return create.unwrap();
-            }
+        if let ExecutionResult::Success {
+            output: Output::Create(_, create),
+            ..
+        } = exec
+        {
+            return create.unwrap();
         }
 
         panic!("Contract not deployed");

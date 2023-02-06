@@ -77,12 +77,13 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
             (
                 abs_path.clone(),
                 get_path_lines(abs_path.clone())
-                    .unwrap_or_else(|_| panic!("Source map failed for {}", &abs_path)),
+                    .unwrap_or_else(|e| panic!("Source map failed for {}. {}", &abs_path, e)),
             )
         })
         .collect()
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
     use crate::{
@@ -91,15 +92,14 @@ mod test {
     };
     use ethers_core::abi::ethabi::Bytes;
     use ethers_solc::{
-        artifacts::{Bytecode, BytecodeObject},
-        project_util::TempProject,
-        ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact, ProjectCompileOutput,
+        artifacts::BytecodeObject, project_util::TempProject, ArtifactId, ConfigurableArtifacts,
+        ConfigurableContractArtifact, ProjectCompileOutput,
     };
     use std::{self, collections::BTreeMap, env};
 
     /// Tests utils to compile a temp project similar to reality
     pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
-        let compiled = compile_to_output(files);
+        let (_project, compiled) = make_temp_project(files);
         let output = compiled.clone().output();
 
         let source_map = build_source_maps(output);
@@ -136,8 +136,8 @@ mod test {
             String::from("SingleContract"),
             contract,
         )];
-        let compiled = compile_to_output(files);
-        let output = compiled.clone().output();
+        let (_project, compiled) = make_temp_project(files);
+        let output = compiled.output();
         let ver_contracts = output.contracts;
 
         assert_eq!(ver_contracts.len(), 1);
@@ -156,7 +156,11 @@ mod test {
         }
     }
 
-    fn compile_to_output(files: Vec<ProjectFile>) -> ProjectCompileOutput {
+    /// Creates a temp project and compiles the files in it
+    /// Note: returns the ownership of Project not to be dropped and deleted
+    fn make_temp_project(
+        files: Vec<ProjectFile>,
+    ) -> (TempProject<ConfigurableArtifacts>, ProjectCompileOutput) {
         let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
         files.iter().for_each(|f| match f {
@@ -177,8 +181,7 @@ mod test {
             panic!("Please fix compiler errors first");
         }
 
-        // clone is dirty here
-        compiled
+        (project, compiled)
     }
 
     #[allow(unused)]
