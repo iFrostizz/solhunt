@@ -4,8 +4,7 @@ use crate::{
     modules::*,
     walker::{AllFindings, Finding},
 };
-
-use ethers_solc::artifacts::ast::SourceLocation;
+use ethers_solc::artifacts::{ast::SourceLocation, visitor::Visitor};
 use semver::Version;
 
 #[derive(Debug, Default, Clone)]
@@ -64,18 +63,35 @@ pub fn get_all_visitors(
 ) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
     // Vec::new()
     vec![
-        // Box::<uint256::DetectionModule>::default(),
-        Box::<medium::assembly::DetectionModule>::default(),
         Box::<high::calls::DetectionModule>::default(),
-        Box::<low::erc20::DetectionModule>::default(),
+        Box::<medium::assembly::DetectionModule>::default(),
         Box::<medium::overflow::DetectionModule>::default(),
-        Box::<oz::DetectionModule>::default(),
         Box::<medium::chainlink::DetectionModule>::default(),
-        Box::<info::style::DetectionModule>::default(),
         Box::<medium::centralization::DetectionModule>::default(),
-        Box::<gas::address_zero::DetectionModule>::default(),
         Box::<medium::encode_packed::DetectionModule>::default(),
-        Box::<low::misc::DetectionModule>::default(),
         Box::<medium::proxy::DetectionModule>::default(),
+        Box::<low::misc::DetectionModule>::default(),
+        Box::<low::erc20::DetectionModule>::default(),
+        Box::<info::style::DetectionModule>::default(),
+        Box::<gas::address_zero::DetectionModule>::default(),
+        Box::<oz::DetectionModule>::default(),
     ]
+}
+
+#[macro_export]
+macro_rules! get_visitors {
+    () => {
+        let visitors: Vec<Box<(dyn Visitor<Vec<Finding>> + 'static)>> = Vec::new();
+
+        for entry in fs::read_dir($crate::modules).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_file() {
+                let file_name = path.file_name().unwrap().to_str().unwrap();
+                if file_name.ends_with(".rs") && file_name != "mod.rs" {
+                    visitors.push($directory::DetectionModule::default());
+                }
+            }
+        }
+    };
 }

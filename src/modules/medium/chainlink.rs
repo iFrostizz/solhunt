@@ -6,6 +6,7 @@ build_visitor!(
             0,
             FindingKey {
                 description: "usage of deprecated chainlink oracle feed function".to_string(),
+                summary: "Deprecated chainlink function".to_string(),
                 severity: Severity::Medium,
             }
         ),
@@ -13,6 +14,7 @@ build_visitor!(
             1,
             FindingKey {
                 description: "stale price from chainlink oracle".to_string(),
+                summary: "Misusage of chainlink oracle".to_string(),
                 severity: Severity::Medium,
             }
         )
@@ -30,12 +32,12 @@ build_visitor!(
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
         if let Some(id) = &member_access.type_descriptions.type_identifier {
             if id.ends_with("returns$_t_int256_$") && member_access.member_name == "latestAnswer" {
-                self.push_finding(Some(member_access.src.clone()), 0)
+                self.push_finding(0, Some(member_access.src.clone()))
             } else if id
                 .ends_with("returns$_t_uint80_$_t_int256_$_t_uint256_$_t_uint256_$_t_uint80_$")
                 && member_access.member_name == "latestRoundData"
             {
-                self.push_finding(Some(member_access.src.clone()), 1)
+                self.push_finding(1, Some(member_access.src.clone()))
             }
         }
 

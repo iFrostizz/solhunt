@@ -9,8 +9,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::walker::Severity;
+use crate::{
+    formatter::{Report, ReportStyle},
+    walker::Severity,
+};
 
+// TODO: allow configuring of ignored directories through a .toml file
 #[derive(Parser, Debug, Serialize)]
 #[clap(author, version, about, long_about = None)]
 #[clap(name = "solhunt")]
@@ -22,23 +26,15 @@ pub struct Cmd {
     pub modules: Option<Vec<String>>,
     #[clap(short, long, help = "Exclude these modules")]
     pub except_modules: Option<Vec<String>>,
-    // TODO: use "hmgi" instead and let max verbosity by default
-    // TODO: allow configuring of ignored directories through a .toml file
-    // source, foundry: foundry/common/src/evm.rs
-    /// Verbosity
-    ///
-    /// Pass multiple times to increase the verbosity (e.g. -v, -vv, -vvv).
-    ///
-    /// Verbosity levels:
-    /// - 0: Print only High / Medium threats
-    /// - 1: Also print Low
-    /// - 2: Also print Gas
-    /// - 3: Also print informal / code style
-    /// - 4: Print tracing logs
-    // #[clap(long, short, parse(from_occurrences), verbatim_doc_comment)]
-    // #[serde(skip)]
-    // pub verbosity: u8,
+    // h: High
+    // m: Medium
+    // l: Low
+    // i: Informal
+    // g: Gas
+    #[clap(short, long, help = "Verbosity of the findings")]
     pub verbosity: Option<String>,
+    pub style: ReportStyle,
+    pub name: Option<String>,
 }
 
 pub fn get_working_path(add_path: String) -> PathBuf {
@@ -49,7 +45,7 @@ pub fn get_working_path(add_path: String) -> PathBuf {
     path.canonicalize().expect("Invalid path")
 }
 
-pub fn parse() -> (PathBuf, Vec<Severity>) {
+pub fn parse() -> (PathBuf, Vec<Severity>, ReportStyle) {
     let args = Cmd::parse();
 
     // TODO: filter based on rust module name
@@ -96,7 +92,7 @@ pub fn parse() -> (PathBuf, Vec<Severity>) {
         ]
     };
 
-    (get_working_path(args.path), verbosity)
+    (get_working_path(args.path), verbosity, args.style)
 }
 
 pub fn get_remappings(path: &Path) -> Vec<RelativeRemapping> {

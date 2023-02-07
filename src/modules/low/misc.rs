@@ -5,12 +5,14 @@ build_visitor! {
         (0,
             FindingKey {
                 description: "Unspecific compiler version pragma. Please lock the compiler version to avoid unexpected compilation results" .to_string(),
+                summary: "Unlocked compiler pragma".to_string(),
                 severity: Severity::Low,
             }
         ),
         (1,
             FindingKey {
                 description: "Do not use deprecated functions" .to_string(),
+                summary: "Deprecated functions".to_string(),
                 severity: Severity::Low,
             }
         )
@@ -18,7 +20,7 @@ build_visitor! {
 
     fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
         if is_unspecific_version(pragma_directive.literals.clone()) {
-            self.push_finding(Some(pragma_directive.src.clone()), 0);
+            self.push_finding(0, Some(pragma_directive.src.clone()));
         }
 
         pragma_directive.visit(self)
@@ -28,7 +30,7 @@ build_visitor! {
         if identifier.name == "_setupRole" &&
             identifier.type_descriptions.type_identifier ==
                 Some("t_function_internal_nonpayable$_t_bytes32_$_t_address_$returns$__$".to_string()) {
-            self.push_finding(Some(identifier.src.clone()), 1);
+            self.push_finding(1, Some(identifier.src.clone()));
         }
 
         identifier.visit(self)

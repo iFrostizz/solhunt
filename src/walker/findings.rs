@@ -1,10 +1,13 @@
 // Store findings and do whatever with them
 
 use ethers_solc::artifacts::ast::SourceLocation;
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+};
 use yansi::Paint;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Severity {
     Informal,
     Gas,
@@ -25,9 +28,22 @@ impl Severity {
     }
 }
 
+impl Display for Severity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Severity::High => write!(f, "high"),
+            Severity::Medium => write!(f, "medium"),
+            Severity::Low => write!(f, "low"),
+            Severity::Gas => write!(f, "gas"),
+            Severity::Informal => write!(f, "info"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Finding {
     pub name: String,
+    pub summary: String,
     pub description: String,
     pub severity: Severity,
     pub src: Option<SourceLocation>, // Option<SourceLocation>,
@@ -38,6 +54,7 @@ pub struct Finding {
 #[derive(Debug, Clone)]
 pub struct FindingKey {
     pub description: String,
+    pub summary: String,
     pub severity: Severity,
 }
 

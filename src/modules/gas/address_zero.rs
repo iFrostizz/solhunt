@@ -7,6 +7,7 @@ build_visitor! {
         (0,
             FindingKey {
                 description: "Use assembly to check for `address(0)`, *Saves 6 gas per instance*".to_string(),
+                summary: "address(0) check".to_string(),
                 severity: Severity::Gas,
             }
         )

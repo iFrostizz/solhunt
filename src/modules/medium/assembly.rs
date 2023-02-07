@@ -9,6 +9,7 @@ build_visitor!(
             0,
             FindingKey {
                 description: "usage of inline assembly, take extra care here".to_string(),
+                summary: "usage of inline assembly".to_string(),
                 severity: Severity::Informal
             }
         ),
@@ -17,18 +18,13 @@ build_visitor!(
             FindingKey {
                 description: "using extcodesize. Can be an issue if determining if EOA."
                     .to_string(),
+                summary: "extcodesize for EOA test".to_string(),
                 severity: Severity::Medium
             }
         )
     ]),
     fn visit_inline_assembly(&mut self, inline_assembly: &mut InlineAssembly) {
-        self.findings.push(Finding {
-            name: "assembly".to_string(),
-            description: "usage of inline assembly, take extra care here".to_string(),
-            severity: Severity::Informal,
-            src: Some(inline_assembly.src.clone()),
-            code: 0,
-        });
+        self.push_finding(0, Some(inline_assembly.src.clone()));
 
         // don't disrupt current ast traversal
         inline_assembly.visit(self)
@@ -37,14 +33,7 @@ build_visitor!(
         let func_name = &function_call.function_name;
 
         if func_name.name == "extcodesize" {
-            self.findings.push(Finding {
-                name: "assembly".to_string(),
-                description: "using extcodesize. Can be an issue if determining if EOA."
-                    .to_string(),
-                severity: Severity::Medium,
-                src: Some(func_name.src.clone()),
-                code: 1,
-            });
+            self.push_finding(1, Some(function_call.src.clone()))
         }
 
         function_call.visit(self)

@@ -8,18 +8,21 @@ build_visitor! {
        (0,
             FindingKey {
                 description: "Unsafe ERC20 operation(s), use `safeTransfer` instead" .to_string(),
+                summary: "Unsafe ERC20 operation".to_string(),
                 severity: Severity::Low,
             }
         ),
         (1,
             FindingKey {
                 description: "Unsafe ERC20 operation(s), use `safeIncreaseAllowance` instead" .to_string(),
+                summary: "Unsafe ERC20 operation".to_string(),
                 severity: Severity::Low,
             }
         ),
         (2,
             FindingKey {
                 description: "Unsafe ERC20 operation(s), use `safeTransfer` instead" .to_string(),
+                summary: "Unsafe ERC20 operation".to_string(),
                 severity: Severity::Low,
             }
         ),
@@ -29,9 +32,9 @@ build_visitor! {
         let unsafe_ops = vec!["transfer".to_owned(), "transferFrom".to_owned(), "approve".to_owned()];
         let mem_name = &member_access.member_name;
         if (unsafe_ops).contains(mem_name) {
-            self.push_finding(Some(member_access.src.clone()), 0)
+            self.push_finding(0, Some(member_access.src.clone()))
         } else if mem_name == "safeApprove" {
-            self.push_finding(Some(member_access.src.clone()), 1)
+            self.push_finding(1, Some(member_access.src.clone()))
         }
 
         member_access.visit(self)

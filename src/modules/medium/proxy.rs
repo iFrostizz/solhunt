@@ -6,6 +6,7 @@ build_visitor!(
             0,
             FindingKey {
                 description: "Initializers could be front-run, allowing an attacker to either set their own values, take ownership of the contract, and in the best case forcing a re-deployment".to_string(),
+                summary: "Front-run of initializers".to_string(),
                 severity: Severity::Low
             }
         ),
@@ -13,6 +14,7 @@ build_visitor!(
             1,
             FindingKey {
                 description: "Initialized function does not have an initializable modifier".to_string(),
+                summary: "Missing modifier".to_string(),
                 severity: Severity::Medium
             }
         ),
@@ -26,9 +28,9 @@ build_visitor!(
             });
 
             if has_initializer {
-                self.push_finding(Some(function_definition.src.clone()), 0);
+                self.push_finding(0, Some(function_definition.src.clone()));
             } else {
-                self.push_finding(Some(function_definition.src.clone()), 1);
+                self.push_finding(1, Some(function_definition.src.clone()));
             }
         }
 

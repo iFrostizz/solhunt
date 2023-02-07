@@ -1,8 +1,9 @@
 use crate::{
     cmd::parse::parse,
+    formatter::{Report, ReportStyle},
     // loader::get_all_visitors,
     solidity::{get_path_lines, Solidity},
-    utils::formatter::format_findings,
+    utils::{filter_findings, formatter::format_findings},
     walker::Walker,
 };
 use cmd::parse::get_remappings;
@@ -11,6 +12,7 @@ use loader::get_all_visitors;
 use std::collections::BTreeMap;
 
 mod cmd;
+mod formatter;
 mod interpreter;
 mod loader;
 mod modules;
@@ -22,7 +24,7 @@ fn main() {
     // TODO: configurable with glob
     let included_folders: Vec<String> = vec![String::from("src")];
 
-    let (path, verbosity) = parse();
+    let (path, verbosity, report_style) = parse();
 
     let solidity = Solidity::default()
         .with_remappings(get_remappings(&path))
@@ -61,11 +63,15 @@ fn main() {
 
     println!("Starting the analysis...");
 
-    let all_findings = walker.traverse().expect("failed to traverse ast");
-    let num_findings = all_findings.len();
+    let findings = walker.traverse().expect("failed to traverse ast");
+    let num_findings = findings.len();
     println!("Caught {num_findings} findings");
 
-    format_findings(all_findings, verbosity);
+    // let findings = filter_findings(findings, &verbosity);
+    // format_findings(findings);
+
+    let report = Report::new(report_style, path, findings, verbosity);
+    report.format();
 }
 
 fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<usize>> {
@@ -83,7 +89,6 @@ fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<u
         .collect()
 }
 
-#[cfg(test)]
 mod test {
     use super::*;
     use crate::{

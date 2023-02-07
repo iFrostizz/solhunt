@@ -7,13 +7,14 @@ build_visitor!(
         0,
         FindingKey {
             description: "We just found a uint256 yay!".to_string(),
+            summary: "Dumb uint256".to_string(),
             severity: Severity::Informal
         }
     )]),
     fn visit_variable_declaration(&mut self, var: &mut VariableDeclaration) {
         if let Some(type_id) = &var.type_descriptions.type_identifier {
             if type_id == "t_uint256" {
-                self.push_finding(Some(var.src.clone()), 0);
+                self.push_finding(0, Some(var.src.clone()));
             }
         }
 

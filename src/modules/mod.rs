@@ -49,9 +49,9 @@ macro_rules! build_visitor {
 
         trait FindingsPusher {
             fn new(findings_map: FindingMap) -> Self;
-            fn push_finding(&mut self, src: Option<SourceLocation>, code: usize);
+            fn push_finding(&mut self, code: usize, src: Option<SourceLocation>);
             fn push_findings(&mut self, f: Vec<PushedFinding>);
-            fn p_finding(&mut self, src: Option<SourceLocation>, code: usize);
+            fn p_finding(&mut self, code: usize, src: Option<SourceLocation>);
         }
 
         impl FindingsPusher for DetectionModule {
@@ -64,17 +64,17 @@ macro_rules! build_visitor {
                 }
             }
 
-            fn push_finding(&mut self, src: Option<SourceLocation>, code: usize) {
-                self.p_finding(src, code);
+            fn push_finding(&mut self, code: usize, src: Option<SourceLocation>) {
+                self.p_finding(code, src);
             }
 
             fn push_findings(&mut self, findings: Vec<PushedFinding>) {
                 findings.iter().for_each(|f| {
-                    self.p_finding(f.src.clone(), f.code);
+                    self.p_finding(f.code, f.src.clone());
                 });
             }
 
-            fn p_finding(&mut self, src: Option<SourceLocation>, code: usize) {
+            fn p_finding(&mut self, code: usize, src: Option<SourceLocation>) {
                 let name = module_path!();
                 let name = name.rsplit_once(":").expect("Should call from modules").1.to_string();
 
@@ -83,6 +83,7 @@ macro_rules! build_visitor {
                 let finding = Finding {
                     name,
                     code,
+                    summary: f_key.summary.clone(),
                     severity: f_key.severity.clone(),
                     description: f_key.description.clone(),
                     src

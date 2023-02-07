@@ -8,6 +8,7 @@ build_visitor! {
            0,
            FindingKey {
                description: r#"`abi.encodePacked()` should not be used with dynamic types when passing the result to a hash function such as `keccak256()`. Use `abi.encode()` instead which will pad items to 32 bytes, which will [prevent hash collisions](https://docs.soliditylang.org/en/v0.8.13/abi-spec.html#non-standard-packed-mode) (e.g. `abi.encodePacked(0x123,0x456)` => `0x123456` => `abi.encodePacked(0x1,0x23456)`, but `abi.encode(0x123,0x456)` => `0x0...1230...456`). "Unless there is a compelling reason, `abi.encode` should be preferred". "#.to_string(),
+               summary: "Usage of abi.encodePacked() with dynamic types".to_string(),
                severity: Severity::Low
            }
        ),
@@ -15,6 +16,7 @@ build_visitor! {
            1,
            FindingKey {
                description: "As there is only one argument to `abi.encodePacked()` it can often be cast to `bytes()` or `bytes32()` [instead](https://ethereum.stackexchange.com/questions/30912/how-to-compare-strings-in-solidity#answer-82739).\n".to_string(),
+               summary: "One argument with abi.encodePacked()".to_string(),
                severity: Severity::Low
            }
        ),
@@ -22,6 +24,7 @@ build_visitor! {
            2,
            FindingKey {
                description: "As all arguments are strings and or bytes, `bytes.concat()` should be used instead".to_string(),
+               summary: "Only strings and bytes".to_string(),
                severity: Severity::Low
            }
        )
@@ -30,26 +33,26 @@ build_visitor! {
         if member_access.member_name == "encodePacked" {
             let expression = &member_access.expression;
             if let Expression::Identifier(identifier) = expression {
-            if identifier.name == "abi" {
-                let mut dynamic = 0;
-                member_access.argument_types.iter().for_each(|at| {
-                    if let Some(type_string) = &at.type_string {
-                        if type_string.starts_with("string") || type_string.starts_with("bytes") {
-                            dynamic += 1;
+                if identifier.name == "abi" {
+                    let mut dynamic = 0;
+                    member_access.argument_types.iter().for_each(|at| {
+                        if let Some(type_string) = &at.type_string {
+                            if type_string.starts_with("string") || type_string.starts_with("bytes") {
+                                dynamic += 1;
+                            }
                         }
+                    });
+
+                    self.push_finding(0, Some(member_access.src.clone()));
+
+                    if dynamic == 0 {
+                        // self.push_finding(Some(member_access.src.clone()), 0);
+                    } else if dynamic <= 1 {
+                        self.push_finding(1, Some(member_access.src.clone()));
+                    } else {
+                        self.push_finding(2, Some(member_access.src.clone()));
                     }
-                });
-
-                self.push_finding(Some(member_access.src.clone()), 0);
-
-                if dynamic == 0 {
-                    // self.push_finding(Some(member_access.src.clone()), 0);
-                } else if dynamic <= 1 {
-                    self.push_finding(Some(member_access.src.clone()), 1);
-                } else {
-                    self.push_finding(Some(member_access.src.clone()), 2);
                 }
-            }
             }
         }
 

@@ -8,6 +8,7 @@ build_visitor! {
            (0,
              FindingKey {
                  description: "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.".to_string(),
+                 summary: "Centralization of power".to_string(),
                  severity: Severity::Medium
              }
              )
@@ -27,7 +28,7 @@ build_visitor! {
             let name = &modifier.name;
             // TODO: onlyRole
             if name == "onlyOwner" {
-                self.push_finding(Some(modifier_invocation.src.clone()), 0);
+                self.push_finding(0, Some(modifier_invocation.src.clone()));
             }
         }
 

@@ -3,14 +3,13 @@
 use crate::build_visitor;
 use std::collections::HashMap;
 
-// TODO: make it more visitor-pattern idiomatic
-
 build_visitor! {
     BTreeMap::from([
        (
            0,
            FindingKey {
                description: "external call detected".to_string(),
+               summary: "external call".to_string(),
                severity: Severity::Informal
            }
        ),
@@ -18,6 +17,7 @@ build_visitor! {
            1,
            FindingKey {
                description: "external call with arbitrary address".to_string(),
+               summary: "external call with arbitrary address".to_string(),
                severity: Severity::Medium
            }
        ),
@@ -25,6 +25,7 @@ build_visitor! {
            2,
            FindingKey {
                description: "delegatecall in a loop".to_string(),
+               summary: "delegatecall in a loop".to_string(),
                severity: Severity::High
            }
        )
@@ -37,7 +38,6 @@ build_visitor! {
         let data = parse_params(&function_definition.parameters);
 
         if let Some(body) = &function_definition.body {
-            // TODO: move to visitors pattern
             self.push_findings(parse_body(body, &data));
         }
 
@@ -46,7 +46,7 @@ build_visitor! {
 
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
         if (self.inside.for_loop || self.inside.while_loop) && member_access.member_name == "delegatecall" {
-            self.push_finding(Some(member_access.src.clone()), 2);
+            self.push_finding(2, Some(member_access.src.clone()));
         }
 
         member_access.visit(self)

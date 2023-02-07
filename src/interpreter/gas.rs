@@ -1,6 +1,6 @@
 use revm::{
     db::{CacheDB, EmptyDB, InMemoryDB},
-    primitives::{Bytes, CreateScheme, ExecutionResult, Output, TransactTo, B160, U256},
+    primitives::{Bytes, TransactTo, B160, U256},
     EVM,
 };
 
@@ -47,6 +47,8 @@ impl GasComparer {
     /// Deploys a contract and runs a call to it, return the used gas
     #[cfg(test)]
     pub fn gas_meter(&mut self, contract: String) -> u64 {
+        use revm::primitives::ExecutionResult;
+
         let addr = self.deploy(contract);
 
         self.evm.env.tx.caller = self.from;
@@ -67,6 +69,8 @@ impl GasComparer {
     /// Compiles and deploys a contract from source and return the address
     #[cfg(test)]
     pub fn deploy(&mut self, contract: String) -> B160 {
+        use revm::primitives::{CreateScheme, ExecutionResult, Output};
+
         use crate::test::compile_single_contract;
 
         let bytecode = compile_single_contract(contract);
