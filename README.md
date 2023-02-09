@@ -2,7 +2,7 @@
 
 ## Solhunt
 
-Solhunt is currently a Solidity static analyzer. It aims to be a tool used to find the most common vulnerabilities before starting a manual audit.
+Solhunt is a Solidity static analyzer. It aims to be a tool used to find the most common vulnerabilities before starting a manual audit.
 
 It has been built with modularity in mind. You can build new detection modules and build the binary again. Also, please open a PR with your custom detection modules !
 

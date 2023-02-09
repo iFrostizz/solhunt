@@ -1,10 +1,11 @@
 use crate::walker::{AllFindings, Severity};
+use clap::{Parser, ValueEnum};
 use cli_table::{print_stdout, Cell, Style, Table};
 use revm::primitives::HashMap;
 use serde::Serialize;
 use std::{fmt::Debug, fs::File, io::Write, path::PathBuf, str::FromStr};
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Parser, ValueEnum)]
 pub enum ReportStyle {
     List,
     Cmd,
@@ -109,6 +110,7 @@ pub struct Instances {
     pub count: usize,
 }
 
+/// Write a markdown format of the findings
 fn format_to_md(
     findings: AllFindings,
     root: PathBuf,

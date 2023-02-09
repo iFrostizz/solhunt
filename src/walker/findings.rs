@@ -72,9 +72,14 @@ impl Finding {
 
 #[derive(Debug, Clone)]
 pub struct Meta {
+    /// Path of the file relative to the project path
     pub file: String,
+    /// Line number of the finding
     pub line: Option<usize>,
+    /// Horizontal position of the finding
     pub position: Option<usize>,
+    /// Content around the finding
+    pub content: String,
 }
 
 #[derive(Debug, Clone)]

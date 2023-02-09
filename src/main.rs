@@ -9,7 +9,9 @@ use crate::{
 use cmd::parse::get_remappings;
 use ethers_solc::AggregatedCompilerOutput;
 use loader::get_all_visitors;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fs};
+
+use self::solidity::get_string_lines;
 
 mod cmd;
 mod formatter;
@@ -67,23 +69,21 @@ fn main() {
     let num_findings = findings.len();
     println!("Caught {num_findings} findings");
 
-    // let findings = filter_findings(findings, &verbosity);
-    // format_findings(findings);
-
     let report = Report::new(report_style, path, findings, verbosity);
     report.format();
 }
 
-fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, Vec<usize>> {
+fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, (String, Vec<usize>)> {
     output
         .contracts
         .iter()
         .map(|(id, _)| {
             let abs_path = id.to_string();
+            let file_content = fs::read_to_string(abs_path.clone())
+                .unwrap_or_else(|e| panic!("Failed to open file {}. {}", abs_path, e));
             (
                 abs_path.clone(),
-                get_path_lines(abs_path.clone())
-                    .unwrap_or_else(|e| panic!("Source map failed for {}. {}", &abs_path, e)),
+                (file_content.clone(), get_string_lines(file_content)),
             )
         })
         .collect()

@@ -33,6 +33,7 @@ pub struct Cmd {
     // g: Gas
     #[clap(short, long, help = "Verbosity of the findings")]
     pub verbosity: Option<String>,
+    #[clap(short, long, help = "Style of the report", value_enum, default_value_t=ReportStyle::Cmd)]
     pub style: ReportStyle,
     pub name: Option<String>,
 }

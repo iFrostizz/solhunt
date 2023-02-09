@@ -1,7 +1,11 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
 use super::{Finding, Meta, MetaFinding};
-use crate::{loader::Information, solidity::get_position, walker::AllFindings};
+use crate::{
+    loader::Information,
+    solidity::{get_finding_content, get_position},
+    walker::AllFindings,
+};
 use ethers_solc::{
     artifacts::{
         ast::{lowfidelity::Ast, SourceLocation, SourceUnit},
@@ -9,19 +13,19 @@ use ethers_solc::{
     },
     ArtifactId, ConfigurableContractArtifact,
 };
-use std::collections::HashMap;
 use std::{collections::btree_map::BTreeMap, path::PathBuf};
+use std::{collections::HashMap, io::Lines};
 
 pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-    source_map: BTreeMap<String, Vec<usize>>,
+    source_map: BTreeMap<String, (String, Vec<usize>)>,
     visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
 }
 
 impl Walker {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-        source_map: BTreeMap<String, Vec<usize>>,
+        source_map: BTreeMap<String, (String, Vec<usize>)>,
         visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
     ) -> Self {
         Walker {
@@ -50,6 +54,8 @@ impl Walker {
                 .unwrap_or_else(|| panic!("no ast found for {unique_id}"))
                 .clone();
 
+            // println!("{:#?}", ast.absolute_path);
+
             let mut ast: SourceUnit = ast.to_typed();
 
             // dedup same sources
@@ -58,7 +64,14 @@ impl Walker {
                 ids.push(ast.id);
 
                 let abs_path = id.source.to_str().unwrap().to_string();
-                let lines_to_bytes = source_map.get(&abs_path).unwrap_or(&Vec::new()).clone();
+
+                let source_map_with_content = source_map
+                    .get(&abs_path)
+                    .unwrap_or(&(String::new(), Vec::new()))
+                    .clone();
+
+                let file_content = source_map_with_content.0;
+                let lines_to_bytes = source_map_with_content.1;
 
                 let path = PathBuf::from(&ast.absolute_path);
                 let name = path.file_name().unwrap();
@@ -78,6 +91,7 @@ impl Walker {
                         &lines_to_bytes,
                         info.clone(),
                         &mut all_findings,
+                        file_content.clone(),
                     );
                 });
             }
@@ -93,6 +107,7 @@ pub fn visit_source<D>(
     lines_to_bytes: &[usize],
     info: Information,
     findings: &mut AllFindings,
+    file_content: String,
 ) {
     source
         .clone()
@@ -112,6 +127,12 @@ pub fn visit_source<D>(
 
         let start = src.start.unwrap_or(0);
         let position = get_position(start, lines_to_bytes);
+        let content = get_finding_content(
+            file_content.clone(),
+            position.0,
+            src.length.unwrap_or(0),
+            lines_to_bytes,
+        );
 
         let meta_finding = MetaFinding {
             finding: finding.clone(),
@@ -119,8 +140,10 @@ pub fn visit_source<D>(
                 file: file.clone(),
                 line: Some(position.0),
                 position: Some(position.1),
+                content,
             },
         };
+
         std::collections::hash_map::Entry::or_insert(
             findings
                 .entry(finding.name.clone())
