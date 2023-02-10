@@ -120,14 +120,14 @@ impl Solidity {
     pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
         let compiler_args = CompilerArgs {
             // We absolutely require this to output the contracts as "text" from the compiler and generate source maps
-            extra_output: vec![
-                ContractOutputSelection::Evm(EvmOutputSelection::ByteCode(
-                    BytecodeOutputSelection::GeneratedSources,
-                )),
-                // ContractOutputSelection::StorageLayout,
-                // ContractOutputSelection::DevDoc,
-                // ContractOutputSelection::UserDoc,
-            ],
+            // extra_output: vec![
+            //     ContractOutputSelection::Evm(EvmOutputSelection::ByteCode(
+            //         BytecodeOutputSelection::GeneratedSources,
+            //     )),
+            //     ContractOutputSelection::StorageLayout,
+            //     ContractOutputSelection::DevDoc,
+            //     ContractOutputSelection::UserDoc,
+            // ],
             ..Default::default()
         };
 

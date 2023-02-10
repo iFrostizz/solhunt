@@ -78,12 +78,14 @@ fn format_to_cmd(findings: &AllFindings) -> std::result::Result<(), std::io::Err
 
     findings.iter().for_each(|(name, findings)| {
         findings.iter().for_each(|mf| {
+            let meta = &mf.meta;
+            let position = format!("{}:{}", meta.line.unwrap_or(0), meta.position.unwrap_or(0));
             tables.push(vec![
                 name.cell(),
                 mf.finding.severity.cell(),
                 mf.finding.summary.clone().cell(),
                 // mf.finding.src.cell(),
-                "0:0".cell(),
+                position.cell(),
             ]);
         })
     });

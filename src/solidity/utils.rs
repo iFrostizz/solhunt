@@ -82,8 +82,17 @@ pub fn get_finding_content_before(
 
 pub fn get_finding_content_middle(file_bytes: &[u8], start: usize, length: usize) -> String {
     let start_line_byte = get_last_start_index(file_bytes, start);
-    let i = offset_until_end(file_bytes, start_line_byte + length);
-    let content = file_bytes.get(start_line_byte..i).unwrap();
+
+    let max = if file_bytes.len() < start_line_byte + length {
+        // give the last available index
+        file_bytes.len()
+    } else {
+        offset_until_end(file_bytes, start_line_byte + length)
+    };
+
+    let content = file_bytes
+        .get(start_line_byte..max)
+        .unwrap_or_else(|| panic!("{:#?}", start_line_byte..max));
 
     String::from_utf8(content.to_vec()).unwrap()
 }
@@ -120,11 +129,11 @@ pub fn get_finding_content_after(
 }
 
 fn offset_until_end(file_bytes: &[u8], index: usize) -> usize {
-    // Start at +1 because index_before is the end of the last line
     let mut i = index;
 
     // Iterate until the next char return \n
     let mut last_byte = 0;
+    // Either returns because we found a \n or the end of the buffer
     while last_byte != b'\n' {
         if let Some(c) = file_bytes.get(i) {
             i += 1;
@@ -378,13 +387,22 @@ new static analyzer,\n"
         )
     );
 
-    let finding_content = get_finding_content(content, 35, 2, &lines_to_bytes);
+    let finding_content = get_finding_content(content.clone(), 35, 2, &lines_to_bytes);
     assert_eq!(
         finding_content,
         String::from(
             "new static analyzer,
 it lets you write
 detection modules\n"
+        )
+    );
+
+    let finding_content = get_finding_content(content, 71, 38, &lines_to_bytes);
+    assert_eq!(
+        finding_content,
+        String::from(
+            "detection modules
+and it's fast!"
         )
     );
 }

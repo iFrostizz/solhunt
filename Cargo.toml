@@ -20,5 +20,14 @@ foundry-cli = { git = "https://github.com/iFrostizz/foundry", branch = "franfran
 foundry-common = { git = "https://github.com/iFrostizz/foundry", branch = "franfran/fix-ast-coverage" }
 yansi = "0.5.1"
 revm = "3.0.0"
-serde_json = "1.0.92"
+# serde_json = "1.0.92"
 cli-table = "0.4.7"
+
+[patch."https://github.com/iFrostizz/ethers-rs.git"]
+ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }
+ethers-core = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-core" }
+ethers-contract = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-contract" }
+
+[patch."https://github.com/iFrostizz/foundry"]
+foundry-cli = { path = "/home/franfran/Projects/utils/foundry/cli" }
+foundry-common = { path = "/home/franfran/Projects/utils/foundry/common" }
