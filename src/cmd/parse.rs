@@ -1,25 +1,35 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use ethers_solc::remappings::{RelativeRemapping, Remapping};
 
+use crate::{formatter::ReportStyle, walker::Severity};
 use serde::Serialize;
 use std::{
-    collections::HashMap,
     env::current_dir,
     fs,
     path::{Path, PathBuf},
 };
 
-use crate::{
-    formatter::{Report, ReportStyle},
-    walker::Severity,
-};
+use super::{analyze::run_analysis, gas::run_gas_metering};
+
+#[clap(name = "solhunt")]
+#[clap(bin_name = "solhunt")]
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+pub struct Cmd {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+pub enum Commands {
+    Analyze(Analyze),
+    Gas(GasMetering),
+}
 
 // TODO: allow configuring of ignored directories through a .toml file
 #[derive(Parser, Debug, Serialize)]
-#[clap(author, version, about, long_about = None)]
-#[clap(name = "solhunt")]
-#[clap(bin_name = "solhunt")]
-pub struct Cmd {
+pub struct Analyze {
     #[clap(value_name = "PATH", default_value = ".")]
     pub path: String,
     #[clap(short, long, help = "Include only these modules")]
@@ -38,6 +48,9 @@ pub struct Cmd {
     pub name: Option<String>,
 }
 
+#[derive(Parser, Debug, Serialize)]
+pub struct GasMetering;
+
 pub fn get_working_path(add_path: String) -> PathBuf {
     let mut path = PathBuf::new();
     path.push(current_dir().expect("could not get current path"));
@@ -46,8 +59,8 @@ pub fn get_working_path(add_path: String) -> PathBuf {
     path.canonicalize().expect("Invalid path")
 }
 
-pub fn parse() -> (PathBuf, Vec<Severity>, ReportStyle) {
-    let args = Cmd::parse();
+pub fn parse() {
+    let cmd = Cmd::parse();
 
     // TODO: filter based on rust module name
     // let all_modules = get_all_modules(); // get em' all before loading only those that we want
@@ -71,29 +84,10 @@ pub fn parse() -> (PathBuf, Vec<Severity>, ReportStyle) {
     //     None => modules,
     // };
 
-    let verbosity = if let Some(args_verb) = args.verbosity {
-        let mut severities = HashMap::from([
-            ('h', Severity::High),
-            ('m', Severity::Medium),
-            ('l', Severity::Low),
-            ('g', Severity::Gas),
-            ('i', Severity::Informal),
-        ]);
-
-        args_verb
-            .chars()
-            .filter_map(|c| severities.remove(&c))
-            .collect()
-    } else {
-        vec![
-            Severity::Informal,
-            Severity::Gas,
-            Severity::Medium,
-            Severity::High,
-        ]
-    };
-
-    (get_working_path(args.path), verbosity, args.style)
+    match cmd.command {
+        Commands::Analyze(args) => run_analysis(args),
+        Commands::Gas(args) => run_gas_metering(args),
+    }
 }
 
 pub fn get_remappings(path: &Path) -> Vec<RelativeRemapping> {

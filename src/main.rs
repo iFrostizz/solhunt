@@ -1,17 +1,6 @@
-use crate::{
-    cmd::parse::parse,
-    formatter::{Report, ReportStyle},
-    // loader::get_all_visitors,
-    solidity::{get_path_lines, Solidity},
-    utils::{filter_findings, formatter::format_findings},
-    walker::Walker,
-};
-use cmd::parse::get_remappings;
-use ethers_solc::AggregatedCompilerOutput;
+use crate::cmd::parse::parse;
+use crate::solidity::build_source_maps;
 use loader::get_all_visitors;
-use std::{collections::BTreeMap, fs};
-
-use self::solidity::get_string_lines;
 
 mod cmd;
 mod formatter;
@@ -23,70 +12,7 @@ mod utils;
 mod walker;
 
 fn main() {
-    // TODO: configurable with glob
-    let included_folders: Vec<String> = vec![String::from("src")];
-
-    let (path, verbosity, report_style) = parse();
-
-    let solidity = Solidity::default()
-        .with_remappings(get_remappings(&path))
-        .with_path_root(path.clone());
-
-    let compiled = solidity.compile_with_foundry().expect("Compilation failed");
-    let output = compiled.clone().output();
-
-    let source_map = build_source_maps(output);
-
-    let artifacts = compiled
-        .into_artifacts()
-        .filter(|(id, _art)| {
-            let root_path = &path;
-            if root_path.is_dir() {
-                // only filter if not "file-only"
-                let abs_path = &id.source;
-                let other_path = abs_path
-                    .strip_prefix(root_path)
-                    .expect("Failed to strip root path");
-                let first_folder = other_path
-                    .iter()
-                    .next()
-                    .expect("Failed to get first folder");
-                // only take included folders
-                included_folders.contains(&first_folder.to_string_lossy().to_string())
-            } else {
-                false
-            }
-        })
-        .collect();
-
-    let visitors = get_all_visitors();
-
-    let mut walker = Walker::new(artifacts, source_map, visitors);
-
-    println!("Starting the analysis...");
-
-    let findings = walker.traverse().expect("failed to traverse ast");
-    let num_findings = findings.len();
-    println!("Caught {num_findings} findings");
-
-    let report = Report::new(report_style, path, findings, verbosity);
-    report.format();
-}
-
-fn build_source_maps(output: AggregatedCompilerOutput) -> BTreeMap<String, (String, Vec<usize>)> {
-    output
-        .contracts
-        .iter()
-        .map(|(id, _)| {
-            let abs_path = id.to_string();
-            let file_content = fs::read_to_string(abs_path.clone())
-                .unwrap_or_else(|e| panic!("Failed to open file {}. {}", abs_path, e));
-            (
-                abs_path.clone(),
-                (file_content.clone(), get_string_lines(file_content)),
-            )
-        })
-        .collect()
+    parse();
 }
 
 mod test {

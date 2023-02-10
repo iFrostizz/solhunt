@@ -13,6 +13,12 @@ pub enum ReportStyle {
     Html,
 }
 
+impl Default for ReportStyle {
+    fn default() -> Self {
+        Self::List
+    }
+}
+
 impl FromStr for ReportStyle {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {

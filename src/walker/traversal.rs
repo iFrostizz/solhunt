@@ -13,8 +13,8 @@ use ethers_solc::{
     },
     ArtifactId, ConfigurableContractArtifact,
 };
-use std::{collections::btree_map::BTreeMap, path::PathBuf};
-use std::{collections::HashMap, io::Lines};
+use std::collections::HashMap;
+use std::{collections::btree_map::BTreeMap, io::Lines, path::PathBuf};
 
 pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,

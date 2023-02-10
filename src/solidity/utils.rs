@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+
+use ethers_solc::AggregatedCompilerOutput;
 use foundry_common::fs;
 use semver::{Error, Version};
 
@@ -5,6 +8,24 @@ use semver::{Error, Version};
 pub struct Position {
     pub line: u32, // line num
                    // pub position: u32, // horizontal pos
+}
+
+pub fn build_source_maps(
+    output: AggregatedCompilerOutput,
+) -> BTreeMap<String, (String, Vec<usize>)> {
+    output
+        .contracts
+        .iter()
+        .map(|(id, _)| {
+            let abs_path = id.to_string();
+            let file_content = fs::read_to_string(abs_path.clone())
+                .unwrap_or_else(|e| panic!("Failed to open file {}. {}", abs_path, e));
+            (
+                abs_path.clone(),
+                (file_content.clone(), get_string_lines(file_content)),
+            )
+        })
+        .collect()
 }
 
 /// Unwrap binary_search output as no error has to be hanlded and we don't need precise index for value
