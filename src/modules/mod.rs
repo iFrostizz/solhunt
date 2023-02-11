@@ -1,4 +1,3 @@
-// TODO: automate this!
 pub mod gas;
 pub mod high;
 pub mod info;
@@ -31,6 +30,8 @@ macro_rules! build_visitor {
             version: Option<Version>,
             findings: Vec<Finding>,
             findings_map: FindingMap,
+            pub function_definitions: Vec<FunctionDefinition>,
+            pub function_calls: Vec<FunctionCall>,
             /// wether or not the visitor is inside a function
             pub inside: Inside,
         }
@@ -39,9 +40,11 @@ macro_rules! build_visitor {
         impl Default for DetectionModule {
             fn default() -> Self {
                 Self {
+                    version: None,
                     findings: Vec::new(),
                     findings_map: $map,
-                    version: None,
+                    function_definitions: Vec::new(),
+                    function_calls: Vec::new(),
                     inside: Default::default()
                 }
             }
@@ -57,10 +60,8 @@ macro_rules! build_visitor {
         impl FindingsPusher for DetectionModule {
             fn new(findings_map: FindingMap) -> Self {
                 Self {
-                    findings: Vec::new(),
                     findings_map,
-                    version: None,
-                    inside: Default::default()
+                    ..Default::default()
                 }
             }
 
@@ -74,6 +75,7 @@ macro_rules! build_visitor {
                 });
             }
 
+            // TODO: allow having the same module names across folders
             fn p_finding(&mut self, code: usize, src: Option<SourceLocation>) {
                 let name = module_path!();
                 let name = name.rsplit_once(":").expect("Should call from modules").1.to_string();

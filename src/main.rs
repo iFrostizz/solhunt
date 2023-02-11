@@ -18,7 +18,7 @@ fn main() {
 mod test {
     use super::*;
     use crate::{
-        solidity::ProjectFile,
+        solidity::{get_finding_content, ProjectFile},
         walker::{AllFindings, Walker},
     };
     use ethers_core::abi::ethabi::Bytes;
@@ -107,7 +107,45 @@ mod test {
         if compiled.has_compiler_errors() {
             compiled.output().errors.iter().for_each(|err| {
                 // TODO: write line and position with err.src
-                println!("{:#?} {:#?}", err.message, err.source_location);
+                println!("{:#?}", err.message);
+
+                let source = err
+                    .source_location
+                    .clone()
+                    .expect("Failed to build debug source location");
+
+                let file_path = err
+                    .source_location
+                    .clone()
+                    .expect("Could not find source location for content debug")
+                    .file;
+
+                let mut contract_iter = files
+                    .clone()
+                    .into_iter()
+                    .map(|p_file| match p_file {
+                        ProjectFile::Contract(f, n) => (f, n),
+                        ProjectFile::Library(f, n) => (f, n),
+                    })
+                    .filter(|(f, _)| {
+                        let mut path = String::from("src/");
+                        path.push_str(f);
+                        path.push_str(".sol");
+
+                        path == file_path
+                    });
+
+                assert!(contract_iter.clone().count() > 0);
+
+                let contract = contract_iter.next().unwrap().1;
+
+                let content = get_finding_content(
+                    contract,
+                    source.start.try_into().unwrap(),
+                    (source.end - source.start).try_into().unwrap(),
+                );
+
+                println!("{content}");
             });
             panic!("Please fix compiler errors first");
         }
@@ -123,7 +161,6 @@ mod test {
         }
     }
 
-    #[allow(unused)]
     pub fn has_with_code(all_findings: &AllFindings, name: &str, code: usize) -> bool {
         all_findings
             .get(name)

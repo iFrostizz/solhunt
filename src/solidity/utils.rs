@@ -19,9 +19,9 @@ pub fn build_source_maps(
         .map(|(id, _)| {
             let abs_path = id.to_string();
             let file_content = fs::read_to_string(abs_path.clone())
-                .unwrap_or_else(|e| panic!("Failed to open file {}. {}", abs_path, e));
+                .unwrap_or_else(|e| panic!("Failed to open file {abs_path}. {e}"));
             (
-                abs_path.clone(),
+                abs_path,
                 (file_content.clone(), get_string_lines(file_content)),
             )
         })
@@ -62,27 +62,14 @@ pub fn get_position(start: usize, lines_to_bytes: &[usize]) -> (usize, usize) {
 }
 
 /// Returns a view in the code where the finding is located
-pub fn get_finding_content(
-    content: String,
-    start: usize,
-    length: usize,
-    lines_to_bytes: &[usize],
-) -> String {
+pub fn get_finding_content(content: String, start: usize, length: usize) -> String {
     let file_bytes: Vec<u8> = content.as_bytes().to_vec();
 
     let mut content = String::new();
 
-    content.push_str(&get_finding_content_before(
-        &file_bytes,
-        start,
-        lines_to_bytes,
-    ));
+    content.push_str(&get_finding_content_before(&file_bytes, start));
     content.push_str(&get_finding_content_middle(&file_bytes, start, length));
-    content.push_str(&get_finding_content_after(
-        &file_bytes,
-        start,
-        lines_to_bytes,
-    ));
+    content.push_str(&get_finding_content_after(&file_bytes, start));
 
     content
 }
@@ -90,9 +77,10 @@ pub fn get_finding_content(
 pub fn get_finding_content_before(
     file_bytes: &[u8],
     start: usize,
-    lines_to_bytes: &[usize],
+    // lines_to_bytes: &[usize],
 ) -> String {
-    if start > lines_to_bytes[0] {
+    let last_i = get_last_start_index(file_bytes, start);
+    if last_i > 0 {
         let start_line = get_last_start_index(file_bytes, start).saturating_sub(1);
         let start_bef_line = get_last_start_index(file_bytes, start_line);
         content_until_end(file_bytes, start_bef_line)
@@ -120,8 +108,6 @@ pub fn get_finding_content_middle(file_bytes: &[u8], start: usize, length: usize
 
 /// Get the byte index of the last line start
 fn get_last_start_index(file_bytes: &[u8], start: usize) -> usize {
-    // Avoid starting on the end of a line
-    // let mut i = start.saturating_sub(1);
     let mut i = start;
 
     while i > 0 {
@@ -134,18 +120,17 @@ fn get_last_start_index(file_bytes: &[u8], start: usize) -> usize {
     i
 }
 
-pub fn get_finding_content_after(
-    file_bytes: &[u8],
-    start: usize,
-    lines_to_bytes: &[usize],
-) -> String {
-    let (line, _) = get_position(start, lines_to_bytes);
-    match line.checked_sub(1) {
-        Some(line_after) => {
-            let index = *lines_to_bytes.get(line_after).unwrap();
-            content_until_end(file_bytes, index)
-        }
-        None => String::new(),
+pub fn get_finding_content_after(file_bytes: &[u8], start: usize) -> String {
+    let content_i = offset_until_end(file_bytes, start);
+    let last_i = match file_bytes.len().checked_sub(1) {
+        Some(a) => a,
+        None => return String::new(),
+    };
+
+    if content_i < last_i {
+        content_until_end(file_bytes, content_i)
+    } else {
+        String::new()
     }
 }
 
@@ -321,10 +306,10 @@ and it's fast!",
     let lines_to_bytes = &get_string_lines(content.clone());
     let file_bytes = content.as_bytes();
 
-    let before_content = get_finding_content_before(file_bytes, 14, lines_to_bytes);
+    let before_content = get_finding_content_before(file_bytes, 14);
     assert_eq!(before_content, String::from("Solhunt is a\n"));
 
-    let before_content = get_finding_content_before(file_bytes, 0, lines_to_bytes);
+    let before_content = get_finding_content_before(file_bytes, 0);
     assert_eq!(before_content, String::from(""));
 }
 
@@ -370,10 +355,10 @@ and it's fast!",
     let lines_to_bytes = &get_string_lines(content.clone());
     let file_bytes = content.as_bytes();
 
-    let after_content = get_finding_content_after(file_bytes, 14, lines_to_bytes);
+    let after_content = get_finding_content_after(file_bytes, 14);
     assert_eq!(after_content, String::from("it lets you write\n"));
 
-    let after_content = get_finding_content_after(file_bytes, 0, lines_to_bytes);
+    let after_content = get_finding_content_after(file_bytes, 0);
     assert_eq!(after_content, String::from("new static analyzer,\n"));
 }
 
@@ -389,7 +374,7 @@ and it's fast!",
 
     let lines_to_bytes = get_string_lines(content.clone());
 
-    let finding_content = get_finding_content(content.clone(), 14, 6, &lines_to_bytes);
+    let finding_content = get_finding_content(content.clone(), 14, 6);
     assert_eq!(
         finding_content,
         String::from(
@@ -399,7 +384,7 @@ it lets you write\n"
         )
     );
 
-    let finding_content = get_finding_content(content.clone(), 0, 6, &lines_to_bytes);
+    let finding_content = get_finding_content(content.clone(), 0, 6);
     assert_eq!(
         finding_content,
         String::from(
@@ -408,7 +393,7 @@ new static analyzer,\n"
         )
     );
 
-    let finding_content = get_finding_content(content.clone(), 35, 2, &lines_to_bytes);
+    let finding_content = get_finding_content(content.clone(), 35, 2);
     assert_eq!(
         finding_content,
         String::from(
@@ -418,7 +403,7 @@ detection modules\n"
         )
     );
 
-    let finding_content = get_finding_content(content, 71, 38, &lines_to_bytes);
+    let finding_content = get_finding_content(content, 71, 38);
     assert_eq!(
         finding_content,
         String::from(

@@ -8,13 +8,14 @@ use crate::{
 };
 use ethers_solc::{
     artifacts::{
-        ast::{lowfidelity::Ast, SourceLocation, SourceUnit},
+        ast::{lowfidelity::Ast, SourceLocation},
+        lowfidelity::TypedAst,
         visitor::{Visitable, Visitor},
     },
     ArtifactId, ConfigurableContractArtifact,
 };
 use std::collections::HashMap;
-use std::{collections::btree_map::BTreeMap, io::Lines, path::PathBuf};
+use std::{collections::btree_map::BTreeMap, path::PathBuf};
 
 pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
@@ -56,12 +57,14 @@ impl Walker {
 
             // println!("{:#?}", ast.absolute_path);
 
-            let mut ast: SourceUnit = ast.to_typed();
+            let mut ast: TypedAst = ast.to_typed();
+            let source_unit = &ast.source_unit;
+            let source_id = source_unit.id;
 
             // dedup same sources
             // TODO: is that bug from the ast ?
-            if !ids.contains(&ast.id) {
-                ids.push(ast.id);
+            if !ids.contains(&source_id) {
+                ids.push(source_id);
 
                 let abs_path = id.source.to_str().unwrap().to_string();
 
@@ -73,7 +76,7 @@ impl Walker {
                 let file_content = source_map_with_content.0;
                 let lines_to_bytes = source_map_with_content.1;
 
-                let path = PathBuf::from(&ast.absolute_path);
+                let path = PathBuf::from(&source_unit.absolute_path);
                 let name = path.file_name().unwrap();
                 let name = name.to_os_string().into_string().unwrap();
                 // .sol is redundant
@@ -102,7 +105,7 @@ impl Walker {
 }
 
 pub fn visit_source<D>(
-    source: &mut SourceUnit,
+    source: &mut TypedAst,
     visitor: &mut Box<dyn Visitor<Vec<Finding>>>,
     lines_to_bytes: &[usize],
     info: Information,
@@ -127,12 +130,8 @@ pub fn visit_source<D>(
 
         let start = src.start.unwrap_or(0);
         let position = get_position(start, lines_to_bytes);
-        let content = get_finding_content(
-            file_content.clone(),
-            position.0,
-            src.length.unwrap_or(0),
-            lines_to_bytes,
-        );
+        let content =
+            get_finding_content(file_content.clone(), position.0, src.length.unwrap_or(0));
 
         let meta_finding = MetaFinding {
             finding: finding.clone(),

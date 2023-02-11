@@ -13,7 +13,6 @@ pub struct GasComparer {
 }
 
 impl GasComparer {
-    #[cfg(test)]
     pub fn new(
         contract_from: String,
         contract_to: String,
@@ -36,7 +35,6 @@ impl GasComparer {
 
     /// Run the gas metering on the "from" and the "to" contract
     /// Returns (from, to) gas usage
-    #[cfg(test)]
     pub fn run(&mut self) -> (u64, u64) {
         let gas_from = self.gas_meter(self.contracts.0.clone());
         let gas_to = self.gas_meter(self.contracts.1.clone());
@@ -45,7 +43,6 @@ impl GasComparer {
     }
 
     /// Deploys a contract and runs a call to it, return the used gas
-    #[cfg(test)]
     pub fn gas_meter(&mut self, contract: String) -> u64 {
         use revm::primitives::ExecutionResult;
 
@@ -67,7 +64,6 @@ impl GasComparer {
 
     // TODO: better error handling
     /// Compiles and deploys a contract from source and return the address
-    #[cfg(test)]
     pub fn deploy(&mut self, contract: String) -> B160 {
         use revm::primitives::{CreateScheme, ExecutionResult, Output};
 

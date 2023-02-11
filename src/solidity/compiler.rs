@@ -33,6 +33,7 @@ pub struct AllFindingsAndSourceMap {
     pub source_map: Vec<usize>,
 }
 
+#[derive(Clone)]
 pub enum ProjectFile {
     Contract(String, String),
     Library(String, String),

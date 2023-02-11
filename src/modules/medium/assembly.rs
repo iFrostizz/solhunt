@@ -5,14 +5,14 @@ use ethers_solc::artifacts::{yul::YulFunctionCall, InlineAssembly};
 
 build_visitor!(
     BTreeMap::from([
-        (
-            0,
-            FindingKey {
-                description: "usage of inline assembly, take extra care here".to_string(),
-                summary: "usage of inline assembly".to_string(),
-                severity: Severity::Informal
-            }
-        ),
+        // (
+        //     0,
+        //     FindingKey {
+        //         description: "usage of inline assembly, take extra care here".to_string(),
+        //         summary: "usage of inline assembly".to_string(),
+        //         severity: Severity::Informal
+        //     }
+        // ),
         (
             1,
             FindingKey {
@@ -24,7 +24,7 @@ build_visitor!(
         )
     ]),
     fn visit_inline_assembly(&mut self, inline_assembly: &mut InlineAssembly) {
-        self.push_finding(0, Some(inline_assembly.src.clone()));
+        // self.push_finding(0, Some(inline_assembly.src.clone()));
 
         // don't disrupt current ast traversal
         inline_assembly.visit(self)

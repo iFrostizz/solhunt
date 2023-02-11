@@ -74,10 +74,12 @@ pub fn get_all_visitors(
         Box::<low::erc20::DetectionModule>::default(),
         Box::<info::style::DetectionModule>::default(),
         Box::<gas::address_zero::DetectionModule>::default(),
+        Box::<gas::tree::DetectionModule>::default(),
         Box::<oz::DetectionModule>::default(),
     ]
 }
 
+// TODO: does not work
 #[macro_export]
 macro_rules! get_visitors {
     () => {

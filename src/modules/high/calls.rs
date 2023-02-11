@@ -1,5 +1,3 @@
-// Module that finds for external and dangerous calls
-
 use crate::build_visitor;
 use std::collections::HashMap;
 
@@ -8,19 +6,19 @@ build_visitor! {
        (
            0,
            FindingKey {
-               description: "external call detected".to_string(),
-               summary: "external call".to_string(),
-               severity: Severity::Informal
+                        summary: "Avoid contract existence checks by using low level calls".to_string(),
+                        description: "Prior to 0.8.10 the compiler inserted extra code, including EXTCODESIZE (100 gas), to check for contract existence for external function calls. In more recent solidity versions, the compiler will not insert these checks if the external call has a return value. Similar behavior can be achieved in earlier versions by using low-level calls, since low level calls never check for contract existence".to_string(),
+                        severity: Severity::Gas
            }
        ),
-       (
-           1,
-           FindingKey {
-               description: "external call with arbitrary address".to_string(),
-               summary: "external call with arbitrary address".to_string(),
-               severity: Severity::Medium
-           }
-       ),
+       // (
+       //     1,
+       //     FindingKey {
+       //         description: "external call with arbitrary address".to_string(),
+       //         summary: "external call with arbitrary address".to_string(),
+       //         severity: Severity::Medium
+       //     }
+       // ),
        (
            2,
            FindingKey {
@@ -107,20 +105,20 @@ fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> 
     if let Statement::ExpressionStatement(expr) = stat {
         if let Expression::FunctionCall(call) = &expr.expression {
             // dbg!(&call);
-            findings.push(PushedFinding {
-                src: Some(call.src.clone()),
-                code: 0,
-            });
+            // findings.push(PushedFinding {
+            //     src: Some(call.src.clone()),
+            //     code: 0,
+            // });
 
             let func_expr = &call.expression;
             if let Expression::MemberAccess(mem) = func_expr {
                 if let Expression::Identifier(identifier) = &mem.expression {
                     if let Some(arb_type) = data.get(&identifier.name) {
                         if arb_type == "address" {
-                            findings.push(PushedFinding {
-                                src: Some(call.src.clone()),
-                                code: 1,
-                            });
+                            // findings.push(PushedFinding {
+                            //     src: Some(call.src.clone()),
+                            //     code: 1,
+                            // });
                         }
                     }
                 }
@@ -155,114 +153,24 @@ mod tests {
         test::{compile_and_get_findings, lines_for_findings_with_code},
     };
 
-    #[test]
-    fn can_find_call() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("Call"),
-            String::from(
-                "pragma solidity ^0.8.0;
-contract Call {
-    address to;
+    // #[test]
+    // fn can_find_arbitrary_call() {
+    //     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+    //         String::from("Arbitrary"),
+    //         String::from(
+    //             "pragma solidity ^0.8.0;
 
-    constructor(address _to) {
-        to = _to;
-    }
+    // contract Arbitrary {
 
-    function doTheThing() public {
-        to.call{value: 1 ether}('');
-    }
-}",
-            ),
-        )]);
+    // function doTheThing(address to) public {
+    //     to.call('');
+    // }
+    // }",
+    //         ),
+    //     )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "calls", 0),
-            vec![10]
-        );
-    }
-
-    #[test]
-    fn can_find_interface_call() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("CallInt"),
-            String::from(
-                "pragma solidity ^0.8.0;
-interface Coll {
-    function setStuff() external;
-}
-
-contract CallInt {
-    Coll to;
-
-    constructor(Coll _to) {
-        to = _to;
-    }
-
-    function doTheThing() public {
-        to.setStuff();
-    }
-}",
-            ),
-        )]);
-
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "calls", 0),
-            vec![14]
-        );
-    }
-
-    #[test]
-    fn can_find_contract_call() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("CallContract"),
-            String::from(
-                "pragma solidity ^0.8.0;
-contract Coll {
-    uint256 val;
-
-    function setStuff(uint256 _val) external {
-                val = _val;
-    }
-}
-
-contract CallContract {
-    Coll to;
-
-    constructor(Coll _to) {
-        to = _to;
-    }
-
-    function doTheThing() public {
-        to.setStuff(10);
-    }
-}",
-            ),
-        )]);
-
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "calls", 0),
-            vec![18]
-        );
-    }
-
-    #[test]
-    fn can_find_arbitrary_call() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("Arbitrary"),
-            String::from(
-                "pragma solidity ^0.8.0;
-
-contract Arbitrary {
-
-    function doTheThing(address to) public {
-        to.call('');
-    }
-}",
-            ),
-        )]);
-
-        assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
-    }
+    //     assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
+    // }
 
     // https://github.com/Picodes/4naly3er/blob/main/src/issues/H/delegateCallInLoop.ts
     // TODO: add payable function condition ? Security concecrn here is the msg.value
@@ -305,5 +213,69 @@ contract DelegateCallWhileLoop {
         )]);
 
         assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![7]);
+    }
+
+    #[test]
+    fn use_low_level_interface() {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("ContractExistence"),
+            String::from(
+                "pragma solidity ^0.8.0;
+interface Coll {
+    function setStuff() external;
+}
+
+contract CallInt {
+    Coll to;
+
+    constructor(Coll _to) {
+        to = _to;
+    }
+
+    function doTheThing() public {
+        to.setStuff();
+    }
+}",
+            ),
+        )]);
+
+        assert_eq!(
+            lines_for_findings_with_code(&findings, "calls", 0),
+            vec![14]
+        );
+    }
+
+    #[test]
+    fn use_low_level_contract() {
+        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+            String::from("CallContract"),
+            String::from(
+                "pragma solidity ^0.8.0;
+contract Coll {
+    uint256 val;
+
+    function setStuff(uint256 _val) external {
+                val = _val;
+    }
+}
+
+contract CallContract {
+    Coll to;
+
+    constructor(Coll _to) {
+        to = _to;
+    }
+
+    function doTheThing() public {
+        to.setStuff(10);
+    }
+}",
+            ),
+        )]);
+
+        assert_eq!(
+            lines_for_findings_with_code(&findings, "calls", 0),
+            vec![18]
+        );
     }
 }

@@ -49,7 +49,10 @@ pub struct Analyze {
 }
 
 #[derive(Parser, Debug, Serialize)]
-pub struct GasMetering;
+pub struct GasMetering {
+    #[clap(short, long, help = "Exclude these modules")]
+    pub except_modules: Option<Vec<String>>,
+}
 
 pub fn get_working_path(add_path: String) -> PathBuf {
     let mut path = PathBuf::new();
