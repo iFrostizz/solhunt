@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
-
 use ethers_solc::AggregatedCompilerOutput;
-use foundry_common::fs;
 use semver::{Error, Version};
+use std::{collections::BTreeMap, fs};
 
 #[allow(unused)]
 pub struct Position {

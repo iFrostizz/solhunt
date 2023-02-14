@@ -38,19 +38,12 @@ build_visitor!(
     }
 );
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        solidity::ProjectFile,
-        test::{compile_and_get_findings, lines_for_findings_with_code},
-    };
-
-    #[test]
-    fn initialize_function() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("Initialize"),
-            String::from(
-                "pragma solidity 0.8.0;
+#[test]
+fn initialize_function() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Initialize"),
+        String::from(
+            "pragma solidity 0.8.0;
 
 contract Initialize {
     bool initialized;
@@ -65,30 +58,29 @@ contract Initialize {
         // Initialize some proxy
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "proxy", 0),
-            vec![12]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "proxy", 0),
+        vec![12]
+    );
+}
 
-    #[test]
-    fn missing_initializer() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("MissingInitialize"),
-            String::from(
-                "pragma solidity 0.8.0;
+#[test]
+fn missing_initializer() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("MissingInitialize"),
+        String::from(
+            "pragma solidity 0.8.0;
 
 contract MissingInitialize {
     function initialize() public {
         // Initialize some proxy
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(lines_for_findings_with_code(&findings, "proxy", 1), vec![4]);
-    }
+    assert_eq!(lines_for_findings_with_code(&findings, "proxy", 1), vec![4]);
 }

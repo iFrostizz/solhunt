@@ -125,21 +125,12 @@ build_visitor!(
     }
 );
 
-#[cfg(test)]
-mod test {
-    use crate::{
-        solidity::ProjectFile,
-        test::{
-            compile_and_get_findings, has_with_code, has_with_module, lines_for_findings_with_code,
-        },
-    };
-
-    #[test]
-    fn can_find_overflow_old_ver() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("OldVerCheck"),
-            String::from(
-                "pragma solidity 0.7.0;
+#[test]
+fn can_find_overflow_old_ver() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("OldVerCheck"),
+        String::from(
+            "pragma solidity 0.7.0;
 contract OldVerCheck {
     mapping(address => uint256) bal;
 
@@ -154,30 +145,30 @@ contract OldVerCheck {
 
     fallback() external payable {}
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        // TODO: check if any version under 0.8.0 can be selected
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "overflow", 0),
-            vec![1]
-        ); // ver
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "overflow", 1),
-            vec![6]
-        ); // +
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "overflow", 2),
-            vec![10]
-        ); // -
-    }
+    // TODO: check if any version under 0.8.0 can be selected
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "overflow", 0),
+        vec![1]
+    ); // ver
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "overflow", 1),
+        vec![6]
+    ); // +
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "overflow", 2),
+        vec![10]
+    ); // -
+}
 
-    #[test]
-    fn dont_find_overflow() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("NoOverFlow"),
-            String::from(
-                "pragma solidity ^0.8.10;
+#[test]
+fn dont_find_overflow() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("NoOverFlow"),
+        String::from(
+            "pragma solidity ^0.8.10;
 contract NoOverFlow {
     mapping(address => uint256) bal;
     
@@ -192,18 +183,18 @@ contract NoOverFlow {
     
     fallback() external payable {}
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert!(!has_with_module(&findings, "overflow"));
-    }
+    assert!(!has_with_module(&findings, "overflow"));
+}
 
-    #[test]
-    fn find_unchecked_overflow() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("Unchecked"),
-            String::from(
-                "pragma solidity ^0.8.10;
+#[test]
+fn find_unchecked_overflow() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Unchecked"),
+        String::from(
+            "pragma solidity ^0.8.10;
 contract Unchecked {
     mapping(address => uint256) bal;
     
@@ -222,21 +213,20 @@ contract Unchecked {
     
     fallback() external payable {}
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert!(!has_with_code(&findings, "overflow", 0));
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "overflow", 3),
-            vec![6, 12]
-        ); // unchecked
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "overflow", 1),
-            vec![7]
-        ); // +
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "overflow", 2),
-            vec![13]
-        ); // -
-    }
+    assert!(!has_with_code(&findings, "overflow", 0));
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "overflow", 3),
+        vec![6, 12]
+    ); // unchecked
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "overflow", 1),
+        vec![7]
+    ); // +
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "overflow", 2),
+        vec![13]
+    ); // -
 }

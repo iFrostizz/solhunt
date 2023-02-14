@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-
-use crate::formatter::Report;
-use crate::loader::get_all_visitors;
-use crate::solidity::{build_source_maps, Solidity};
-use crate::walker::{Severity, Walker};
-
 use super::parse::{get_working_path, Analyze};
+use crate::{
+    cmd::parse::get_remappings,
+    formatter::Report,
+    loader::get_all_visitors,
+    solidity::{build_source_maps, Solidity},
+    walker::{Severity, Walker},
+};
+use std::collections::HashMap;
 
 pub fn run_analysis(args: Analyze) {
     let mut severities = HashMap::from([
@@ -28,9 +29,17 @@ pub fn run_analysis(args: Analyze) {
     let path = get_working_path(args.path);
     let report_style = args.style;
 
-    let solidity = Solidity::default().with_path_root(path.clone());
+    let remappings = get_remappings(&path);
 
-    let compiled = solidity.compile_with_foundry().expect("Compilation failed");
+    let mut cache_path = path.clone();
+    cache_path.push("cache");
+
+    let solidity = Solidity::default()
+        .with_path_root(path.clone())
+        .with_cache_path(cache_path)
+        .with_remappings(remappings);
+
+    let compiled = solidity.compile().expect("Compilation failed");
     let output = compiled.clone().output();
 
     let source_map = build_source_maps(output);

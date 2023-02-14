@@ -1,11 +1,15 @@
-use crate::walker::AllFindings;
+use crate::{
+    loader::get_all_visitors,
+    solidity::{build_source_maps, get_finding_content},
+    walker::{AllFindings, Walker},
+};
+use bytes::Bytes;
 use ethers_solc::{
-    artifacts::output_selection::{
-        BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
-    },
+    artifacts::{output_selection::ContractOutputSelection, BytecodeObject},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::SolcError,
     output::ProjectCompileOutput,
+    project_util::TempProject,
     remappings::{RelativeRemapping, Remapping},
     // ProjectPathsConfig, Solc,
     ArtifactId,
@@ -13,18 +17,14 @@ use ethers_solc::{
     ConfigurableContractArtifact,
     Project,
     ProjectPathsConfig,
+    Solc,
 };
-use foundry_cli::{
-    cmd::{
-        forge::build::{BuildArgs, CoreBuildArgs, ProjectPathsArgs},
-        Cmd,
-    },
-    opts::forge::CompilerArgs,
-};
+use eyre::{Result, WrapErr};
 use std::{
     collections::BTreeMap,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
+    time::Instant,
 };
 
 #[derive(Default)]
@@ -33,6 +33,7 @@ pub struct AllFindingsAndSourceMap {
     pub source_map: Vec<usize>,
 }
 
+#[allow(unused)]
 #[derive(Clone)]
 pub enum ProjectFile {
     Contract(String, String),
@@ -41,9 +42,8 @@ pub enum ProjectFile {
 
 // TODO: use cache and only recompile if files have changed
 // TODO: if no svm, display message & start timer after
-
 pub struct Solidity {
-    pub root: String,
+    pub root: PathBuf,
     pub allow_paths: Vec<String>,
     pub include_paths: Vec<String>,
     pub extra_output: Vec<ContractOutputSelection>,
@@ -61,6 +61,7 @@ pub struct Solidity {
     pub build_info_path: Option<PathBuf>,
     pub force: bool,
     pub ephemeral: bool,
+    pub solc: Option<Solc>,
 }
 
 impl Default for Solidity {
@@ -74,6 +75,7 @@ impl Default for Solidity {
             extra_output: Default::default(),
             extra_output_files: Default::default(),
             cache_path: Default::default(),
+            // cache: "cache".into(),
             src: "src".into(),
             test: "test".into(),
             auto_detect_remappings: false,
@@ -84,76 +86,49 @@ impl Default for Solidity {
             remappings: Default::default(),
             force: false,
             ephemeral: true,
+            solc: None,
         }
     }
 }
 
 impl Solidity {
-    // pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
-    //     let build_args = BuildArgs::default();
-    //     // let mut config = build_args.try_load_config_emit_warnings()?;
-    //     let mut config = Config::default();
-    //     let mut project = config.project()?;
+    // // TODO: when foundry uses cache, it does not return the artifacts
+    // pub fn compile_with_foundry(&self) -> Result<ProjectCompileOutput> {
+    //     // build from single file
+    //     let is_contract = self.root.ends_with(".sol");
 
-    //     let silent = false;
+    //     let project_paths_args = ProjectPathsArgs {
+    //         root: if is_contract {
+    //             None
+    //         } else {
+    //             Some(PathBuf::from(&self.root))
+    //         },
+    //         contracts: if is_contract {
+    //             Some(PathBuf::from(&self.root))
+    //         } else {
+    //             None
+    //         },
+    //         ..Default::default()
+    //     };
 
-    //     // if install::install_missing_dependencies(&mut config, &project, self.args.silent)
-    //     if install::install_missing_dependencies(&mut config, &project, silent)
-    //         && config.auto_detect_remappings
-    //     {
-    //         // need to re-configure here to also catch additional remappings
-    //         // config = self.load_config();
-    //         project = config.project()?;
-    //     }
+    //     let core_build_args = CoreBuildArgs {
+    //         // TODO: remove force and use cached artifacts
+    //         // If it uses cache, no ProjectCompileOutput will be returned
+    //         // so we may need to pull the artifacts
+    //         force: true,
+    //         silent: false,
+    //         project_paths: project_paths_args,
+    //         build_info: true,
+    //         ..Default::default()
+    //     };
 
-    //     /*let skip = true;
-    //     let filters = self.skip.unwrap_or_default();*/
-    //     // if self.args.silent {
-    //     if silent {
-    //         compile::suppress_compile_with_filter(&project, Vec::new())
-    //     } else {
-    //         let compiler = ProjectCompiler::with_filter(false, false, Vec::new());
-    //         compiler.compile(&project)
-    //     }
+    //     let build_args = BuildArgs {
+    //         args: core_build_args,
+    //         ..Default::default()
+    //     };
+    //     // dbg!(&build_args.try_load_config_emit_warnings().unwrap());
+    //     build_args.run()
     // }
-
-    // TODO: when foundry uses cache, it does not return the artifacts
-    pub fn compile_with_foundry(&self) -> eyre::Result<ProjectCompileOutput> {
-        // build from single file
-        let is_contract = self.root.ends_with(".sol");
-
-        let project_paths_args = ProjectPathsArgs {
-            root: if is_contract {
-                None
-            } else {
-                Some(PathBuf::from(&self.root))
-            },
-            contracts: if is_contract {
-                Some(PathBuf::from(&self.root))
-            } else {
-                None
-            },
-            ..Default::default()
-        };
-
-        let core_build_args = CoreBuildArgs {
-            // TODO: remove force and use cached artifacts
-            // If it uses cache, no ProjectCompileOutput will be returned
-            // so we may need to pull the artifacts
-            force: true,
-            silent: false,
-            project_paths: project_paths_args,
-            build_info: true,
-            ..Default::default()
-        };
-
-        let build_args = BuildArgs {
-            args: core_build_args,
-            ..Default::default()
-        };
-        // dbg!(&build_args.try_load_config_emit_warnings().unwrap());
-        build_args.run()
-    }
 
     fn artifacts(&self) -> ConfigurableArtifacts {
         let mut extra_output = self.extra_output.clone();
@@ -242,13 +217,12 @@ impl Solidity {
     }
 
     pub fn with_path_root(mut self, root: PathBuf) -> Self {
-        self.root = root.into_os_string().into_string().unwrap();
+        self.root = root;
         self
     }
 
-    #[allow(unused)]
-    pub fn with_root(mut self, root: String) -> Self {
-        self.root = root;
+    pub fn with_cache_path(mut self, cache_path: PathBuf) -> Self {
+        self.cache_path = cache_path;
         self
     }
 
@@ -258,71 +232,65 @@ impl Solidity {
         self
     }
 
-    pub fn compile(&self) -> ProjectCompileOutput {
+    pub fn compile(&self) -> Result<ProjectCompileOutput> {
         let project = &self.project().unwrap();
 
-        // dbg!(&project);
+        let path = self.root.clone();
 
-        // let mut project = Project::builder().build().unwrap();
-        // project.paths.remappings = remappings;
+        let files = if path.is_dir() {
+            self.get_sol_files(path)
+        } else if let Some(ext) = path.extension() {
+            if ext == "sol" {
+                vec![path]
+            } else {
+                eyre::bail!("Nothing valid to compile.");
+            }
+        } else {
+            eyre::bail!("Nothing valid to compile.");
+        };
 
-        // let files = if path.is_dir() {
-        //     self.get_sol_files(path)
-        // } else if let Some(ext) = path.extension() {
-        //     if ext == "sol" {
-        //         vec![path]
-        //     } else {
-        //         panic!("Nothing valid to compile.");
-        //     }
-        // } else {
-        //     panic!("Nothing valid to compile.");
-        // };
+        let amount = files.len();
+        println!("Compiling {amount} files ...");
 
-        // let amount = files.len();
-        // println!("Compiling {} files ...", amount);
+        let now = Instant::now();
 
-        // let now = Instant::now();
+        let compiled = if let Some(_solc) = &self.solc {
+            /*let sources = project.paths.read_sources().unwrap();
+            project
+                .compile_with_version(
+                    &Solc::find_svm_installed_version("0.8.0").unwrap().unwrap(),
+                    sources,
+                )
+                .unwrap()*/
+            unimplemented!();
+        } else {
+            project.compile_files(files).unwrap()
+        };
 
-        // let compiled = if auto_detect {
-        //     // project.compile().unwrap()
-        //     project.compile_files(files).unwrap()
-        // } else {
-        //     /*let sources = project.paths.read_sources().unwrap();
-        //     project
-        //         .compile_with_version(
-        //             &Solc::find_svm_installed_version("0.8.0").unwrap().unwrap(),
-        //             sources,
-        //         )
-        //         .unwrap()*/
-        //     unimplemented!();
-        // };
+        // project.rerun_if_sources_changed();
 
-        // // project.rerun_if_sources_changed();
+        println!("Compiled in {}ms", now.elapsed().as_millis());
 
-        // println!("Compiled in {}ms", now.elapsed().as_millis());
+        if compiled.has_compiler_errors() {
+            let output = compiled.output();
+            output.errors.iter().for_each(|error| {
+                println!("{:#?}", error.formatted_message);
+            });
+            panic!();
+        }
 
-        // if compiled.has_compiler_errors() {
-        //     let output = compiled.output();
-        //     output.errors.iter().for_each(|error| {
-        //         println!("{:#?}", error.formatted_message);
-        //     });
-        //     panic!();
-        // }
-
-        // dbg!(&compiled);
-
-        project.compile().unwrap()
+        project.compile().wrap_err("Issue")
     }
 
     #[allow(unused)]
-    pub fn compile_artifacts(&self) -> BTreeMap<ArtifactId, ConfigurableContractArtifact> {
-        let compiled = self.compile();
-
-        compiled.into_artifacts().collect()
+    pub fn compile_artifacts(&self) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
+        match self.compile() {
+            Ok(compiled) => Ok(compiled.into_artifacts().collect()),
+            Err(err) => Err(err),
+        }
     }
 
     // get path of all .sol files
-    #[allow(unused)]
     pub fn get_sol_files(&self, path: PathBuf) -> Vec<PathBuf> {
         let mut files = Vec::new();
 
@@ -333,8 +301,7 @@ impl Solidity {
     }
 
     // could do caching, but explicitely excluding directory is probably good enough ?
-    #[allow(unused)]
-    pub fn visit_dirs(&self, dir: &Path, files: &mut Vec<PathBuf>) -> eyre::Result<()> {
+    pub fn visit_dirs(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
         if dir.is_dir() {
             for entry in fs::read_dir(dir)? {
                 let entry = entry?;
@@ -350,7 +317,7 @@ impl Solidity {
                         self.visit_dirs(&path, files)?;
                     }
                 } else if self.is_sol_file(&path) {
-                    files.push(path);
+                    files.push(path.clone());
                 }
             }
         }
@@ -358,7 +325,6 @@ impl Solidity {
         Ok(())
     }
 
-    #[allow(unused)]
     pub fn is_sol_file(&self, path: &Path) -> bool {
         if path.is_file() {
             match path.extension() {
@@ -378,4 +344,129 @@ impl Solidity {
 
         false
     }
+}
+
+/// Tests utils to compile a temp project similar to reality
+pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
+    let (_project, compiled) = make_temp_project(files);
+    let output = compiled.clone().output();
+
+    let source_map = build_source_maps(output);
+
+    let artifacts = compiled
+        .into_artifacts()
+        .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
+
+    if let Some(debug) = env::var_os("DEBUG") {
+        if debug == "true" || debug == "True" || debug == "TRUE" {
+            // println!("{:#?}", project.root);
+            artifacts.iter().for_each(|(_, art)| {
+                // println!("{:#?}", art.ast);
+                if let Some(ast) = &art.ast {
+                    println!("{:#?}", ast.clone().to_typed());
+                }
+            });
+        }
+    };
+
+    let visitors = get_all_visitors();
+
+    let mut walker = Walker::new(artifacts, source_map, visitors);
+
+    walker.traverse().expect("failed to traverse ast")
+}
+
+pub fn compile_single_contract(contract: String) -> Bytes {
+    let files = vec![ProjectFile::Contract(
+        String::from("SingleContract"),
+        contract,
+    )];
+    let (_project, compiled) = make_temp_project(files);
+    let output = compiled.output();
+    let ver_contracts = output.contracts;
+
+    assert_eq!(ver_contracts.len(), 1);
+
+    let contracts = ver_contracts.iter().next().unwrap().1;
+
+    assert_eq!(contracts.len(), 1);
+
+    let contract = &contracts.iter().next().unwrap().1[0].contract;
+    let bytecode = contract.evm.clone().unwrap().bytecode.unwrap();
+
+    if let BytecodeObject::Bytecode(bytecode) = bytecode.object {
+        bytecode.to_vec().into()
+    } else {
+        panic!("No bytecode found");
+    }
+}
+
+/// Creates a temp project and compiles the files in it
+/// Note: returns the ownership of Project not to be dropped and deleted
+fn make_temp_project(
+    files: Vec<ProjectFile>,
+) -> (TempProject<ConfigurableArtifacts>, ProjectCompileOutput) {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    files.iter().for_each(|f| match f {
+        ProjectFile::Contract(name, content) => {
+            project.add_source(name, content).unwrap();
+        }
+        ProjectFile::Library(name, content) => {
+            project.add_lib(name, content).unwrap();
+        }
+    });
+    let compiled = project.compile().unwrap();
+
+    if compiled.has_compiler_errors() {
+        compiled.output().errors.iter().for_each(|err| {
+            // TODO: write line and position with err.src
+            println!("{:#?}", err.message);
+
+            let source = err
+                .source_location
+                .clone()
+                .expect("Failed to build debug source location");
+
+            let file_path = err
+                .source_location
+                .clone()
+                .expect("Could not find source location for content debug")
+                .file;
+
+            let mut contract_iter = files
+                .clone()
+                .into_iter()
+                .map(|p_file| match p_file {
+                    ProjectFile::Contract(f, n) => (f, n),
+                    ProjectFile::Library(f, n) => (f, n),
+                })
+                .filter(|(f, _)| {
+                    let mut path = String::from("src/");
+                    path.push_str(f);
+                    path.push_str(".sol");
+
+                    path == file_path
+                });
+
+            assert!(contract_iter.clone().count() > 0);
+
+            let contract = contract_iter.next().unwrap().1;
+
+            let content = if source.start == -1 || source.end == -1 {
+                String::from("")
+            } else {
+                get_finding_content(
+                    contract,
+                    source.start.try_into().unwrap(),
+                    (source.end - source.start).try_into().unwrap(),
+                )
+            };
+
+            println!("{content}");
+        });
+        panic!("Please fix compiler errors first");
+    }
+
+    (project, compiled)
 }

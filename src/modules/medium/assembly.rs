@@ -40,19 +40,12 @@ build_visitor!(
     }
 );
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        solidity::ProjectFile,
-        test::{compile_and_get_findings, has_with_code, lines_for_findings_with_code},
-    };
-
-    #[test]
-    fn with_extcodesize() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("ExtCodeSize"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn with_extcodesize() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("ExtCodeSize"),
+        String::from(
+            "pragma solidity ^0.8.0;
 
 contract ExtCodeSize {
     function make(address to) public {
@@ -63,26 +56,26 @@ contract ExtCodeSize {
         }
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
-            vec![7]
-        );
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
+        vec![7]
+    );
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "assembly", 1), // extcodesize
-            vec![8]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "assembly", 1), // extcodesize
+        vec![8]
+    );
+}
 
-    #[test]
-    fn without_extcodesize() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("WithoutExtCodeSize"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn without_extcodesize() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("WithoutExtCodeSize"),
+        String::from(
+            "pragma solidity ^0.8.0;
 
 contract WithoutExtCodeSize {
     function make(address to) public {
@@ -93,23 +86,23 @@ contract WithoutExtCodeSize {
         }
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
-            vec![7]
-        );
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
+        vec![7]
+    );
 
-        assert!(!has_with_code(&findings, "assembly", 1)); // extcodesize);
-    }
+    assert!(!has_with_code(&findings, "assembly", 1)); // extcodesize);
+}
 
-    #[test]
-    fn nested_extcodesize() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("NestedExtCodeSize"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn nested_extcodesize() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("NestedExtCodeSize"),
+        String::from(
+            "pragma solidity ^0.8.0;
 
 contract NestedExtCodeSize {
     function make(address to) public {
@@ -122,17 +115,16 @@ contract NestedExtCodeSize {
         }
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
-            vec![7]
-        );
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
+        vec![7]
+    );
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "assembly", 1), // extcodesize
-            vec![9]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "assembly", 1), // extcodesize
+        vec![9]
+    );
 }

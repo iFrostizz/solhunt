@@ -15,7 +15,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::*};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding, solidity::ProjectFile, test::{compile_and_get_findings, lines_for_findings_with_code, has_with_code}};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::{lines_for_findings_with_code, has_with_code, has_with_module}};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};

@@ -36,20 +36,13 @@ build_visitor! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        solidity::ProjectFile,
-        test::{compile_and_get_findings, lines_for_findings_with_code},
-    };
-
-    #[test]
-    fn only_owner_modifier() {
-        // TODO: use remappings to reuse OnlyOwner ?
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("OnlyOwnerModifier"),
-            String::from(
-                r#"pragma solidity ^0.8.0;
+#[test]
+fn only_owner_modifier() {
+    // TODO: use remappings to reuse OnlyOwner ?
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("OnlyOwnerModifier"),
+        String::from(
+            r#"pragma solidity ^0.8.0;
 
 contract Ownable {
     address private _owner;
@@ -73,13 +66,12 @@ contract OnlyOwnerModifer is Ownable {
         payable(owner()).transfer(address(this).balance);
     }
 }"#,
-            ),
-        )]);
+        ),
+    )]);
 
-        // TODO: found at l.22 but is actually at 21.
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "centralization", 0),
-            vec![21]
-        );
-    }
+    // TODO: found at l.22 but is actually at 21.
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "centralization", 0),
+        vec![21]
+    );
 }

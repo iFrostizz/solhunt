@@ -146,40 +146,33 @@ fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> 
     findings
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        solidity::ProjectFile,
-        test::{compile_and_get_findings, lines_for_findings_with_code},
-    };
+// #[test]
+// fn can_find_arbitrary_call() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("Arbitrary"),
+//         String::from(
+//             "pragma solidity ^0.8.0;
 
-    // #[test]
-    // fn can_find_arbitrary_call() {
-    //     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-    //         String::from("Arbitrary"),
-    //         String::from(
-    //             "pragma solidity ^0.8.0;
+// contract Arbitrary {
 
-    // contract Arbitrary {
+// function doTheThing(address to) public {
+//     to.call('');
+// }
+// }",
+//         ),
+//     )]);
 
-    // function doTheThing(address to) public {
-    //     to.call('');
-    // }
-    // }",
-    //         ),
-    //     )]);
+//     assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
+// }
 
-    //     assert_eq!(lines_for_findings_with_code(&findings, "calls", 1), vec![6]);
-    // }
-
-    // https://github.com/Picodes/4naly3er/blob/main/src/issues/H/delegateCallInLoop.ts
-    // TODO: add payable function condition ? Security concecrn here is the msg.value
-    #[test]
-    fn delegatecall_in_for_loop() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("DelegateCallLoop"),
-            String::from(
-                r#"pragma solidity ^0.8.0;
+// https://github.com/Picodes/4naly3er/blob/main/src/issues/H/delegateCallInLoop.ts
+// TODO: add payable function condition ? Security concecrn here is the msg.value
+#[test]
+fn delegatecall_in_for_loop() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("DelegateCallLoop"),
+        String::from(
+            r#"pragma solidity ^0.8.0;
 
 contract DelegateCallForLoop {
     function causeTrouble(address to) public {
@@ -188,18 +181,18 @@ contract DelegateCallForLoop {
         }
     }
 }"#,
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![6]);
-    }
+    assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![6]);
+}
 
-    #[test]
-    fn delegatecall_in_while_loop() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("DelegateCallLoop"),
-            String::from(
-                r#"pragma solidity ^0.8.0;
+#[test]
+fn delegatecall_in_while_loop() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("DelegateCallLoop"),
+        String::from(
+            r#"pragma solidity ^0.8.0;
 
 contract DelegateCallWhileLoop {
     function causeTrouble(address to) public {
@@ -209,18 +202,18 @@ contract DelegateCallWhileLoop {
         }
     }
 }"#,
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![7]);
-    }
+    assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![7]);
+}
 
-    #[test]
-    fn use_low_level_interface() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("ContractExistence"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn use_low_level_interface() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("ContractExistence"),
+        String::from(
+            "pragma solidity ^0.8.0;
 interface Coll {
     function setStuff() external;
 }
@@ -236,21 +229,21 @@ contract CallInt {
         to.setStuff();
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "calls", 0),
-            vec![14]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "calls", 0),
+        vec![14]
+    );
+}
 
-    #[test]
-    fn use_low_level_contract() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("CallContract"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn use_low_level_contract() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("CallContract"),
+        String::from(
+            "pragma solidity ^0.8.0;
 contract Coll {
     uint256 val;
 
@@ -270,12 +263,11 @@ contract CallContract {
         to.setStuff(10);
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "calls", 0),
-            vec![18]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "calls", 0),
+        vec![18]
+    );
 }

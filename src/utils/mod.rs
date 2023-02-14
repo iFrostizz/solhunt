@@ -1,5 +1,5 @@
-pub mod bytes;
+pub mod byteslib;
 pub mod formatter;
 
-pub use bytes::*;
+pub use byteslib::*;
 pub use formatter::*;

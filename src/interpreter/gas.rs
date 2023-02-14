@@ -1,3 +1,4 @@
+use crate::solidity::compile_single_contract;
 use revm::{
     db::{CacheDB, EmptyDB, InMemoryDB},
     primitives::{Bytes, TransactTo, B160, U256},
@@ -66,8 +67,6 @@ impl GasComparer {
     /// Compiles and deploys a contract from source and return the address
     pub fn deploy(&mut self, contract: String) -> B160 {
         use revm::primitives::{CreateScheme, ExecutionResult, Output};
-
-        use crate::test::compile_single_contract;
 
         let bytecode = compile_single_contract(contract);
 

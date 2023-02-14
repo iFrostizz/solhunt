@@ -1,7 +1,9 @@
 // https://github.com/code-423n4/2022-12-tigris-findings/blob/main/data/Deekshith99-G.md 3rd and 4th
 
-use crate::build_visitor;
-use crate::utils::{tightly_pack, type_as_bytes};
+use crate::{
+    build_visitor,
+    utils::{tightly_pack, type_as_bytes},
+};
 
 build_visitor! {
     BTreeMap::from([

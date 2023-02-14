@@ -4,7 +4,7 @@ use crate::{
     modules::*,
     walker::{AllFindings, Finding},
 };
-use ethers_solc::artifacts::{ast::SourceLocation, visitor::Visitor};
+use ethers_solc::artifacts::ast::SourceLocation;
 use semver::Version;
 
 #[derive(Debug, Default, Clone)]
@@ -31,31 +31,6 @@ pub struct PushedFinding {
     pub src: Option<SourceLocation>,
     pub code: usize,
 }
-
-// #[macro_export]
-// macro_rules! get_all_visitors {
-//     ($directory:expr) => {
-//         // ($obj:ty, ($_foo:ident, $_bar:ident, $_baz:ident), $body:expr) => {
-//         fn get_all_visitors(
-//         ) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
-//             let mut visitors = Vec::new();
-
-//             for entry in fs::read_dir($directory).unwrap() {
-//                 let entry = entry.unwrap();
-//                 let path = entry.path();
-//                 if path.is_file() {
-//                     let file_name = path.file_name().unwrap().to_str().unwrap();
-//                     if file_name.ends_with(".rs") && file_name != "mod.rs" {
-//                         // let struct_name = &file_name[..file_name.len() - 3];
-//                         // println!("importing struct {} from file {:?}", struct_name, file_name);
-
-//                         visitors.push(Box::<$directory::DetectionModule>::default());
-//                     }
-//                 }
-//             }
-//         }
-//     };
-// }
 
 // TODO: automate this !
 // TODO: write benches for detection modules and only run *one* visitor
