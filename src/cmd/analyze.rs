@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::cmd::parse::get_remappings;
 use crate::formatter::Report;
 use crate::loader::get_all_visitors;
 use crate::solidity::{build_source_maps, Solidity};
@@ -46,9 +45,14 @@ pub fn run_analysis(args: Analyze) {
             if root_path.is_dir() {
                 // only filter if not "file-only"
                 let abs_path = &id.source;
-                let other_path = abs_path
-                    .strip_prefix(root_path)
-                    .expect("Failed to strip root path");
+                let other_path = abs_path.strip_prefix(root_path).unwrap_or_else(|e| {
+                    panic!(
+                        "Failed to strip root path: {} from {}",
+                        root_path.to_string_lossy(),
+                        abs_path.to_string_lossy()
+                    )
+                });
+
                 let first_folder = other_path
                     .iter()
                     .next()

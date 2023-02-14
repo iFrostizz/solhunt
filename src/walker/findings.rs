@@ -17,6 +17,7 @@ pub enum Severity {
 }
 
 impl Severity {
+    #[allow(unused)]
     pub fn format(&self, text: String) -> String {
         match *self {
             Severity::Informal => format!("{}", Paint::blue(text)),
@@ -61,6 +62,7 @@ pub struct FindingKey {
 pub type FindingMap = BTreeMap<usize, FindingKey>;
 
 impl Finding {
+    #[allow(unused)]
     pub fn format(&self) -> String {
         self.severity.format(format!(
             "{}: {}",
@@ -89,6 +91,7 @@ pub struct MetaFinding {
 }
 
 impl MetaFinding {
+    #[allow(unused)]
     pub fn format(&self) -> String {
         self.finding.severity.format(format!(
             "{} {}:{} {}",
@@ -125,4 +128,5 @@ pub struct Inside {
     pub unchecked: bool,
     pub for_loop: bool,
     pub while_loop: bool,
+    pub constructor: bool,
 }

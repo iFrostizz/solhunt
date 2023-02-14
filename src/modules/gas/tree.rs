@@ -62,18 +62,12 @@ build_visitor! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::test::has_with_code;
-
-    use super::*;
-
-    #[test]
-    fn only_called_once() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("OnlyOnce"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn only_called_once() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("OnlyOnce"),
+        String::from(
+            "pragma solidity ^0.8.0;
 
 contract OnlyOnce {
     function _once() internal {
@@ -85,18 +79,18 @@ contract OnlyOnce {
     }
 }
 ",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(lines_for_findings_with_code(&findings, "tree", 0), vec![9]);
-    }
+    assert_eq!(lines_for_findings_with_code(&findings, "tree", 0), vec![9]);
+}
 
-    #[test]
-    fn called_twice() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("OnlyOnce"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn called_twice() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("OnlyOnce"),
+        String::from(
+            "pragma solidity ^0.8.0;
 
 contract OnlyOnce {
     function _once() internal {
@@ -112,9 +106,10 @@ contract OnlyOnce {
     }
 }
 ",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert!(!has_with_code(&findings, "tree", 0));
-    }
+    assert!(!has_with_code(&findings, "tree", 0));
 }
+
+// https://github.com/code-423n4/2023-01-timeswap-findings/blob/main/data/0xSmartContract-G.md#g-02-remove-checkdoesnotexist-function

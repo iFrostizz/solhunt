@@ -75,6 +75,9 @@ pub fn get_all_visitors(
         Box::<info::style::DetectionModule>::default(),
         Box::<gas::address_zero::DetectionModule>::default(),
         Box::<gas::tree::DetectionModule>::default(),
+        Box::<gas::tight_pack::DetectionModule>::default(),
+        Box::<gas::immutable::DetectionModule>::default(),
+        Box::<gas::state::DetectionModule>::default(),
         Box::<oz::DetectionModule>::default(),
     ]
 }

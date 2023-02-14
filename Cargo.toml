@@ -17,6 +17,7 @@ ethers-core = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "fr
 ethers-contract = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor" }
 foundry-cli = { git = "https://github.com/iFrostizz/foundry.git", branch = "franfran/fix-ast-coverage" }
 foundry-common = { git = "https://github.com/iFrostizz/foundry.git", branch = "franfran/fix-ast-coverage" }
+itertools = "0.10.5"
 
 # [patch."https://github.com/iFrostizz/ethers-rs.git"]
 # ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }

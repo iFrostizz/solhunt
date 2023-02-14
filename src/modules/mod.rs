@@ -15,7 +15,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::*};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding, solidity::ProjectFile, test::{compile_and_get_findings, lines_for_findings_with_code}};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding, solidity::ProjectFile, test::{compile_and_get_findings, lines_for_findings_with_code, has_with_code}};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
@@ -34,6 +34,8 @@ macro_rules! build_visitor {
             pub function_calls: Vec<FunctionCall>,
             /// wether or not the visitor is inside a function
             pub inside: Inside,
+            pub state_variables: Vec<String>,
+            pub events: Vec<EmitStatement>,
         }
 
         /// populate the f_map on startup in order to specify the finding codes only
@@ -45,6 +47,8 @@ macro_rules! build_visitor {
                     findings_map: $map,
                     function_definitions: Vec::new(),
                     function_calls: Vec::new(),
+                    state_variables: Vec::new(),
+                    events: Vec::new(),
                     inside: Default::default()
                 }
             }

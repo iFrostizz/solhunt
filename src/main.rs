@@ -139,11 +139,15 @@ mod test {
 
                 let contract = contract_iter.next().unwrap().1;
 
-                let content = get_finding_content(
-                    contract,
-                    source.start.try_into().unwrap(),
-                    (source.end - source.start).try_into().unwrap(),
-                );
+                let content = if source.start == -1 || source.end == -1 {
+                    String::from("")
+                } else {
+                    get_finding_content(
+                        contract,
+                        source.start.try_into().unwrap(),
+                        (source.end - source.start).try_into().unwrap(),
+                    )
+                };
 
                 println!("{content}");
             });
@@ -154,15 +158,15 @@ mod test {
     }
 
     #[allow(unused)]
-    pub fn has_with_module(all_findings: &AllFindings, name: &str) -> bool {
-        match all_findings.get(name) {
+    pub fn has_with_module(findings: &AllFindings, name: &str) -> bool {
+        match findings.get(name) {
             Some(val) => !val.is_empty(),
             None => false,
         }
     }
 
-    pub fn has_with_code(all_findings: &AllFindings, name: &str, code: usize) -> bool {
-        all_findings
+    pub fn has_with_code(findings: &AllFindings, name: &str, code: usize) -> bool {
+        findings
             .get(name)
             .unwrap_or(&Vec::new())
             .iter()
@@ -171,40 +175,23 @@ mod test {
 
     #[allow(dead_code)]
     pub fn has_with_code_at_line(
-        all_findings: &AllFindings,
+        findings: &AllFindings,
         name: &str,
         code: usize,
         line: usize,
     ) -> bool {
-        all_findings
-            .get(name)
-            .unwrap_or(&Vec::new())
-            .iter()
-            .any(|mf| {
-                if let Some(l) = mf.meta.line {
-                    mf.finding.code == code && l == line
-                } else {
-                    false
-                }
-            })
+        findings.get(name).unwrap_or(&Vec::new()).iter().any(|mf| {
+            if let Some(l) = mf.meta.line {
+                mf.finding.code == code && l == line
+            } else {
+                false
+            }
+        })
     }
 
-    /*pub fn get_findings_with_code_at_line(
-        all_findings: &AllFindings,
-        name: &str,
-        code: usize,
-    ) -> Vec<MetaFinding> {
-        all_findings
-            .get(name)
-            .unwrap()
-            .iter()
-            .filter(|mf| mf.finding.code == code)
-            .collect::<Vec<MetaFinding>>()
-    }*/
-
     #[allow(dead_code)]
-    pub fn findings_with_code(all_findings: &AllFindings, name: &str, code: usize) -> usize {
-        all_findings
+    pub fn findings_with_code(findings: &AllFindings, name: &str, code: usize) -> usize {
+        findings
             .get(name)
             .unwrap()
             .iter()
@@ -213,11 +200,11 @@ mod test {
     }
 
     pub fn lines_for_findings_with_code(
-        all_findings: &AllFindings,
+        findings: &AllFindings,
         name: &str,
         code: usize,
     ) -> Vec<usize> {
-        all_findings
+        findings
             .get(name)
             .unwrap_or(&Vec::new())
             .iter()
