@@ -21,6 +21,7 @@ pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, (String, Vec<usize>)>,
     visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
+    root_abs_path: PathBuf,
 }
 
 impl Walker {
@@ -28,11 +29,13 @@ impl Walker {
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         source_map: BTreeMap<String, (String, Vec<usize>)>,
         visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
+        root_abs_path: PathBuf,
     ) -> Self {
         Walker {
             artifact,
             source_map,
             visitors,
+            root_abs_path,
         }
     }
 
@@ -77,10 +80,21 @@ impl Walker {
                 let lines_to_bytes = source_map_with_content.1;
 
                 let path = PathBuf::from(&source_unit.absolute_path);
-                let name = path.file_name().unwrap();
-                let name = name.to_os_string().into_string().unwrap();
-                // .sol is redundant
-                let name = name.strip_suffix(".sol").unwrap();
+                // let name = path.file_name().unwrap();
+                // let name = name.to_os_string().into_string().unwrap();
+                // // .sol is redundant
+                // let name = name.strip_suffix(".sol").unwrap();
+
+                let root = &self
+                    .root_abs_path
+                    .canonicalize()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+
+                // the file may be outside the project. In that case, it's rather a lib.
+                let name = path.strip_prefix(root).unwrap_or(&path).to_str().unwrap();
 
                 let info = Information {
                     name: name.to_string(),

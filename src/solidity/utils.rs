@@ -16,8 +16,9 @@ pub fn build_source_maps(
         .iter()
         .map(|(id, _)| {
             let abs_path = id.to_string();
+
             let file_content = fs::read_to_string(abs_path.clone())
-                .unwrap_or_else(|e| panic!("Failed to open file {abs_path}. {e}"));
+                .unwrap_or_else(|e| panic!("Failed to open file `{abs_path}` {e}"));
             (
                 abs_path,
                 (file_content.clone(), get_string_lines(file_content)),

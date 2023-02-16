@@ -5,7 +5,7 @@ use crate::{
 };
 use bytes::Bytes;
 use ethers_solc::{
-    artifacts::{output_selection::ContractOutputSelection, BytecodeObject},
+    artifacts::{output_selection::ContractOutputSelection, BytecodeObject, Optimizer, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::SolcError,
     output::ProjectCompileOutput,
@@ -18,14 +18,16 @@ use ethers_solc::{
     Project,
     ProjectPathsConfig,
     Solc,
+    SolcConfig,
 };
-use eyre::{Result, WrapErr};
+use eyre::Result;
 use std::{
     collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
     time::Instant,
 };
+use yansi::Paint;
 
 #[derive(Default)]
 pub struct AllFindingsAndSourceMap {
@@ -42,6 +44,7 @@ pub enum ProjectFile {
 
 // TODO: use cache and only recompile if files have changed
 // TODO: if no svm, display message & start timer after
+#[derive(Debug)]
 pub struct Solidity {
     pub root: PathBuf,
     pub allow_paths: Vec<String>,
@@ -62,6 +65,7 @@ pub struct Solidity {
     pub force: bool,
     pub ephemeral: bool,
     pub solc: Option<Solc>,
+    pub optimizer: Optimizer,
 }
 
 impl Default for Solidity {
@@ -87,6 +91,7 @@ impl Default for Solidity {
             force: false,
             ephemeral: true,
             solc: None,
+            optimizer: Default::default(),
         }
     }
 }
@@ -153,8 +158,7 @@ impl Solidity {
             .cache(self.cache_path.join(SOLIDITY_FILES_CACHE_FILENAME))
             .sources(&self.src)
             .tests(&self.test)
-            // .scripts(&self.script)
-            .scripts(&self.root)
+            .scripts(&self.script)
             .artifacts(&self.out)
             .libs(self.libs.clone())
             .remappings(self.get_all_remappings());
@@ -166,6 +170,13 @@ impl Solidity {
         builder.build_with_root(&self.root)
     }
 
+    fn solc_settings(&self) -> Settings {
+        Settings {
+            optimizer: self.optimizer.clone(),
+            ..Default::default()
+        }
+    }
+
     pub fn project(&self) -> Result<Project, SolcError> {
         let mut project = Project::builder()
             .artifacts(self.artifacts())
@@ -174,11 +185,7 @@ impl Solidity {
             .allowed_paths(&self.libs)
             .allowed_paths(&self.allow_paths)
             // .include_paths(&self.include_paths)
-            // .solc_config(
-            //     SolcConfig::builder()
-            //         .settings(self.solc_settings()?)
-            //         .build(),
-            // )
+            .solc_config(SolcConfig::builder().settings(self.solc_settings()).build())
             // .ignore_error_codes(self.ignored_error_codes.iter().copied().map(Into::into))
             // .set_compiler_severity_filter(if self.deny_warnings {
             //     Severity::Warning
@@ -216,8 +223,18 @@ impl Solidity {
         self
     }
 
-    pub fn with_path_root(mut self, root: PathBuf) -> Self {
+    pub fn with_path_root(self, root: PathBuf) -> Self {
+        let root = root.canonicalize().unwrap();
+        self.update_root(root)
+    }
+
+    /// update root and other folders
+    fn update_root(mut self, root: PathBuf) -> Self {
         self.root = root;
+        self.src = self.root.join("src");
+        self.test = self.test.join("test");
+        self.script = self.script.join("script");
+        self.out = self.out.join("out");
         self
     }
 
@@ -226,16 +243,30 @@ impl Solidity {
         self
     }
 
-    #[allow(unused)]
     pub fn ephemeral(mut self, ephemeral: bool) -> Self {
         self.ephemeral = ephemeral;
         self
     }
 
-    pub fn compile(&self) -> Result<ProjectCompileOutput> {
+    pub fn auto_remappings(mut self, remappings: bool) -> Self {
+        self.auto_detect_remappings = remappings;
+        self
+    }
+
+    pub fn with_optimizer(mut self, optimizer: Optimizer) -> Self {
+        self.optimizer = optimizer;
+        self
+    }
+
+    pub fn compile(&mut self) -> Result<ProjectCompileOutput> {
+        if self.auto_detect_remappings {
+            self.attach_remappings();
+        }
+
         let project = &self.project().unwrap();
 
         let path = self.root.clone();
+        // let path = self.root.clone().canonicalize().unwrap();
 
         let files = if path.is_dir() {
             self.get_sol_files(path)
@@ -267,23 +298,23 @@ impl Solidity {
             project.compile_files(files).unwrap()
         };
 
-        // project.rerun_if_sources_changed();
-
-        println!("Compiled in {}ms", now.elapsed().as_millis());
-
         if compiled.has_compiler_errors() {
             let output = compiled.output();
             output.errors.iter().for_each(|error| {
-                println!("{:#?}", error.formatted_message);
+                let err_msg = error.formatted_message.clone();
+                println!("{}", Paint::red(err_msg.unwrap_or_default()).bold());
             });
             panic!();
+        } else {
+            println!("Compiled in {}ms\n", now.elapsed().as_millis());
         }
 
-        project.compile().wrap_err("Issue")
+        Ok(compiled)
     }
 
-    #[allow(unused)]
-    pub fn compile_artifacts(&self) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
+    pub fn compile_artifacts(
+        &mut self,
+    ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
         match self.compile() {
             Ok(compiled) => Ok(compiled.into_artifacts().collect()),
             Err(err) => Err(err),
@@ -291,7 +322,7 @@ impl Solidity {
     }
 
     // get path of all .sol files
-    pub fn get_sol_files(&self, path: PathBuf) -> Vec<PathBuf> {
+    fn get_sol_files(&self, path: PathBuf) -> Vec<PathBuf> {
         let mut files = Vec::new();
 
         self.visit_dirs(path.as_path(), &mut files)
@@ -301,7 +332,7 @@ impl Solidity {
     }
 
     // could do caching, but explicitely excluding directory is probably good enough ?
-    pub fn visit_dirs(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+    fn visit_dirs(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
         if dir.is_dir() {
             for entry in fs::read_dir(dir)? {
                 let entry = entry?;
@@ -325,7 +356,7 @@ impl Solidity {
         Ok(())
     }
 
-    pub fn is_sol_file(&self, path: &Path) -> bool {
+    fn is_sol_file(&self, path: &Path) -> bool {
         if path.is_file() {
             match path.extension() {
                 Some(extension) => {
@@ -344,11 +375,93 @@ impl Solidity {
 
         false
     }
+
+    fn attach_remappings(&mut self) {
+        let mut remappings = Remapping::find_many(&self.root);
+
+        remappings.append(&mut self.remappings_from_file());
+
+        let remappings = remappings
+            .into_iter()
+            .map(|re| re.into_relative(&self.root))
+            .collect();
+
+        self.remappings = remappings;
+    }
+
+    fn remappings_from_file(&self) -> Vec<Remapping> {
+        let root = PathBuf::from(&self.root).canonicalize().unwrap();
+        let mut remap = root.clone();
+        remap.push("remappings.txt");
+
+        let remappings_txt = match fs::read_to_string(remap) {
+            Ok(content) => content,
+            Err(_) => return Vec::new(),
+        };
+
+        remappings_txt
+            .lines()
+            .map(|l| {
+                let (name, rpath) = l.split_once('=').unwrap();
+
+                let mut path = root.clone();
+                path.push(rpath);
+                let path = path
+                    .canonicalize()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap();
+
+                Remapping {
+                    name: name.to_string(),
+                    path,
+                }
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -> AllFindings {
+    let mut solidity = Solidity::default()
+        .with_path_root(PathBuf::from(path))
+        .auto_remappings(true);
+
+    if let Some(optimizer) = optimizer {
+        solidity = solidity.with_optimizer(optimizer);
+    }
+
+    let compiled = solidity.compile().unwrap();
+
+    let output = compiled.clone().output();
+
+    let source_map = build_source_maps(output);
+
+    let artifacts = compiled
+        .into_artifacts()
+        .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
+
+    if let Some(debug) = env::var_os("DEBUG") {
+        if debug == "true" || debug == "True" || debug == "TRUE" {
+            artifacts.iter().for_each(|(_, art)| {
+                if let Some(ast) = &art.ast {
+                    println!("{:#?}", ast.clone().to_typed());
+                }
+            });
+        }
+    };
+
+    let visitors = get_all_visitors();
+
+    let mut walker = Walker::new(artifacts, source_map, visitors, PathBuf::from(path));
+
+    walker.traverse().expect("failed to traverse ast")
 }
 
 /// Tests utils to compile a temp project similar to reality
 pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
-    let (_project, compiled) = make_temp_project(files);
+    let (project, compiled) = make_temp_project(files);
     let output = compiled.clone().output();
 
     let source_map = build_source_maps(output);
@@ -371,7 +484,7 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
 
     let visitors = get_all_visitors();
 
-    let mut walker = Walker::new(artifacts, source_map, visitors);
+    let mut walker = Walker::new(artifacts, source_map, visitors, project.root.into_path());
 
     walker.traverse().expect("failed to traverse ast")
 }

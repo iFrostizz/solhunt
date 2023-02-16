@@ -9,6 +9,9 @@ mod solidity;
 mod utils;
 mod walker;
 
+#[cfg(test)]
+mod tests;
+
 fn main() {
     parse();
 }
@@ -31,23 +34,30 @@ mod test {
             .any(|mf| mf.finding.code == code)
     }
 
-    #[allow(dead_code)]
+    pub fn has_with_code_file(findings: &AllFindings, file: &str, name: &str, code: usize) -> bool {
+        findings
+            .get(name)
+            .unwrap_or(&Vec::new())
+            .iter()
+            .any(|mf| mf.meta.file == file && mf.finding.code == code)
+    }
+
     pub fn has_with_code_at_line(
         findings: &AllFindings,
+        file: &str,
         name: &str,
         code: usize,
         line: usize,
     ) -> bool {
         findings.get(name).unwrap_or(&Vec::new()).iter().any(|mf| {
             if let Some(l) = mf.meta.line {
-                mf.finding.code == code && l == line
+                mf.meta.file == file && mf.finding.code == code && l == line
             } else {
                 false
             }
         })
     }
 
-    #[allow(dead_code)]
     pub fn findings_with_code(findings: &AllFindings, name: &str, code: usize) -> usize {
         findings
             .get(name)

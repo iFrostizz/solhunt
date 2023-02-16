@@ -15,16 +15,10 @@ cli-table = "^0.4.7"
 ethers-solc = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor", features = ["svm-solc", "project-util"] }
 ethers-core = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor" }
 ethers-contract = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor" }
-# foundry-cli = { git = "https://github.com/iFrostizz/foundry.git", branch = "franfran/fix-ast-coverage" }
-# foundry-common = { git = "https://github.com/iFrostizz/foundry.git", branch = "franfran/fix-ast-coverage" }
 itertools = "0.10.5"
 bytes = "1.4.0"
 
-# [patch."https://github.com/iFrostizz/ethers-rs.git"]
-# ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }
-# ethers-core = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-core" }
-# ethers-contract = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-contract" }
-
-# [patch."https://github.com/iFrostizz/foundry.git"]
-# foundry-cli = { path = "/home/franfran/Projects/utils/foundry/cli" }
-# foundry-common = { path = "/home/franfran/Projects/utils/foundry/common" }
+[patch."https://github.com/iFrostizz/ethers-rs.git"]
+ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }
+ethers-core = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-core" }
+ethers-contract = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-contract" }

@@ -34,7 +34,7 @@ pub fn run_analysis(args: Analyze) {
     let mut cache_path = path.clone();
     cache_path.push("cache");
 
-    let solidity = Solidity::default()
+    let mut solidity = Solidity::default()
         .with_path_root(path.clone())
         .with_cache_path(cache_path)
         .with_remappings(remappings);
@@ -76,7 +76,7 @@ pub fn run_analysis(args: Analyze) {
 
     let visitors = get_all_visitors();
 
-    let mut walker = Walker::new(artifacts, source_map, visitors);
+    let mut walker = Walker::new(artifacts, source_map, visitors, path.clone());
 
     println!("Starting the analysis...");
 
