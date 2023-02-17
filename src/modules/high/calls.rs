@@ -100,6 +100,7 @@ fn parse_body(body: &Block, data: &HashMap<String, String>) -> Vec<PushedFinding
 }
 
 fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> Vec<PushedFinding> {
+    #[allow(unused_mut)]
     let mut findings = Vec::new();
 
     if let Statement::ExpressionStatement(expr) = stat {

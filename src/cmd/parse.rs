@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use ethers_solc::remappings::{RelativeRemapping, Remapping};
 
-use crate::{formatter::ReportStyle, walker::Severity};
+use crate::formatter::ReportStyle;
 use serde::Serialize;
 use std::{
     env::current_dir,
@@ -11,9 +11,9 @@ use std::{
 
 use super::{analyze::run_analysis, gas::run_gas_metering};
 
+#[derive(Parser)]
 #[clap(name = "solhunt")]
 #[clap(bin_name = "solhunt")]
-#[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct Cmd {

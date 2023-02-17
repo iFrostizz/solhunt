@@ -1,6 +1,7 @@
 use crate::walker::{AllFindings, MetaFinding, Severity};
 
 // TODO: display sort by severity
+#[allow(unused)]
 pub fn format_findings(findings: AllFindings) {
     findings.iter().for_each(|(_name, findings)| {
         findings.iter().for_each(|mf| {
@@ -9,6 +10,7 @@ pub fn format_findings(findings: AllFindings) {
     })
 }
 
+#[allow(unused)]
 pub fn filter_findings(findings: AllFindings, verbosity: &[Severity]) -> AllFindings {
     findings
         .into_iter()

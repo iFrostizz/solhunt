@@ -3,9 +3,12 @@ use crate::{
     solidity::{build_source_maps, get_finding_content},
     walker::{AllFindings, Walker},
 };
+#[cfg(test)]
 use bytes::Bytes;
+#[cfg(test)]
+use ethers_solc::artifacts::BytecodeObject;
 use ethers_solc::{
-    artifacts::{output_selection::ContractOutputSelection, BytecodeObject, Optimizer, Settings},
+    artifacts::{output_selection::ContractOutputSelection, Optimizer, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::SolcError,
     output::ProjectCompileOutput,
@@ -243,16 +246,19 @@ impl Solidity {
         self
     }
 
+    #[allow(unused)]
     pub fn ephemeral(mut self, ephemeral: bool) -> Self {
         self.ephemeral = ephemeral;
         self
     }
 
+    #[allow(unused)]
     pub fn auto_remappings(mut self, remappings: bool) -> Self {
         self.auto_detect_remappings = remappings;
         self
     }
 
+    #[allow(unused)]
     pub fn with_optimizer(mut self, optimizer: Optimizer) -> Self {
         self.optimizer = optimizer;
         self
@@ -312,6 +318,7 @@ impl Solidity {
         Ok(compiled)
     }
 
+    #[allow(unused)]
     pub fn compile_artifacts(
         &mut self,
     ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
@@ -489,6 +496,7 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
     walker.traverse().expect("failed to traverse ast")
 }
 
+#[cfg(test)]
 pub fn compile_single_contract(contract: String) -> Bytes {
     let files = vec![ProjectFile::Contract(
         String::from("SingleContract"),

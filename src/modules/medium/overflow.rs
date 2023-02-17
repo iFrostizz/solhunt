@@ -1,6 +1,7 @@
 // Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
 use crate::{build_visitor, walker::smallest_version_from_literals};
+#[allow(unused_imports)]
 use ethers_solc::artifacts::ast::{
     AssignmentOperator::{AddAssign, MulAssign, SubAssign},
     Expression,
@@ -8,44 +9,44 @@ use ethers_solc::artifacts::ast::{
 
 build_visitor!(
     BTreeMap::from([
-        // (
-        //     0,
-        //     FindingKey {
-        //         description: "Looks like this contract is < 0.8.0".to_string(),
-        //         summary: "No built-in overflow checker".to_string(),
-        //         severity: Severity::Informal
-        //     }
-        // ),
-        // (
-        //     1,
-        //     FindingKey {
-        //         description: "Overflow may happen".to_string(),
-        //         summary: "Overflow".to_string(),
-        //         severity: Severity::Medium
-        //     }
-        // ),
-        // (
-        //     2,
-        //     FindingKey {
-        //         description: "Underflow may happen".to_string(),
-        //         summary: "Underflow".to_string(),
-        //         severity: Severity::Medium
-        //     }
-        // ),
-        // (
-        //     3,
-        //     FindingKey {
-        //         description: "Unchecked block".to_string(),
-        //         summary: "Unchecked".to_string(),
-        //         severity: Severity::Informal
-        //     }
-        // )
+        (
+            0,
+            FindingKey {
+                description: "Looks like this contract is < 0.8.0".to_string(),
+                summary: "No built-in overflow checker".to_string(),
+                severity: Severity::Informal
+            }
+        ),
+        (
+            1,
+            FindingKey {
+                description: "Overflow may happen".to_string(),
+                summary: "Overflow".to_string(),
+                severity: Severity::Medium
+            }
+        ),
+        (
+            2,
+            FindingKey {
+                description: "Underflow may happen".to_string(),
+                summary: "Underflow".to_string(),
+                severity: Severity::Medium
+            }
+        ),
+        (
+            3,
+            FindingKey {
+                description: "Unchecked block".to_string(),
+                summary: "Unchecked".to_string(),
+                severity: Severity::Informal
+            }
+        )
     ]),
     fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
         let sem_ver = smallest_version_from_literals(pragma_directive.literals.clone()).unwrap();
 
         if sem_ver.minor < 8 {
-            // self.push_finding(0, Some(pragma_directive.src.clone()));
+            self.push_finding(0, Some(pragma_directive.src.clone()));
         } // else will need to check for "unchecked"
 
         self.version = Some(sem_ver);
@@ -76,7 +77,7 @@ build_visitor!(
     },
     fn visit_unchecked_block(&mut self, unchecked_block: &mut UncheckedBlock) {
         self.inside.unchecked = true;
-        // self.push_finding(3, Some(unchecked_block.src.clone()));
+        self.push_finding(3, Some(unchecked_block.src.clone()));
         unchecked_block.visit(self)?;
         self.inside.unchecked = false;
 
@@ -84,6 +85,7 @@ build_visitor!(
     },
     fn visit_expression_statement(&mut self, expression_statement: &mut ExpressionStatement) {
         if self.inside.unchecked || matches!(&self.version, Some(version) if version.minor < 8) {
+            #[allow(unused)]
             if let Expression::Assignment(ass) = &expression_statement.expression {
                 /*let lhs = &ass.lhs;
                 let rhs = &ass.rhs;

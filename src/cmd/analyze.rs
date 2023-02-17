@@ -56,9 +56,10 @@ pub fn run_analysis(args: Analyze) {
                 let abs_path = &id.source;
                 let other_path = abs_path.strip_prefix(root_path).unwrap_or_else(|e| {
                     panic!(
-                        "Failed to strip root path: {} from {}",
+                        "Failed to strip root path: `{}` from `{}`, {}",
                         root_path.to_string_lossy(),
-                        abs_path.to_string_lossy()
+                        abs_path.to_string_lossy(),
+                        e
                     )
                 });
 

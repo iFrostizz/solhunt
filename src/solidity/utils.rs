@@ -170,6 +170,7 @@ fn content_until_end(file_bytes: &[u8], index: usize) -> String {
 }
 
 /// Returns the source map from an absolute file path
+#[allow(unused)]
 pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
     let content = fs::read_to_string(path)?;
     Ok(get_string_lines(content))
@@ -302,7 +303,6 @@ detection modules
 and it's fast!",
     );
 
-    let lines_to_bytes = &get_string_lines(content.clone());
     let file_bytes = content.as_bytes();
 
     let before_content = get_finding_content_before(file_bytes, 14);
@@ -322,7 +322,6 @@ detection modules
 and it's fast!",
     );
 
-    let lines_to_bytes = &get_string_lines(content.clone());
     let file_bytes = content.as_bytes();
 
     let middle_content = get_finding_content_middle(file_bytes, 14, 3);
@@ -351,7 +350,6 @@ detection modules
 and it's fast!",
     );
 
-    let lines_to_bytes = &get_string_lines(content.clone());
     let file_bytes = content.as_bytes();
 
     let after_content = get_finding_content_after(file_bytes, 14);
@@ -370,8 +368,6 @@ it lets you write
 detection modules
 and it's fast!",
     );
-
-    let lines_to_bytes = get_string_lines(content.clone());
 
     let finding_content = get_finding_content(content.clone(), 14, 6);
     assert_eq!(

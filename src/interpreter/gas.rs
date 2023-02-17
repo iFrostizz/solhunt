@@ -71,7 +71,7 @@ impl GasComparer {
         let bytecode = compile_single_contract(contract);
 
         self.evm.env.tx.caller = self.from;
-        self.evm.env.tx.data = bytecode.into();
+        self.evm.env.tx.data = bytecode;
         self.evm.env.tx.transact_to = TransactTo::Create(CreateScheme::Create);
 
         let exec = self.evm.transact_commit().unwrap();

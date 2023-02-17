@@ -1,7 +1,5 @@
+use crate::{solidity::compile_path_and_get_findings, test::has_with_code_file};
 use ethers_solc::artifacts::Optimizer;
-
-use crate::solidity::compile_path_and_get_findings;
-use crate::test::has_with_code_file;
 
 #[test]
 fn biconomy_integration() {

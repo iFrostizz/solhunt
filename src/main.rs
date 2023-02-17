@@ -34,6 +34,7 @@ mod test {
             .any(|mf| mf.finding.code == code)
     }
 
+    #[cfg(test)]
     pub fn has_with_code_file(findings: &AllFindings, file: &str, name: &str, code: usize) -> bool {
         findings
             .get(name)
@@ -42,6 +43,7 @@ mod test {
             .any(|mf| mf.meta.file == file && mf.finding.code == code)
     }
 
+    #[allow(unused)]
     pub fn has_with_code_at_line(
         findings: &AllFindings,
         file: &str,
@@ -58,6 +60,7 @@ mod test {
         })
     }
 
+    #[allow(unused)]
     pub fn findings_with_code(findings: &AllFindings, name: &str, code: usize) -> usize {
         findings
             .get(name)
