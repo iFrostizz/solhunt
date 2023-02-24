@@ -43,7 +43,7 @@ mod test {
             .any(|mf| mf.meta.file == file && mf.finding.code == code)
     }
 
-    #[allow(unused)]
+    #[cfg(test)]
     pub fn has_with_code_at_line(
         findings: &AllFindings,
         file: &str,
@@ -80,6 +80,22 @@ mod test {
             .unwrap_or(&Vec::new())
             .iter()
             .filter(|mf| mf.finding.code == code)
+            .filter_map(|mf| mf.meta.line)
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub fn lines_for_findings_with_code_file(
+        findings: &AllFindings,
+        file: &str,
+        name: &str,
+        code: usize,
+    ) -> Vec<usize> {
+        findings
+            .get(name)
+            .unwrap_or(&Vec::new())
+            .iter()
+            .filter(|mf| mf.meta.file == file && mf.finding.code == code)
             .filter_map(|mf| mf.meta.line)
             .collect()
     }
