@@ -1,1 +1,3 @@
 *.rs linguist-detectable
+*.sol linguist-detectable
+*.ts -linguist-detectable
