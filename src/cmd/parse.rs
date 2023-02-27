@@ -46,6 +46,8 @@ pub struct Analyze {
     #[clap(short, long, help = "Style of the report", value_enum, default_value_t=ReportStyle::Cmd)]
     pub style: ReportStyle,
     pub name: Option<String>,
+    #[clap(short, long, help = "specifiy the optimizer runs")]
+    pub optimizer_runs: Option<usize>,
 }
 
 #[derive(Parser, Debug, Serialize)]

@@ -1,6 +1,7 @@
 // Store findings and do whatever with them
 
 use ethers_solc::artifacts::ast::SourceLocation;
+use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Display,
@@ -111,16 +112,14 @@ pub type Findings = Vec<MetaFinding>;
 /// Module name -> Findings
 pub type AllFindings = HashMap<String, Findings>;
 
-// impl AllFindings {
-//     fn more_likelyhood(&self, value: u8) -> AllFindings {
-//         &self.iter().flat_map(|(_, finding)| {
-//             finding.iter().filter_map(|mf| {
-//                 let finding = mf.finding;
-//                 Some(finding.likelyhood >= value)
-//             })
-//         })
-//     }
-// }
+pub fn sort_findings_by_len(findings: &AllFindings) -> AllFindings {
+    findings
+        .clone()
+        .iter()
+        .map(|(name, mfs)| (name.clone(), mfs.clone()))
+        .sorted_by(|(_, mfs1), (_, mfs2)| Ord::cmp(&mfs1.len(), &mfs2.len()))
+        .collect()
+}
 
 #[derive(Debug, Default)]
 pub struct Inside {

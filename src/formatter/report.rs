@@ -48,6 +48,7 @@ impl Report {
         findings: AllFindings,
         verbosity: Vec<Severity>,
     ) -> Self {
+        // TODO: sort findings by severity
         Self {
             style,
             root,

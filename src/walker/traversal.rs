@@ -58,8 +58,6 @@ impl Walker {
                 .unwrap_or_else(|| panic!("no ast found for {unique_id}"))
                 .clone();
 
-            // println!("{:#?}", ast.absolute_path);
-
             let mut ast: TypedAst = ast.to_typed();
             let source_unit = &ast.source_unit;
             let source_id = source_unit.id;
@@ -80,10 +78,6 @@ impl Walker {
                 let lines_to_bytes = source_map_with_content.1;
 
                 let path = PathBuf::from(&source_unit.absolute_path);
-                // let name = path.file_name().unwrap();
-                // let name = name.to_os_string().into_string().unwrap();
-                // // .sol is redundant
-                // let name = name.strip_suffix(".sol").unwrap();
 
                 let root = &self
                     .root_abs_path
@@ -114,6 +108,11 @@ impl Walker {
             }
         });
 
+        // let mut findings: AllFindings = HashMap::new();
+
+        // dedup same findings of the same module name, code, and src to avoid useless verbosity
+
+        // Ok(findings)
         Ok(all_findings)
     }
 }
@@ -143,9 +142,9 @@ pub fn visit_source<D>(
         });
 
         let start = src.start.unwrap_or(0);
+        let length = src.length.unwrap_or(0);
         let position = get_position(start, lines_to_bytes);
-        let content =
-            get_finding_content(file_content.clone(), position.0, src.length.unwrap_or(0));
+        let content = get_finding_content(file_content.clone(), start, length);
 
         let meta_finding = MetaFinding {
             finding: finding.clone(),

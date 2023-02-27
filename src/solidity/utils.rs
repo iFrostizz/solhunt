@@ -73,11 +73,7 @@ pub fn get_finding_content(content: String, start: usize, length: usize) -> Stri
     content
 }
 
-pub fn get_finding_content_before(
-    file_bytes: &[u8],
-    start: usize,
-    // lines_to_bytes: &[usize],
-) -> String {
+pub fn get_finding_content_before(file_bytes: &[u8], start: usize) -> String {
     let last_i = get_last_start_index(file_bytes, start);
     if last_i > 0 {
         let start_line = get_last_start_index(file_bytes, start).saturating_sub(1);
@@ -98,9 +94,8 @@ pub fn get_finding_content_middle(file_bytes: &[u8], start: usize, length: usize
         offset_until_end(file_bytes, start_line_byte + length)
     };
 
-    let content = file_bytes
-        .get(start_line_byte..max)
-        .unwrap_or_else(|| panic!("{:#?}", start_line_byte..max));
+    let content = file_bytes.get(start_line_byte..max).unwrap_or_default();
+    // .unwrap_or_else(|| panic!("{:#?}", start_line_byte..max));
 
     String::from_utf8(content.to_vec()).unwrap()
 }
@@ -110,7 +105,7 @@ fn get_last_start_index(file_bytes: &[u8], start: usize) -> usize {
     let mut i = start;
 
     while i > 0 {
-        if file_bytes[i - 1] == b'\n' {
+        if file_bytes.get(i - 1).unwrap_or(&b'\n') == &b'\n' {
             break;
         }
         i -= 1;
@@ -165,7 +160,7 @@ fn content_until_end(file_bytes: &[u8], index: usize) -> String {
         }
     }
 
-    let content_with_length = file_bytes.get(index..i).unwrap();
+    let content_with_length = file_bytes.get(index..i).unwrap_or_default();
     String::from_utf8(content_with_length.to_vec()).unwrap()
 }
 

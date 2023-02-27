@@ -1,12 +1,13 @@
-use super::parse::{get_working_path, Analyze};
+use ethers_solc::artifacts::Optimizer;
+
+use super::parse::Analyze;
 use crate::{
-    cmd::parse::get_remappings,
     formatter::Report,
     loader::get_all_visitors,
     solidity::{build_source_maps, Solidity},
     walker::{Severity, Walker},
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 pub fn run_analysis(args: Analyze) {
     let mut severities = HashMap::from([
@@ -26,18 +27,20 @@ pub fn run_analysis(args: Analyze) {
         severities.values().map(|s| s.to_owned()).collect()
     };
 
-    let path = get_working_path(args.path);
+    let path = PathBuf::from(args.path).canonicalize().unwrap();
     let report_style = args.style;
 
-    let remappings = get_remappings(&path);
-
-    let mut cache_path = path.clone();
-    cache_path.push("cache");
+    let runs = args.optimizer_runs;
 
     let mut solidity = Solidity::default()
         .with_path_root(path.clone())
-        .with_cache_path(cache_path)
-        .with_remappings(remappings);
+        .with_cache_path(path.join("cache"))
+        .with_optimizer(Optimizer {
+            enabled: if runs.is_some() { Some(true) } else { None },
+            runs,
+            details: None,
+        })
+        .auto_remappings(true);
 
     let compiled = solidity.compile().expect("Compilation failed");
     let output = compiled.clone().output();
@@ -54,21 +57,27 @@ pub fn run_analysis(args: Analyze) {
             if root_path.is_dir() {
                 // only filter if not "file-only"
                 let abs_path = &id.source;
-                let other_path = abs_path.strip_prefix(root_path).unwrap_or_else(|e| {
-                    panic!(
-                        "Failed to strip root path: `{}` from `{}`, {}",
-                        root_path.to_string_lossy(),
-                        abs_path.to_string_lossy(),
-                        e
-                    )
-                });
-
-                let first_folder = other_path
-                    .iter()
-                    .next()
-                    .expect("Failed to get first folder");
-                // only take included folders
-                included_folders.contains(&first_folder.to_string_lossy().to_string())
+                match abs_path.strip_prefix(root_path) {
+                    // TODO: tracing this
+                    // panic!(
+                    //     "Failed to strip root path: `{}` from `{}`, {}",
+                    //     root_path.to_string_lossy(),
+                    //     abs_path.to_string_lossy(),
+                    //     e
+                    // )
+                    Ok(other_path) => {
+                        // let first_folder = other_path
+                        //     .iter()
+                        //     .next()
+                        //     .expect("Failed to get first folder");
+                        // // only take included folders
+                        // included_folders.contains(&first_folder.to_string_lossy().to_string())
+                        true
+                    }
+                    // No need to take care of artifacts outside of the project root
+                    // they are usually libraries
+                    _ => false,
+                }
             } else {
                 false
             }

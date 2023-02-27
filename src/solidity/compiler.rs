@@ -272,6 +272,7 @@ impl Solidity {
         let project = &self.project().unwrap();
 
         let path = self.root.clone();
+        // dbg!(&path);
         // let path = self.root.clone().canonicalize().unwrap();
 
         let files = if path.is_dir() {
@@ -431,8 +432,10 @@ impl Solidity {
 
 #[cfg(test)]
 pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -> AllFindings {
+    let root = PathBuf::from(path).canonicalize().unwrap();
+
     let mut solidity = Solidity::default()
-        .with_path_root(PathBuf::from(path))
+        .with_path_root(root.clone())
         .auto_remappings(true);
 
     if let Some(optimizer) = optimizer {
@@ -447,6 +450,13 @@ pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -
 
     let artifacts = compiled
         .into_artifacts()
+        .filter(|(id, _artifact)| {
+            // Only return artifacts derived from root path by default
+            match &id.source.canonicalize() {
+                Ok(path) => path.starts_with(root.clone()),
+                _ => false,
+            }
+        })
         .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
 
     if let Some(debug) = env::var_os("DEBUG") {
