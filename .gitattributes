@@ -1,1 +1,1 @@
-*.ts -linguist-detectable
+test-data/** -linguist-detectable
