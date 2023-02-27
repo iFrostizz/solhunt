@@ -15,7 +15,7 @@ build_visitor! {
     ]),
 
     fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
-        dbg!(&function_definition);
+        // dbg!(&function_definition);
         if function_definition.name.is_empty() && function_definition.kind == Some(FunctionKind::Constructor) && function_definition.state_mutability != Some(StateMutability::Payable) {
             self.push_finding(0, Some(function_definition.src.clone()));
         }

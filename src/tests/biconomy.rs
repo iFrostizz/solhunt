@@ -13,6 +13,12 @@ fn biconomy_integration() {
         }),
     );
 
+    // dbg!(&findings);
+
+    findings.iter().for_each(|(m, f)| {
+        println!("{m}: {}", f.len());
+    });
+
     // https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/Rolezn-G.md#gas2-state-variables-only-set-in-the-constructor-should-be-declared-immutable
     assert!(!has_with_code_file(
         &findings,

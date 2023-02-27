@@ -1,0 +1,9 @@
+[submodule "test-data/lib/openzeppelin-contracts"]
+	path = test-data/lib/openzeppelin-contracts
+	url = git@github.com:OpenZeppelin/openzeppelin-contracts.git
+[submodule "test-data/lib/openzeppelin-contracts-upgradeable"]
+	path = test-data/lib/openzeppelin-contracts-upgradeable
+	url = git@github.com:OpenZeppelin/openzeppelin-contracts-upgradeable.git
+[submodule "test-data/lib/account-abstraction"]
+	path = test-data/lib/account-abstraction
+	url = git@github.com:eth-infinitism/account-abstraction.git

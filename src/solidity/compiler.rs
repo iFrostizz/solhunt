@@ -415,7 +415,7 @@ impl Solidity {
                 path.push(rpath);
                 let path = path
                     .canonicalize()
-                    .unwrap()
+                    .expect("path not found: {#path}")
                     .into_os_string()
                     .into_string()
                     .unwrap();
