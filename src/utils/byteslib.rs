@@ -118,10 +118,11 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
 
     for perm in bytes.into_iter().permutations(bytes_len).unique() {
         let local_packed = pack(perm);
+        // has found a packed one, we can return it
         if local_packed.len() < loose_len {
             if let Some(p) = packed.clone() {
                 if local_packed.len() < p.len() {
-                    packed = Some(local_packed);
+                    return Some(local_packed);
                 }
             } else {
                 packed = Some(local_packed);

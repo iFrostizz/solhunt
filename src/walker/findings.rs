@@ -54,7 +54,13 @@ impl From<Severity> for u16 {
     }
 }
 
-#[derive(Debug, Clone)]
+impl Default for Severity {
+    fn default() -> Self {
+        Self::Gas
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Finding {
     pub name: String,
     pub summary: String,

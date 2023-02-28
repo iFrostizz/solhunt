@@ -533,6 +533,22 @@ pub fn compile_single_contract(contract: String) -> Bytes {
     }
 }
 
+#[cfg(test)]
+pub fn compile_single_contract_to_artifacts(
+    contract: String,
+) -> (
+    TempProject<ConfigurableArtifacts>,
+    BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+) {
+    let files = vec![ProjectFile::Contract(
+        String::from("SingleContract"),
+        contract,
+    )];
+    let (project, compiled) = make_temp_project(files);
+
+    (project, compiled.into_artifacts().collect())
+}
+
 /// Creates a temp project and compiles the files in it
 /// Note: returns the ownership of Project not to be dropped and deleted
 fn make_temp_project(

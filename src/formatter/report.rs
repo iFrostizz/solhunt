@@ -142,6 +142,14 @@ fn format_to_md(
 
     let mut content = String::from("# Solhunt report\n");
 
+    let mut summary =
+        String::from("## Findings summary\nName | Finding | Instances\n--- | --- | ---\n");
+
+    // details of findings including title, summary, description, and view of code
+    // for gas, also display the gas savings
+    let mut details = String::from("\n## Findings details\n");
+
+    // write the summary
     verbosity.iter().for_each(|v| {
         let mut findings_count: usize = 0;
 
@@ -162,7 +170,8 @@ fn format_to_md(
 
         // has at least one finding
         if these_findings.values().any(|mfs| !mfs.is_empty()) {
-            let title = match v {
+            // TODO: unused ?
+            let _title = match v {
                 Severity::Gas => "## Gas otimizations".to_string(),
                 Severity::High => "## High severity findings".to_string(),
                 Severity::Medium => "## Medium severity findings".to_string(),
@@ -178,9 +187,6 @@ fn format_to_md(
                 Severity::Informal => "I".to_string(),
             };
 
-            let mut summary =
-                format!("## Findings summary\n{title}\nName | Finding | Instances\n---|---|---\n");
-
             // <(module, code), ((id, f_count, summary), Findings)>
             // <Findings>.len is the count of these findings
             #[allow(clippy::type_complexity)]
@@ -189,6 +195,7 @@ fn format_to_md(
                 ((String, usize, String), Findings),
             > = HashMap::new();
 
+            // tidy up findings and make them unique by grouping them
             these_findings
                 .into_iter()
                 .for_each(|(module, meta_findings)| {
@@ -198,37 +205,42 @@ fn format_to_md(
                             .and_modify(|(_, mfs)| {
                                 mfs.push(mf.clone());
                             })
-                            .or_insert({
-                                let old_count = findings_count;
+                            .or_insert_with(|| {
                                 findings_count += 1;
 
                                 (
-                                    (finding_identifier.clone(), old_count, summary.clone()),
+                                    (
+                                        finding_identifier.clone(),
+                                        findings_count,
+                                        mf.finding.summary.clone(),
+                                    ),
                                     vec![mf.clone()],
                                 )
                             });
                     })
                 });
 
+            // TODO: finding code is not ordered. Make it a Vec and sort it first
+            // make the finding titles for the summary
             findings_id
                 .iter()
                 .for_each(|(_, ((id, f_count, sum), mfs))| {
-                    let findings_title = get_title(id.clone(), *f_count, sum.clone(), mfs.len());
+                    let findings_title =
+                        get_table_title(id.clone(), *f_count, sum.clone(), mfs.len());
                     summary += &findings_title;
                 });
 
-            content.push_str(&summary);
-
-            // details of findings including title, summary, description, and view of code
-            // for gas, also display the gas savings
-            let mut details = String::from("\n## Findings details\n");
-
+            // write details
             findings_id
                 .into_iter()
                 .for_each(|(_, ((id, f_count, sum), mfs))| {
                     // settle the title
-                    let findings_title = get_title(id, f_count, sum, mfs.len());
-                    details.push_str(&("### ".to_owned() + &findings_title));
+                    let findings_title = get_title(id, f_count, sum);
+                    let instances = mfs.len();
+                    details.push_str(&format!(
+                        "### {}\n\n{}\n\n",
+                        findings_title, mfs[0].finding.description
+                    ));
 
                     let mut description = String::new();
 
@@ -238,17 +250,17 @@ fn format_to_md(
                     // add the description
                     mfs.into_iter()
                         .enumerate()
+                        // TODO: write the comment section and prioritize any comment that 1. doesn't have the same finding code 2. doesn't have the same comment
                         .filter(|(i, _)| i < &max_content)
                         .for_each(|(_, mf)| {
                             // let file = mf.meta.file;
                             // let
 
                             let formatted_finding = format!(
-                                "#### `{}`\n{}:{}\n{}\n```solidity\n{}```\n",
+                                "`{}`\n{}:{}\n\n```solidity\n{}```\n",
                                 mf.meta.file,
                                 mf.meta.line.unwrap_or_default(),
                                 mf.meta.position.unwrap_or_default(),
-                                mf.finding.description,
                                 mf.meta.content
                             );
                             // formatted_finding.push_str("\n");
@@ -258,17 +270,24 @@ fn format_to_md(
 
                     details.push_str(&description);
                 });
-
-            // push all the details to the file
-            content.push_str(&details);
         }
     });
+
+    // push the top summary with the table
+    content.push_str(&summary);
+
+    // push all the details to the file
+    content.push_str(&details);
 
     buffer.write_all(content.as_bytes())?;
 
     Ok(())
 }
 
-fn get_title(id: String, f_count: usize, summary: String, inst_count: usize) -> String {
-    format!("[{}-{}] | {} | {}\n", id, f_count, summary, inst_count)
+fn get_title(id: String, f_code: usize, summary: String) -> String {
+    format!("[{}-{}] {}\n", id, f_code, summary)
+}
+
+fn get_table_title(id: String, f_code: usize, summary: String, inst_count: usize) -> String {
+    format!("[{}-{}] | {} | {}\n", id, f_code, summary, inst_count)
 }

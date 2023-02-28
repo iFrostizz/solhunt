@@ -82,7 +82,7 @@ impl Walker {
                 let root = &self
                     .root_abs_path
                     .canonicalize()
-                    .unwrap()
+                    .unwrap_or_else(|_| panic!("failed to canonicalize {:#?}", self.root_abs_path))
                     .to_str()
                     .unwrap()
                     .to_string();
