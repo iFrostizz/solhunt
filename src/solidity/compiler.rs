@@ -221,6 +221,7 @@ impl Solidity {
         Ok(project)
     }
 
+    #[allow(unused)]
     pub fn with_remappings(mut self, remappings: Vec<RelativeRemapping>) -> Self {
         self.remappings = remappings;
         self

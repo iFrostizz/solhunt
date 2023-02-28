@@ -113,3 +113,34 @@ contract OnlyOnce {
 }
 
 // https://github.com/code-423n4/2023-01-timeswap-findings/blob/main/data/0xSmartContract-G.md#g-02-remove-checkdoesnotexist-function
+
+#[test]
+fn called_in_comment() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("InComment"),
+        String::from(
+            "pragma solidity ^0.8.0;
+
+contract InComment {
+    function _once() internal {
+        //
+    }
+
+    function make() public {
+        _once();
+    }
+
+    /** @notice this is a very cool function
+      * @dev in reality, you can just call _once
+      * @dev to rug everybody ...
+      */
+    function act() public {
+        // send it
+    }
+}
+",
+        ),
+    )]);
+
+    assert_eq!(lines_for_findings_with_code(&findings, "tree", 0), vec![9]);
+}

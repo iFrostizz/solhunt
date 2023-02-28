@@ -42,6 +42,18 @@ impl Display for Severity {
     }
 }
 
+impl From<Severity> for u16 {
+    fn from(val: Severity) -> Self {
+        match val {
+            Severity::Informal => 0,
+            Severity::Gas => 1,
+            Severity::Low => 2,
+            Severity::Medium => 3,
+            Severity::High => 4,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Finding {
     pub name: String,
@@ -55,8 +67,8 @@ pub struct Finding {
 
 #[derive(Debug, Clone)]
 pub struct FindingKey {
-    pub description: String,
     pub summary: String,
+    pub description: String,
     pub severity: Severity,
 }
 
@@ -80,6 +92,7 @@ pub struct Meta {
     /// Line number of the finding
     pub line: Option<usize>,
     /// Horizontal position of the finding
+    // TODO: rename to "width"
     pub position: Option<usize>,
     /// Content around the finding
     pub content: String,
@@ -112,6 +125,7 @@ pub type Findings = Vec<MetaFinding>;
 /// Module name -> Findings
 pub type AllFindings = HashMap<String, Findings>;
 
+#[allow(unused)]
 pub fn sort_findings_by_len(findings: &AllFindings) -> AllFindings {
     findings
         .clone()

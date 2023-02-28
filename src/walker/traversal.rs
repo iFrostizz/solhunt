@@ -141,10 +141,15 @@ pub fn visit_source<D>(
             index: Some(0),
         });
 
-        let start = src.start.unwrap_or(0);
-        let length = src.length.unwrap_or(0);
-        let position = get_position(start, lines_to_bytes);
-        let content = get_finding_content(file_content.clone(), start, length);
+        let (position, content) = if let Some(start) = src.start {
+            (
+                get_position(start, lines_to_bytes),
+                get_finding_content(file_content.clone(), start, src.length.unwrap_or_default()),
+            )
+        } else {
+            // ((0, 0), String::new())
+            ((0, 0), String::from("Error fetching content"))
+        };
 
         let meta_finding = MetaFinding {
             finding: finding.clone(),

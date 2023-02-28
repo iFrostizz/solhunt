@@ -48,7 +48,7 @@ pub fn run_analysis(args: Analyze) {
     let source_map = build_source_maps(output);
 
     // TODO: configurable with glob
-    let included_folders: Vec<String> = vec![String::from("src")];
+    let _included_folders: Vec<String> = vec![String::from("src")];
 
     let artifacts = compiled
         .into_artifacts()
@@ -65,7 +65,7 @@ pub fn run_analysis(args: Analyze) {
                     //     abs_path.to_string_lossy(),
                     //     e
                     // )
-                    Ok(other_path) => {
+                    Ok(_other_path) => {
                         // let first_folder = other_path
                         //     .iter()
                         //     .next()

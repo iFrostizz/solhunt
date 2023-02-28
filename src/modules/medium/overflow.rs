@@ -46,7 +46,7 @@ build_visitor!(
         let sem_ver = smallest_version_from_literals(pragma_directive.literals.clone()).unwrap();
 
         if sem_ver.minor < 8 {
-            self.push_finding(0, Some(pragma_directive.src.clone()));
+            // self.push_finding(0, Some(pragma_directive.src.clone()));
         } // else will need to check for "unchecked"
 
         self.version = Some(sem_ver);
@@ -77,7 +77,7 @@ build_visitor!(
     },
     fn visit_unchecked_block(&mut self, unchecked_block: &mut UncheckedBlock) {
         self.inside.unchecked = true;
-        self.push_finding(3, Some(unchecked_block.src.clone()));
+        // self.push_finding(3, Some(unchecked_block.src.clone()));
         unchecked_block.visit(self)?;
         self.inside.unchecked = false;
 

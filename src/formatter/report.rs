@@ -1,8 +1,9 @@
-use crate::walker::{AllFindings, Severity};
+use crate::walker::{AllFindings, Findings, Severity};
 use clap::{Parser, ValueEnum};
 use cli_table::{print_stdout, Cell, Style, Table};
-use revm::primitives::HashMap;
+use itertools::Itertools;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::{fmt::Debug, fs::File, io::Write, path::PathBuf, str::FromStr};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Parser, ValueEnum)]
@@ -48,7 +49,15 @@ impl Report {
         findings: AllFindings,
         verbosity: Vec<Severity>,
     ) -> Self {
-        // TODO: sort findings by severity
+        // sort verbosity from highest
+        let verbosity = verbosity
+            .into_iter()
+            .sorted_by(|v1, v2| {
+                let (v1, v2) = (u16::from(*v1), u16::from(*v2));
+                Ord::cmp(&v2, &v1)
+            })
+            .collect();
+
         Self {
             style,
             root,
@@ -110,6 +119,7 @@ fn format_to_cmd(findings: &AllFindings) -> std::result::Result<(), std::io::Err
     print_stdout(tables)
 }
 
+#[allow(unused)]
 pub struct Instances {
     /// Identification of the file, has form "src/some/path/Contract.sol"
     pub file: String,
@@ -135,6 +145,7 @@ fn format_to_md(
     verbosity.iter().for_each(|v| {
         let mut findings_count: usize = 0;
 
+        // only take findings for this specific verbosity
         let these_findings: AllFindings = findings
             .clone()
             .into_iter()
@@ -149,9 +160,8 @@ fn format_to_md(
             })
             .collect();
 
-        let has_some = these_findings.values().any(|mfs| !mfs.is_empty());
-
-        if has_some {
+        // has at least one finding
+        if these_findings.values().any(|mfs| !mfs.is_empty()) {
             let title = match v {
                 Severity::Gas => "## Gas otimizations".to_string(),
                 Severity::High => "## High severity findings".to_string(),
@@ -168,37 +178,97 @@ fn format_to_md(
                 Severity::Informal => "I".to_string(),
             };
 
-            let mut summary = format!("{title}\nName | Finding | Instances\n---|---|---\n");
+            let mut summary =
+                format!("## Findings summary\n{title}\nName | Finding | Instances\n---|---|---\n");
 
-            let mut findings_dedup: HashMap<String, Instances> = HashMap::new();
+            // <(module, code), ((id, f_count, summary), Findings)>
+            // <Findings>.len is the count of these findings
+            #[allow(clippy::type_complexity)]
+            let mut findings_id: HashMap<
+                (String, usize),
+                ((String, usize, String), Findings),
+            > = HashMap::new();
 
-            // group each finding per summary and count them
-            these_findings.into_iter().for_each(|(_, meta_findings)| {
-                meta_findings.into_iter().for_each(|mf| {
-                    findings_dedup
-                        .entry(mf.finding.summary)
-                        .and_modify(|instance| instance.count += 1)
-                        .or_insert(Instances {
-                            file: mf.meta.file,
-                            line: mf.meta.line,
-                            count: 0,
-                        });
-                })
-            });
+            these_findings
+                .into_iter()
+                .for_each(|(module, meta_findings)| {
+                    meta_findings.into_iter().for_each(|mf| {
+                        findings_id
+                            .entry((module.clone(), mf.finding.code))
+                            .and_modify(|(_, mfs)| {
+                                mfs.push(mf.clone());
+                            })
+                            .or_insert({
+                                let old_count = findings_count;
+                                findings_count += 1;
 
-            findings_dedup.into_iter().for_each(|(sum, inst)| {
-                summary += &format!(
-                    "[{}-{}] | {} | {}\n",
-                    finding_identifier, findings_count, sum, inst.count
-                );
-                findings_count += 1;
-            });
+                                (
+                                    (finding_identifier.clone(), old_count, summary.clone()),
+                                    vec![mf.clone()],
+                                )
+                            });
+                    })
+                });
+
+            findings_id
+                .iter()
+                .for_each(|(_, ((id, f_count, sum), mfs))| {
+                    let findings_title = get_title(id.clone(), *f_count, sum.clone(), mfs.len());
+                    summary += &findings_title;
+                });
 
             content.push_str(&summary);
+
+            // details of findings including title, summary, description, and view of code
+            // for gas, also display the gas savings
+            let mut details = String::from("\n## Findings details\n");
+
+            findings_id
+                .into_iter()
+                .for_each(|(_, ((id, f_count, sum), mfs))| {
+                    // settle the title
+                    let findings_title = get_title(id, f_count, sum, mfs.len());
+                    details.push_str(&("### ".to_owned() + &findings_title));
+
+                    let mut description = String::new();
+
+                    // max amount of code examples given a module giving a lot of them
+                    let max_content = 10;
+
+                    // add the description
+                    mfs.into_iter()
+                        .enumerate()
+                        .filter(|(i, _)| i < &max_content)
+                        .for_each(|(_, mf)| {
+                            // let file = mf.meta.file;
+                            // let
+
+                            let formatted_finding = format!(
+                                "#### `{}`\n{}:{}\n{}\n```solidity\n{}```\n",
+                                mf.meta.file,
+                                mf.meta.line.unwrap_or_default(),
+                                mf.meta.position.unwrap_or_default(),
+                                mf.finding.description,
+                                mf.meta.content
+                            );
+                            // formatted_finding.push_str("\n");
+
+                            description.push_str(&formatted_finding);
+                        });
+
+                    details.push_str(&description);
+                });
+
+            // push all the details to the file
+            content.push_str(&details);
         }
     });
 
     buffer.write_all(content.as_bytes())?;
 
     Ok(())
+}
+
+fn get_title(id: String, f_count: usize, summary: String, inst_count: usize) -> String {
+    format!("[{}-{}] | {} | {}\n", id, f_count, summary, inst_count)
 }

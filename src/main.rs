@@ -85,6 +85,7 @@ mod test {
     }
 
     #[cfg(test)]
+    #[allow(unused)]
     pub fn lines_for_findings_with_code_file(
         findings: &AllFindings,
         file: &str,

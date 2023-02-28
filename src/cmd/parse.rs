@@ -56,6 +56,7 @@ pub struct GasMetering {
     pub except_modules: Option<Vec<String>>,
 }
 
+#[allow(unused)]
 pub fn get_working_path(add_path: String) -> PathBuf {
     let mut path = PathBuf::new();
     path.push(current_dir().expect("could not get current path"));
@@ -95,6 +96,7 @@ pub fn parse() {
     }
 }
 
+#[allow(unused)]
 pub fn get_remappings(path: &Path) -> Vec<RelativeRemapping> {
     let base_path = path.to_path_buf();
     let mut remappings: Vec<RelativeRemapping> = Vec::new();
