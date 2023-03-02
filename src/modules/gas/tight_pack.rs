@@ -118,7 +118,6 @@ contract TightStruct {
 // TODO: write a dummy visitor for testing purposes which does not implements it with Vec<Finding> as Data
 #[derive(Default)]
 pub struct StructModule {
-    findings: Vec<Finding>,
     expected_struct_bytes: Vec<Vec<usize>>,
     shared_data: ModuleState,
 }
@@ -127,7 +126,6 @@ impl StructModule {
     #[cfg(test)]
     fn new(expected_struct_bytes: Vec<Vec<usize>>) -> Self {
         Self {
-            findings: vec![],
             expected_struct_bytes,
             ..Default::default()
         }

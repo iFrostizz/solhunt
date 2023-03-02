@@ -1,12 +1,8 @@
 use crate::{
     loader::get_all_visitors,
-    solidity::{build_source_maps, get_finding_content, get_source_map},
+    solidity::{build_source_maps, get_finding_content},
     walker::{AllFindings, Walker},
 };
-#[cfg(test)]
-use bytes::Bytes;
-#[cfg(test)]
-use ethers_solc::artifacts::BytecodeObject;
 use ethers_solc::{
     artifacts::{output_selection::ContractOutputSelection, Optimizer, Settings},
     // cache::SOLIDITY_FILES_CACHE_FILENAME,
@@ -508,7 +504,12 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
 }
 
 #[cfg(test)]
+use bytes::Bytes;
+
+#[cfg(test)]
 pub fn compile_single_contract(contract: String) -> Bytes {
+    use ethers_solc::artifacts::BytecodeObject;
+
     let files = vec![ProjectFile::Contract(
         String::from("SingleContract"),
         contract,
@@ -602,14 +603,12 @@ fn make_temp_project(
             assert!(contract_iter.clone().count() > 0);
 
             let contract = contract_iter.next().unwrap().1;
-            let source_map = get_source_map(&contract);
 
             let content = if source.start == -1 || source.end == -1 {
                 String::from("")
             } else {
                 get_finding_content(
                     contract,
-                    &source_map,
                     source.start.try_into().unwrap(),
                     (source.end - source.start).try_into().unwrap(),
                 )

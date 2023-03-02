@@ -160,7 +160,6 @@ pub fn visit_source<D>(
                     get_position(start, lines_to_bytes),
                     get_finding_content(
                         file_content.clone(),
-                        lines_to_bytes,
                         start,
                         src.length.unwrap_or_default(),
                     ),
