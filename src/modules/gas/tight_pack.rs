@@ -115,24 +115,28 @@ contract TightStruct {
     assert!(!has_with_code(&findings, "tight_pack", 0));
 }
 
+// TODO: write a dummy visitor for testing purposes which does not implements it with Vec<Finding> as Data
 #[derive(Default)]
 pub struct StructModule {
     findings: Vec<Finding>,
     expected_struct_bytes: Vec<Vec<usize>>,
+    shared_data: ModuleState,
 }
 
 impl StructModule {
+    #[cfg(test)]
     fn new(expected_struct_bytes: Vec<Vec<usize>>) -> Self {
         Self {
             findings: vec![],
             expected_struct_bytes,
+            ..Default::default()
         }
     }
 }
 
-impl Visitor<Vec<Finding>> for StructModule {
-    fn shared_data(&mut self) -> &Vec<Finding> {
-        &self.findings
+impl Visitor<ModuleState> for StructModule {
+    fn shared_data(&mut self) -> &ModuleState {
+        &self.shared_data
     }
 
     fn visit_struct_definition(
@@ -192,6 +196,48 @@ struct MyStruct {
         vec![32],
         vec![32],
         vec![20],
+        vec![32],
+        vec![32],
+    ]);
+
+    let mut walker = Walker::new(
+        artifacts,
+        BTreeMap::new(),
+        vec![Box::from(module)],
+        project.root().into(),
+    );
+
+    walker.traverse().unwrap();
+
+    let (project, artifacts) = compile_single_contract_to_artifacts(String::from(
+        "pragma solidity 0.8.0;
+
+struct MyStruct {
+
+    address sender;
+    uint256 nonce;
+    bytes initCode;
+    bytes callData;
+    uint256 callGasLimit;
+    uint256 verificationGasLimit;
+    uint256 preVerificationGas;
+    uint256 maxFeePerGas;
+    uint256 maxPriorityFeePerGas;
+    bytes paymasterAndData;
+    bytes signature;
+}",
+    ));
+
+    let module = StructModule::new(vec![
+        vec![20],
+        vec![32],
+        vec![32],
+        vec![32],
+        vec![32],
+        vec![32],
+        vec![32],
+        vec![32],
+        vec![32],
         vec![32],
         vec![32],
     ]);

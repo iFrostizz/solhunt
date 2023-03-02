@@ -8,7 +8,7 @@ use std::{
 };
 use yansi::Paint;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Severity {
     Informal,
     Gas,
@@ -60,7 +60,15 @@ impl Default for Severity {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Default)]
+pub struct ModuleState {
+    /// name of the visitor
+    pub name: String,
+    /// findings included in the visitor pushed during the walking
+    pub findings: Vec<Finding>,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct Finding {
     pub name: String,
     pub summary: String,
@@ -91,20 +99,19 @@ impl Finding {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Meta {
     /// Path of the file relative to the project path
     pub file: String,
     /// Line number of the finding
     pub line: Option<usize>,
     /// Horizontal position of the finding
-    // TODO: rename to "width"
-    pub position: Option<usize>,
+    pub width: Option<usize>,
     /// Content around the finding
     pub content: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct MetaFinding {
     pub finding: Finding,
     pub meta: Meta,
@@ -120,7 +127,7 @@ impl MetaFinding {
                 .line
                 .map(|line| format!("l{line}"))
                 .unwrap_or_default(),
-            self.meta.position.unwrap_or_default(),
+            self.meta.width.unwrap_or_default(),
             self.finding.format()
         ))
     }

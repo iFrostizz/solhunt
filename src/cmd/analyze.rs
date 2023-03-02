@@ -90,7 +90,9 @@ pub fn run_analysis(args: Analyze) {
 
     println!("Starting the analysis...");
 
+    // TODO: it seems like findings are already messed up by here
     let findings = walker.traverse().expect("failed to traverse ast");
+    // println!("{:#?}", findings);
     let num_findings = findings.len();
     println!("Caught {num_findings} findings");
 

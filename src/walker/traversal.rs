@@ -1,6 +1,6 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
-use super::{Finding, Meta, MetaFinding};
+use super::{Meta, MetaFinding, ModuleState};
 use crate::{
     loader::Information,
     solidity::{get_finding_content, get_position},
@@ -14,13 +14,15 @@ use ethers_solc::{
     },
     ArtifactId, ConfigurableContractArtifact,
 };
-use std::collections::HashMap;
-use std::{collections::btree_map::BTreeMap, path::PathBuf};
+use std::{
+    collections::{btree_map::BTreeMap, HashMap},
+    path::PathBuf,
+};
 
 pub struct Walker {
     artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, (String, Vec<usize>)>,
-    visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
+    visitors: Vec<Box<dyn Visitor<ModuleState>>>,
     root_abs_path: PathBuf,
 }
 
@@ -28,7 +30,7 @@ impl Walker {
     pub fn new(
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         source_map: BTreeMap<String, (String, Vec<usize>)>,
-        visitors: Vec<Box<dyn Visitor<Vec<Finding>>>>,
+        visitors: Vec<Box<dyn Visitor<ModuleState>>>,
         root_abs_path: PathBuf,
     ) -> Self {
         Walker {
@@ -45,6 +47,8 @@ impl Walker {
     // - ast.NodeTransformer (allows modification)
     pub fn traverse(&mut self) -> eyre::Result<AllFindings> {
         let mut all_findings: AllFindings = HashMap::new();
+
+        let mut visitor_len = HashMap::new();
 
         let mut ids: Vec<usize> = Vec::new();
         let source_map = &self.source_map.clone();
@@ -69,13 +73,16 @@ impl Walker {
 
                 let abs_path = id.source.to_str().unwrap().to_string();
 
-                let source_map_with_content = source_map
+                let (file_content, lines_to_bytes) = source_map
+                    .clone()
                     .get(&abs_path)
+                    // .unwrap_or_else(|| {
+                    //     let msg = format!("source map not found for {}", abs_path);
+                    //     tracing::warn!(target: "walker::traversal", msg);
+                    //     &(String::new(), Vec::new())
+                    // })
                     .unwrap_or(&(String::new(), Vec::new()))
                     .clone();
-
-                let file_content = source_map_with_content.0;
-                let lines_to_bytes = source_map_with_content.1;
 
                 let path = PathBuf::from(&source_unit.absolute_path);
 
@@ -88,6 +95,7 @@ impl Walker {
                     .to_string();
 
                 // the file may be outside the project. In that case, it's rather a lib.
+                // TODO: remove each root ancestors until that strip returns Ok
                 let name = path.strip_prefix(root).unwrap_or(&path).to_str().unwrap();
 
                 let info = Information {
@@ -96,34 +104,31 @@ impl Walker {
                 };
 
                 self.visitors.iter_mut().for_each(|visitor| {
-                    visit_source::<Vec<Finding>>(
+                    visit_source::<ModuleState>(
                         &mut ast,
                         visitor,
                         &lines_to_bytes,
                         info.clone(),
                         &mut all_findings,
                         file_content.clone(),
+                        &mut visitor_len,
                     );
                 });
             }
         });
 
-        // let mut findings: AllFindings = HashMap::new();
-
-        // dedup same findings of the same module name, code, and src to avoid useless verbosity
-
-        // Ok(findings)
         Ok(all_findings)
     }
 }
 
 pub fn visit_source<D>(
     source: &mut TypedAst,
-    visitor: &mut Box<dyn Visitor<Vec<Finding>>>,
+    visitor: &mut Box<dyn Visitor<ModuleState>>,
     lines_to_bytes: &[usize],
     info: Information,
     findings: &mut AllFindings,
     file_content: String,
+    visitor_len: &mut HashMap<String, usize>,
 ) {
     source
         .clone()
@@ -134,38 +139,54 @@ pub fn visit_source<D>(
 
     let data = visitor.shared_data();
 
-    data.iter().for_each(|finding| {
-        let src = finding.src.as_ref().unwrap_or(&SourceLocation {
-            start: Some(0),
-            length: Some(0),
-            index: Some(0),
-        });
+    let findings_data = &data.findings;
+    let visitor_name = &data.name;
 
-        let (position, content) = if let Some(start) = src.start {
-            (
-                get_position(start, lines_to_bytes),
-                get_finding_content(file_content.clone(), start, src.length.unwrap_or_default()),
-            )
-        } else {
-            // ((0, 0), String::new())
-            ((0, 0), String::from("Error fetching content"))
-        };
+    let current_len = *visitor_len.get(visitor_name).unwrap_or(&0);
 
-        let meta_finding = MetaFinding {
-            finding: finding.clone(),
-            meta: Meta {
-                file: file.clone(),
-                line: Some(position.0),
-                position: Some(position.1),
-                content,
-            },
-        };
+    findings_data
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| i > &current_len)
+        .for_each(|(i, finding)| {
+            let src = finding.src.as_ref().unwrap_or(&SourceLocation {
+                start: Some(0),
+                length: Some(0),
+                index: Some(0),
+            });
 
-        std::collections::hash_map::Entry::or_insert(
+            let (position, content) = if let Some(start) = src.start {
+                (
+                    get_position(start, lines_to_bytes),
+                    get_finding_content(
+                        file_content.clone(),
+                        lines_to_bytes,
+                        start,
+                        src.length.unwrap_or_default(),
+                    ),
+                )
+            } else {
+                ((0, 0), String::from("Error fetching content"))
+            };
+
+            let meta_finding = MetaFinding {
+                finding: finding.clone(),
+                meta: Meta {
+                    file: file.clone(),
+                    line: Some(position.0),
+                    width: Some(position.1),
+                    content,
+                },
+            };
+
+            // println!("{:#?}", meta_finding);
+
+            // TODO: make a dedup data-structure. We don't wanna have the exact same finding on the same node anyway
             findings
                 .entry(finding.name.clone())
-                .and_modify(|f| f.push(meta_finding.clone())),
-            vec![meta_finding],
-        );
-    });
+                .and_modify(|f| f.push(meta_finding.clone()))
+                .or_insert(vec![meta_finding.clone()]);
+
+            visitor_len.insert(visitor_name.to_string(), i);
+        });
 }

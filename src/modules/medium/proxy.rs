@@ -19,11 +19,20 @@ build_visitor!(
             }
         ),
     ]),
+    fn visit_contract_definition(&mut self, contract_definition: &mut ContractDefinition) {
+        
+        match contract_definition.kind {
+            // don't even visit it if it's an interface
+            ContractKind::Interface => Ok(()),
+            _ => contract_definition.visit(self)
+        }
+    },
+
     fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
         if function_definition.name == "initialize" {
             let has_initializer = function_definition.modifiers.iter().any(|modifier| {
                 if let IdentifierOrIdentifierPath::IdentifierPath(id) = &modifier.modifier_name {
-                id.name == "initializer"
+                    id.name == "initializer"
                 } else {false}
             });
 
@@ -83,4 +92,20 @@ contract MissingInitialize {
     )]);
 
     assert_eq!(lines_for_findings_with_code(&findings, "proxy", 1), vec![4]);
+}
+
+#[test]
+fn not_interfaces() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("MissingInitialize"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+interface MissingInitialize {
+    function initialize() external;
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "proxy", 1));
 }

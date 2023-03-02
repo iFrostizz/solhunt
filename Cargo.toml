@@ -17,6 +17,7 @@ ethers-core = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "fr
 ethers-contract = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor" }
 itertools = "0.10.5"
 bytes = "1.4.0"
+tracing = "0.1.37"
 
 [patch."https://github.com/iFrostizz/ethers-rs.git"]
 ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }

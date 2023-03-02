@@ -2,9 +2,9 @@
 
 use crate::{
     modules::*,
-    walker::{AllFindings, Finding},
+    walker::{AllFindings, Finding, ModuleState},
 };
-use ethers_solc::artifacts::ast::SourceLocation;
+use ethers_solc::artifacts::{ast::SourceLocation, visitor::Visitor};
 use semver::Version;
 
 #[derive(Debug, Default, Clone)]
@@ -34,8 +34,7 @@ pub struct PushedFinding {
 
 // TODO: automate this !
 // TODO: write benches for detection modules and only run *one* visitor
-pub fn get_all_visitors(
-) -> Vec<Box<(dyn ethers_solc::artifacts::visitor::Visitor<Vec<Finding>> + 'static)>> {
+pub fn get_all_visitors() -> Vec<Box<(dyn Visitor<ModuleState> + 'static)>> {
     // Vec::new()
     vec![
         Box::<high::calls::DetectionModule>::default(),
@@ -60,20 +59,20 @@ pub fn get_all_visitors(
 }
 
 // TODO: does not work
-#[macro_export]
-macro_rules! get_visitors {
-    () => {
-        let visitors: Vec<Box<(dyn Visitor<Vec<Finding>> + 'static)>> = Vec::new();
+// #[macro_export]
+// macro_rules! get_visitors {
+//     () => {
+//         let visitors: Vec<Box<(dyn Visitor<Vec<Finding>> + 'static)>> = Vec::new();
 
-        for entry in fs::read_dir($crate::modules).unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            if path.is_file() {
-                let file_name = path.file_name().unwrap().to_str().unwrap();
-                if file_name.ends_with(".rs") && file_name != "mod.rs" {
-                    visitors.push($directory::DetectionModule::default());
-                }
-            }
-        }
-    };
-}
+//         for entry in fs::read_dir($crate::modules).unwrap() {
+//             let entry = entry.unwrap();
+//             let path = entry.path();
+//             if path.is_file() {
+//                 let file_name = path.file_name().unwrap().to_str().unwrap();
+//                 if file_name.ends_with(".rs") && file_name != "mod.rs" {
+//                     visitors.push($directory::DetectionModule::default());
+//                 }
+//             }
+//         }
+//     };
+// }

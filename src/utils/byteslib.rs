@@ -110,6 +110,12 @@ pub fn type_as_bytes(id: &str) -> usize {
 
 /// Finds all permutations and returns the most tightly packed one
 pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
+    // ignore 32 slots
+    let loose_bytes: Vec<Vec<usize>> = loose_bytes
+        .into_iter()
+        .map(|bs| bs.into_iter().filter(|b| *b < 32).collect())
+        .collect();
+
     let mut packed: Option<Vec<Vec<usize>>> = None;
     let loose_len = loose_bytes.len();
 

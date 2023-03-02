@@ -31,8 +31,17 @@ build_visitor! {
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
         let unsafe_ops = vec!["transfer".to_owned(), "transferFrom".to_owned(), "approve".to_owned()];
         let mem_name = &member_access.member_name;
+        let type_d = &member_access.type_descriptions;
+
+        if mem_name == "transfer"   {
+            if let Some(type_string) = &type_d.type_string {
+                if type_string.contains("(address,uint256)") {
+            self.push_finding(0, Some(member_access.src.clone()));
+                }
+            }
+        }
+
         if (unsafe_ops).contains(mem_name) {
-            self.push_finding(0, Some(member_access.src.clone()))
         } else if mem_name == "safeApprove" {
             self.push_finding(1, Some(member_access.src.clone()))
         }
@@ -41,16 +50,12 @@ build_visitor! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn usage_of_transfer() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("SafeTransfer"),
-            String::from(
-                "pragma solidity 0.8.0;
+#[test]
+fn usage_of_transfer() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("SafeTransfer"),
+        String::from(
+            "pragma solidity 0.8.0;
 
 interface IERC20 {
   function transfer(address, uint256) external view returns (bool);
@@ -63,22 +68,22 @@ contract SafeTransfer {
         token.transfer(owner, 100);
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "erc20", 0),
-            vec![11]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "erc20", 0),
+        vec![11]
+    );
+}
 
-    // https://github.com/Picodes/4naly3er/blob/main/src/issues/L/deprecatedFunctions.ts
-    #[test]
-    fn deprecated_safe_approve() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("SafeApprove"),
-            String::from(
-                "pragma solidity ^0.8.0;
+// https://github.com/Picodes/4naly3er/blob/main/src/issues/L/deprecatedFunctions.ts
+#[test]
+fn deprecated_safe_approve() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("SafeApprove"),
+        String::from(
+            "pragma solidity ^0.8.0;
 
 interface IERC20 {
     function safeApprove(address, uint256) external;
@@ -89,9 +94,26 @@ contract SafeApprove {
         token.safeApprove(address(0), 123456); 
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(lines_for_findings_with_code(&findings, "erc20", 1), vec![9]);
+    assert_eq!(lines_for_findings_with_code(&findings, "erc20", 1), vec![9]);
+}
+
+#[test]
+fn eth_transfer() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("EthTransfer"),
+        String::from(
+            "pragma solidity ^0.8.0;
+
+contract EthTransfer {
+    function ethTransfer() public {
+        payable(msg.sender).transfer(address(this).balance);
     }
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "erc20", 0));
 }

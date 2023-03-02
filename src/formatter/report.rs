@@ -49,8 +49,22 @@ impl Report {
         findings: AllFindings,
         verbosity: Vec<Severity>,
     ) -> Self {
+        // only take findings with the chosen verbosity
+        let findings = findings
+            .into_iter()
+            .map(|(name, meta_findings)| {
+                (
+                    name,
+                    meta_findings
+                        .into_iter()
+                        .filter(|mf| verbosity.contains(&mf.finding.severity))
+                        .collect(),
+                )
+            })
+            .collect();
+
         // sort verbosity from highest
-        let verbosity = verbosity
+        let verbosity: Vec<_> = verbosity
             .into_iter()
             .sorted_by(|v1, v2| {
                 let (v1, v2) = (u16::from(*v1), u16::from(*v2));
@@ -84,7 +98,9 @@ impl Report {
             ReportStyle::Cmd => {
                 format_to_cmd(&self.findings).unwrap();
             }
-            _ => todo!(),
+            ReportStyle::List => {
+                todo!()
+            } // _ => todo!(),
         }
     }
 }
@@ -95,7 +111,8 @@ fn format_to_cmd(findings: &AllFindings) -> std::result::Result<(), std::io::Err
     findings.iter().for_each(|(name, findings)| {
         findings.iter().for_each(|mf| {
             let meta = &mf.meta;
-            let position = format!("{}:{}", meta.line.unwrap_or(0), meta.position.unwrap_or(0));
+            let position = format!("{}:{}", meta.line.unwrap_or(0), meta.width.unwrap_or(0));
+
             tables.push(vec![
                 name.cell(),
                 mf.finding.severity.cell(),
@@ -149,7 +166,7 @@ fn format_to_md(
     // for gas, also display the gas savings
     let mut details = String::from("\n## Findings details\n");
 
-    // write the summary
+    // write the summary in the order of the verbosity
     verbosity.iter().for_each(|v| {
         let mut findings_count: usize = 0;
 
@@ -171,13 +188,13 @@ fn format_to_md(
         // has at least one finding
         if these_findings.values().any(|mfs| !mfs.is_empty()) {
             // TODO: unused ?
-            let _title = match v {
-                Severity::Gas => "## Gas otimizations".to_string(),
-                Severity::High => "## High severity findings".to_string(),
-                Severity::Medium => "## Medium severity findings".to_string(),
-                Severity::Low => "## Low severity findings".to_string(),
-                Severity::Informal => "## Informal findings".to_string(),
-            };
+            // let _title = match v {
+            //     Severity::Gas => "## Gas otimizations".to_string(),
+            //     Severity::High => "## High severity findings".to_string(),
+            //     Severity::Medium => "## Medium severity findings".to_string(),
+            //     Severity::Low => "## Low severity findings".to_string(),
+            //     Severity::Informal => "## Informal findings".to_string(),
+            // };
 
             let finding_identifier = match v {
                 Severity::Gas => "G".to_string(),
@@ -220,23 +237,28 @@ fn format_to_md(
                     })
                 });
 
-            // TODO: finding code is not ordered. Make it a Vec and sort it first
-            // make the finding titles for the summary
-            findings_id
+            // group findings by their summary
+
+            let findings_id_vec: Vec<_> = findings_id
+                .values()
+                .sorted_by(|((_, c1, _), _), ((_, c2, _), _)| Ord::cmp(c1, c2))
+                .collect();
+
+            findings_id_vec
                 .iter()
-                .for_each(|(_, ((id, f_count, sum), mfs))| {
+                .for_each(|((id, f_count, sum), mfs)| {
                     let findings_title =
                         get_table_title(id.clone(), *f_count, sum.clone(), mfs.len());
                     summary += &findings_title;
                 });
 
             // write details
-            findings_id
-                .into_iter()
-                .for_each(|(_, ((id, f_count, sum), mfs))| {
+            findings_id_vec
+                .iter()
+                .for_each(|((id, f_count, sum), mfs)| {
                     // settle the title
-                    let findings_title = get_title(id, f_count, sum);
-                    let instances = mfs.len();
+                    let findings_title = get_title(id.to_string(), *f_count, sum.to_string());
+
                     details.push_str(&format!(
                         "### {}\n\n{}\n\n",
                         findings_title, mfs[0].finding.description
@@ -248,7 +270,7 @@ fn format_to_md(
                     let max_content = 10;
 
                     // add the description
-                    mfs.into_iter()
+                    mfs.iter()
                         .enumerate()
                         // TODO: write the comment section and prioritize any comment that 1. doesn't have the same finding code 2. doesn't have the same comment
                         .filter(|(i, _)| i < &max_content)
@@ -257,10 +279,10 @@ fn format_to_md(
                             // let
 
                             let formatted_finding = format!(
-                                "`{}`\n{}:{}\n\n```solidity\n{}```\n",
+                                "`{}`\n{}:{}\n\n```solidity\n{}```\n\n",
                                 mf.meta.file,
                                 mf.meta.line.unwrap_or_default(),
-                                mf.meta.position.unwrap_or_default(),
+                                mf.meta.width.unwrap_or_default(),
                                 mf.meta.content
                             );
                             // formatted_finding.push_str("\n");
@@ -284,10 +306,12 @@ fn format_to_md(
     Ok(())
 }
 
+/// create a table row in a markdown style for the details of the report
 fn get_title(id: String, f_code: usize, summary: String) -> String {
     format!("[{}-{}] {}\n", id, f_code, summary)
 }
 
-fn get_table_title(id: String, f_code: usize, summary: String, inst_count: usize) -> String {
-    format!("[{}-{}] | {} | {}\n", id, f_code, summary, inst_count)
+/// create a table row in a markdown style for the summary of the report
+fn get_table_title(id: String, finding_code: usize, summary: String, instances: usize) -> String {
+    format!("[{}-{}] | {} | {}\n", id, finding_code, summary, instances)
 }

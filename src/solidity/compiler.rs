@@ -1,6 +1,6 @@
 use crate::{
     loader::get_all_visitors,
-    solidity::{build_source_maps, get_finding_content},
+    solidity::{build_source_maps, get_finding_content, get_source_map},
     walker::{AllFindings, Walker},
 };
 #[cfg(test)]
@@ -9,7 +9,7 @@ use bytes::Bytes;
 use ethers_solc::artifacts::BytecodeObject;
 use ethers_solc::{
     artifacts::{output_selection::ContractOutputSelection, Optimizer, Settings},
-    cache::SOLIDITY_FILES_CACHE_FILENAME,
+    // cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::SolcError,
     output::ProjectCompileOutput,
     project_util::TempProject,
@@ -158,11 +158,11 @@ impl Solidity {
 
     fn project_paths(&self) -> ProjectPathsConfig {
         let mut builder = ProjectPathsConfig::builder()
-            .cache(self.cache_path.join(SOLIDITY_FILES_CACHE_FILENAME))
+            // .cache(self.cache_path.join(SOLIDITY_FILES_CACHE_FILENAME))
             .sources(&self.src)
             .tests(&self.test)
             .scripts(&self.script)
-            .artifacts(&self.out)
+            // .artifacts(&self.out)
             .libs(self.libs.clone())
             .remappings(self.get_all_remappings());
 
@@ -201,7 +201,7 @@ impl Solidity {
             // .set_cached(cached)
             .set_cached(true)
             // .set_build_info(cached & self.build_info)
-            // .set_no_artifacts(no_artifacts)
+            .set_no_artifacts(false)
             .set_build_info(true);
 
         if self.ephemeral {
@@ -417,7 +417,7 @@ impl Solidity {
                 path.push(rpath);
                 let path = path
                     .canonicalize()
-                    .expect("path not found: {#path}")
+                    .unwrap_or_else(|e| panic!("{e}: {:#?}", path))
                     .into_os_string()
                     .into_string()
                     .unwrap();
@@ -546,7 +546,9 @@ pub fn compile_single_contract_to_artifacts(
     )];
     let (project, compiled) = make_temp_project(files);
 
-    (project, compiled.into_artifacts().collect())
+    let artifacts = compiled.into_artifacts().collect();
+
+    (project, artifacts)
 }
 
 /// Creates a temp project and compiles the files in it
@@ -600,12 +602,14 @@ fn make_temp_project(
             assert!(contract_iter.clone().count() > 0);
 
             let contract = contract_iter.next().unwrap().1;
+            let source_map = get_source_map(&contract);
 
             let content = if source.start == -1 || source.end == -1 {
                 String::from("")
             } else {
                 get_finding_content(
                     contract,
+                    &source_map,
                     source.start.try_into().unwrap(),
                     (source.end - source.start).try_into().unwrap(),
                 )

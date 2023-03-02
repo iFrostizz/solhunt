@@ -37,12 +37,13 @@ build_visitor! {
                     let mut dynamic = 0;
                     member_access.argument_types.iter().for_each(|at| {
                         if let Some(type_string) = &at.type_string {
-                            if type_string.starts_with("string") || type_string.starts_with("bytes") {
+                            if type_string.starts_with("string") /*|| type_string.starts_with("bytes")*/ {
                                 dynamic += 1;
                             }
                         }
                     });
 
+                    println!("a");
                     self.push_finding(0, Some(member_access.src.clone()));
 
                     if dynamic == 0 {

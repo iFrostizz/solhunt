@@ -15,7 +15,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::*};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::{lines_for_findings_with_code, has_with_code, has_with_module}};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::{lines_for_findings_with_code, has_with_code, has_with_module}};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
@@ -28,7 +28,7 @@ macro_rules! build_visitor {
         #[allow(dead_code)]
         pub struct DetectionModule {
             version: Option<Version>,
-            findings: Vec<Finding>,
+            // findings: Vec<Finding>,
             findings_map: FindingMap,
             pub function_definitions: Vec<FunctionDefinition>,
             pub function_calls: Vec<FunctionCall>,
@@ -36,6 +36,7 @@ macro_rules! build_visitor {
             pub inside: Inside,
             pub state_variables: Vec<String>,
             pub events: Vec<EmitStatement>,
+            pub shared_data: ModuleState
         }
 
         /// populate the f_map on startup in order to specify the finding codes only
@@ -43,13 +44,17 @@ macro_rules! build_visitor {
             fn default() -> Self {
                 Self {
                     version: None,
-                    findings: Vec::new(),
+                    // findings: Vec::new(),
                     findings_map: $map,
                     function_definitions: Vec::new(),
                     function_calls: Vec::new(),
                     state_variables: Vec::new(),
                     events: Vec::new(),
-                    inside: Default::default()
+                    inside: Default::default(),
+                    shared_data: ModuleState {
+                        name: get_module_name(),
+                        findings: Vec::new(),
+                    },
                 }
             }
         }
@@ -81,8 +86,8 @@ macro_rules! build_visitor {
 
             // TODO: allow having the same module names across folders
             fn p_finding(&mut self, code: usize, src: Option<SourceLocation>) {
-                let name = module_path!();
-                let name = name.rsplit_once(":").expect("Should call from modules").1.to_string();
+
+                let name = get_module_name();
 
                 let f_key = &self.findings_map.get(&code).expect("Unrecognized finding code");
 
@@ -95,18 +100,23 @@ macro_rules! build_visitor {
                     src
                 };
 
-                self.findings.push(finding);
+                self.shared_data.findings.push(finding);
             }
         }
 
-        impl Visitor<Vec<Finding>> for DetectionModule {
-            fn shared_data(&mut self) -> &Vec<Finding> {
-                &self.findings
+        impl Visitor<ModuleState> for DetectionModule {
+            fn shared_data(&mut self) -> &ModuleState {
+                &self.shared_data
             }
 
             $(
                 fn $func_name(&mut $self, $($param : $type),*) -> Result<(), VisitError> $body
             )*
+        }
+
+        fn get_module_name() -> String {
+                let name = module_path!();
+                name.rsplit_once(":").expect("Should call from modules").1.to_string()
         }
     }
 }

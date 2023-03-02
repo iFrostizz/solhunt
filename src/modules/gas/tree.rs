@@ -21,15 +21,23 @@ build_visitor! {
         let mut function_calls: HashMap<String, Vec<FunctionCall>> = HashMap::new();
 
         self.function_calls.iter().for_each(|fc| {
-            let fc_name = match &fc.expression {
+            // let fc_name = match &fc.expression {
+            //     Expression::Identifier(e) => {
+            //         e.name.clone()
+            //     }
+            //     _ =>
+            //         String::from("")
+            // };
+
+             match &fc.expression {
                 Expression::Identifier(e) => {
-                    e.name.clone()
+
+            function_calls.entry(e.name.clone()).and_modify(|c| c.push(fc.clone())).or_insert(vec![fc.clone()]);
                 }
-                _ =>
-                    String::from("")
+                _ => ()
             };
 
-            function_calls.entry(fc_name).and_modify(|c| c.push(fc.clone())).or_insert(vec![fc.clone()]);
+            // function_calls.entry(fc_name).and_modify(|c| c.push(fc.clone())).or_insert(vec![fc.clone()]);
         });
 
         self.function_definitions.clone().into_iter().filter(|fd| fd.visibility == Visibility::Internal).for_each(|fd| {

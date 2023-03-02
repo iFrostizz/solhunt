@@ -7,3 +7,6 @@
 [submodule "test-data/lib/account-abstraction"]
 	path = test-data/lib/account-abstraction
 	url = git@github.com:eth-infinitism/account-abstraction.git
+[submodule "test-data/lib/forge-std"]
+	path = test-data/lib/forge-std
+	url = git@github.com:foundry-rs/forge-std.git

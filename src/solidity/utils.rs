@@ -1,12 +1,13 @@
+use ethers_solc::artifacts::{
+    ast::SourceLocation,
+    visitor::{VisitError, Visitor},
+    InlineAssembly,
+};
 use ethers_solc::AggregatedCompilerOutput;
 use semver::{Error, Version};
 use std::{collections::BTreeMap, fs};
 
-#[allow(unused)]
-pub struct Position {
-    pub line: u32, // line num
-                   // pub position: u32, // horizontal pos
-}
+use crate::walker::{Finding, ModuleState, Walker};
 
 pub fn build_source_maps(
     output: AggregatedCompilerOutput,
@@ -21,7 +22,7 @@ pub fn build_source_maps(
                 .unwrap_or_else(|e| panic!("Failed to open file `{abs_path}` {e}"));
             (
                 abs_path,
-                (file_content.clone(), get_string_lines(file_content)),
+                (file_content.clone(), get_source_map(&file_content)),
             )
         })
         .collect()
@@ -55,43 +56,75 @@ pub fn get_position(start: usize, lines_to_bytes: &[usize]) -> (usize, usize) {
 
         // update offset of the start of the line
         line_start = b + 1;
+
+        // TODO: should instead get the bytes representation of the line
     }
 
     (line, width)
 }
 
 /// Returns a view in the code where the finding is located
-pub fn get_finding_content(content: String, start: usize, length: usize) -> String {
+pub fn get_finding_content(
+    content: String,
+    lines_to_bytes: &[usize],
+    start: usize,
+    length: usize,
+) -> String {
     let file_bytes: Vec<u8> = content.as_bytes().to_vec();
 
     let mut content = String::new();
 
-    content.push_str(&get_finding_content_before(&file_bytes, start));
-    content.push_str(&get_finding_content_middle(&file_bytes, start, length));
-    content.push_str(&get_finding_content_after(&file_bytes, start));
+    content.push_str(&get_finding_content_before(
+        &file_bytes,
+        lines_to_bytes,
+        start,
+    ));
+    content.push_str(&get_finding_content_middle(
+        &file_bytes,
+        lines_to_bytes,
+        start,
+        length,
+    ));
+    content.push_str(&get_finding_content_after(
+        &file_bytes,
+        lines_to_bytes,
+        start,
+        length,
+    ));
 
     content
 }
 
-pub fn get_finding_content_before(file_bytes: &[u8], start: usize) -> String {
-    let last_i = get_last_start_index(file_bytes, start);
+pub fn get_finding_content_before(
+    file_bytes: &[u8],
+    lines_to_bytes: &[usize],
+    start: usize,
+) -> String {
+    let last_i = get_last_start_index(file_bytes, lines_to_bytes, start);
     if last_i > 0 {
-        let start_line = get_last_start_index(file_bytes, start).saturating_sub(1);
-        let start_bef_line = get_last_start_index(file_bytes, start_line);
+        let start_line = get_last_start_index(file_bytes, lines_to_bytes, start).saturating_sub(1);
+        let start_bef_line = get_last_start_index(file_bytes, lines_to_bytes, start_line);
         content_until_end(file_bytes, start_bef_line)
     } else {
         String::new()
     }
 }
 
-pub fn get_finding_content_middle(file_bytes: &[u8], start: usize, length: usize) -> String {
-    let start_line_byte = get_last_start_index(file_bytes, start);
+/// returns the content corresponding to the line where the "start" is
+pub fn get_finding_content_middle(
+    file_bytes: &[u8],
+    lines_to_bytes: &[usize],
+    start: usize,
+    length: usize,
+) -> String {
+    let start_line_byte = get_last_start_index(file_bytes, lines_to_bytes, start);
 
+    // max is excluded in the range, so we should do index + 1
     let max = if file_bytes.len() < start_line_byte + length {
-        // give the last available index
+        // give the last available index if it would go over the array
         file_bytes.len()
     } else {
-        offset_until_end(file_bytes, start_line_byte + length)
+        offset_until_end(file_bytes, start_line_byte + length) + 1
     };
 
     let content = file_bytes.get(start_line_byte..max).unwrap_or_default();
@@ -101,7 +134,7 @@ pub fn get_finding_content_middle(file_bytes: &[u8], start: usize, length: usize
 }
 
 /// Get the byte index of the last line start
-fn get_last_start_index(file_bytes: &[u8], start: usize) -> usize {
+fn get_last_start_index(file_bytes: &[u8], lines_to_bytes: &[usize], start: usize) -> usize {
     let mut i = start;
 
     while i > 0 {
@@ -114,29 +147,29 @@ fn get_last_start_index(file_bytes: &[u8], start: usize) -> usize {
     i
 }
 
-pub fn get_finding_content_after(file_bytes: &[u8], start: usize) -> String {
-    let content_i = offset_until_end(file_bytes, start);
-    let last_i = match file_bytes.len().checked_sub(1) {
-        Some(a) => a,
-        None => return String::new(),
-    };
-
-    if content_i < last_i {
-        content_until_end(file_bytes, content_i)
-    } else {
-        String::new()
-    }
+pub fn get_finding_content_after(
+    file_bytes: &[u8],
+    lines_to_bytes: &[usize],
+    start: usize,
+    length: usize,
+) -> String {
+    let content_i = offset_until_end(file_bytes, start + length);
+    // overtake the current line by adding 1
+    content_until_end(file_bytes, content_i + 1)
 }
 
-fn offset_until_end(file_bytes: &[u8], index: usize) -> usize {
-    let mut i = index;
+/// Get the next index for which the char is \n
+fn offset_until_end(file_bytes: &[u8], start: usize) -> usize {
+    let mut i = start;
 
     // Iterate until the next char return \n
-    let mut last_byte = 0;
+    let mut last_byte = *file_bytes.get(i).unwrap_or(&0);
+
     // Either returns because we found a \n or the end of the buffer
     while last_byte != b'\n' {
+        i += 1;
+
         if let Some(c) = file_bytes.get(i) {
-            i += 1;
             last_byte = *c;
         } else {
             break;
@@ -168,11 +201,11 @@ fn content_until_end(file_bytes: &[u8], index: usize) -> String {
 #[allow(unused)]
 pub fn get_path_lines(path: String) -> Result<Vec<usize>, std::io::Error> {
     let content = fs::read_to_string(path)?;
-    Ok(get_string_lines(content))
+    Ok(get_source_map(&content))
 }
 
 /// Build source map from the string content of a file by scanning for char return
-pub fn get_string_lines(content: String) -> Vec<usize> {
+pub fn get_source_map(content: &String) -> Vec<usize> {
     // index => bytes_offset
     // always starts at 0 (content start)
     let mut acc = vec![];
@@ -190,7 +223,7 @@ pub fn get_string_lines(content: String) -> Vec<usize> {
             acc.push(i + 1);
         } else if b == &b'\r' {
             if let Some(next_b) = bytes.get(i + 1) {
-                if next_b == &b'\r' {
+                if next_b == &b'\n' {
                     // CRLF (\r\n)
                     acc.push(i + 1);
 
@@ -235,7 +268,7 @@ fn correct_source_maps() {
 Goodbye, world",
     );
 
-    let source_map = get_string_lines(content);
+    let source_map = get_source_map(&content);
 
     assert_eq!(source_map.len(), 2);
     assert_eq!(source_map[0], 13);
@@ -252,7 +285,7 @@ detection modules
 and it's fast!",
     );
 
-    let source_map = get_string_lines(content);
+    let source_map = get_source_map(&content);
 
     assert_eq!(source_map.len(), 5);
     assert_eq!(source_map[0], 13);
@@ -281,7 +314,7 @@ and it's fast!",
          ]
     */
 
-    let source_map = get_string_lines(content);
+    let source_map = get_source_map(&content);
     assert_eq!(get_position(13, &source_map), (1, 14));
     assert_eq!(get_position(14, &source_map), (2, 1));
     assert_eq!(get_position(25, &source_map), (2, 12));
@@ -299,11 +332,12 @@ and it's fast!",
     );
 
     let file_bytes = content.as_bytes();
+    let source_map = get_source_map(&content);
 
-    let before_content = get_finding_content_before(file_bytes, 14);
+    let before_content = get_finding_content_before(file_bytes, &source_map, 14);
     assert_eq!(before_content, String::from("Solhunt is a\n"));
 
-    let before_content = get_finding_content_before(file_bytes, 0);
+    let before_content = get_finding_content_before(file_bytes, &source_map, 0);
     assert_eq!(before_content, String::from(""));
 }
 
@@ -318,11 +352,12 @@ and it's fast!",
     );
 
     let file_bytes = content.as_bytes();
+    let source_map = get_source_map(&content);
 
-    let middle_content = get_finding_content_middle(file_bytes, 14, 3);
+    let middle_content = get_finding_content_middle(file_bytes, &source_map, 14, 3);
     assert_eq!(middle_content, String::from("new static analyzer,\n"));
 
-    let middle_content = get_finding_content_middle(file_bytes, 14, 24);
+    let middle_content = get_finding_content_middle(file_bytes, &source_map, 14, 24);
     assert_eq!(
         middle_content,
         String::from(
@@ -331,7 +366,7 @@ it lets you write\n"
         )
     );
 
-    let middle_content = get_finding_content_middle(file_bytes, 0, 6);
+    let middle_content = get_finding_content_middle(file_bytes, &source_map, 0, 6);
     assert_eq!(middle_content, String::from("Solhunt is a\n"));
 }
 
@@ -346,11 +381,12 @@ and it's fast!",
     );
 
     let file_bytes = content.as_bytes();
+    let source_map = get_source_map(&content);
 
-    let after_content = get_finding_content_after(file_bytes, 14);
+    let after_content = get_finding_content_after(file_bytes, &source_map, 14, 3);
     assert_eq!(after_content, String::from("it lets you write\n"));
 
-    let after_content = get_finding_content_after(file_bytes, 0);
+    let after_content = get_finding_content_after(file_bytes, &source_map, 0, 5);
     assert_eq!(after_content, String::from("new static analyzer,\n"));
 }
 
@@ -364,7 +400,9 @@ detection modules
 and it's fast!",
     );
 
-    let finding_content = get_finding_content(content.clone(), 14, 6);
+    let source_map = get_source_map(&content);
+
+    let finding_content = get_finding_content(content.clone(), &source_map, 14, 6);
     assert_eq!(
         finding_content,
         String::from(
@@ -374,7 +412,7 @@ it lets you write\n"
         )
     );
 
-    let finding_content = get_finding_content(content.clone(), 0, 6);
+    let finding_content = get_finding_content(content.clone(), &source_map, 0, 6);
     assert_eq!(
         finding_content,
         String::from(
@@ -383,7 +421,7 @@ new static analyzer,\n"
         )
     );
 
-    let finding_content = get_finding_content(content.clone(), 35, 2);
+    let finding_content = get_finding_content(content.clone(), &source_map, 35, 2);
     assert_eq!(
         finding_content,
         String::from(
@@ -393,12 +431,111 @@ detection modules\n"
         )
     );
 
-    let finding_content = get_finding_content(content, 71, 38);
+    let finding_content = get_finding_content(content.clone(), &source_map, 71, 38);
     assert_eq!(
         finding_content,
         String::from(
             "detection modules
 and it's fast!"
+        )
+    );
+
+    let finding_content = get_finding_content(content, &source_map, 18, 21);
+    assert_eq!(
+        finding_content,
+        String::from(
+            "Solhunt is a
+new static analyzer,
+it lets you write
+detection modules\n"
+        )
+    );
+}
+
+pub struct SourceModule {
+    findings: Vec<Finding>,
+    shared_data: ModuleState,
+    expected_source: SourceLocation,
+}
+
+#[cfg(test)]
+impl SourceModule {
+    fn new(expected_source: SourceLocation) -> Self {
+        Self {
+            findings: vec![],
+            expected_source,
+            shared_data: Default::default(),
+        }
+    }
+}
+
+impl Visitor<ModuleState> for SourceModule {
+    fn shared_data(&mut self) -> &ModuleState {
+        &self.shared_data
+    }
+
+    fn visit_inline_assembly(
+        &mut self,
+        inline_assembly: &mut InlineAssembly,
+    ) -> eyre::Result<(), VisitError> {
+        assert_eq!(inline_assembly.src, self.expected_source);
+
+        Ok(())
+    }
+}
+
+/// Test if source locations are matching with our calculations on some representatives nodes
+#[test]
+fn ast_source_locations() {
+    let content = String::from(
+        "pragma solidity 0.8.0;
+
+contract SourceLocations {
+    function doAssembly() public {
+        assembly {
+
+
+        }
+    }
+}",
+    );
+
+    let (project, artifacts) = super::compile_single_contract_to_artifacts(content.clone());
+
+    // note: solidity source mappings are giving the byte before the first character
+    let source = SourceLocation {
+        start: Some(94),
+        length: Some(22),
+        index: Some(0),
+    };
+
+    let module = SourceModule::new(source.clone());
+
+    let mut walker = Walker::new(
+        artifacts,
+        BTreeMap::new(),
+        vec![Box::from(module)],
+        project.root().into(),
+    );
+
+    walker.traverse().unwrap();
+
+    let lines_to_bytes = get_source_map(&content);
+
+    let finding_content = get_finding_content_middle(
+        content.as_bytes(),
+        &lines_to_bytes,
+        source.start.unwrap(),
+        source.length.unwrap(),
+    );
+
+    assert_eq!(
+        finding_content,
+        String::from(
+            "        assembly {
+
+
+        }\n"
         )
     );
 }
