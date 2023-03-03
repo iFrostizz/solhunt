@@ -8,7 +8,7 @@ fn escher_integration() {
     let sorted_findings = sort_findings_by_len(&findings);
 
     sorted_findings.iter().for_each(|(n, mfs)| {
-        println!("{n}: {}", mfs.len());
+        // println!("{n}: {}", mfs.len());
         if mfs.len() > 100 {
             mfs.iter()
                 .enumerate()

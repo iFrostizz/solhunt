@@ -1,5 +1,4 @@
 use crate::build_visitor;
-use std::collections::HashMap;
 
 build_visitor! {
     BTreeMap::from([

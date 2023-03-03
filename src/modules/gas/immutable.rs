@@ -20,9 +20,10 @@ build_visitor! {
         source_unit.visit(self)?;
         // check if assignments are done on state variables out of constructor
 
-        self.constructor_variables.iter().for_each(|var| {
+        self.constructor_variables.clone().iter().for_each(|var| {
             if self.state_variables.contains(var) {
-                self.push_finding(0, Some(source_unit.src.clone()))
+                let var_declaration = &self.state_name_to_var[var];
+                self.push_finding(0, Some(var_declaration.src.clone()))
             }
         });
 
@@ -32,7 +33,9 @@ build_visitor! {
     fn visit_variable_declaration(&mut self, variable_declaration: &mut VariableDeclaration) {
         // push to the vec of state variable names
         if variable_declaration.state_variable {
-            self.state_variables.insert(variable_declaration.name.clone());
+            let name = &variable_declaration.name;
+            self.state_variables.insert(name.clone());
+            self.state_name_to_var.insert(name.clone(), variable_declaration.clone());
         }
 
         variable_declaration.visit(self)
@@ -55,12 +58,12 @@ build_visitor! {
         // make a list of all state variables changed in the constructor.
         // remove them if they are changed in a function that is not the constructor.
         if let Expression::Identifier(identifier) = &assignment.lhs {
-            let var_name = identifier.name;
+            let var_name = &identifier.name;
 
             if self.inside.constructor {
-                self.constructor_variables.insert(var_name);
+                self.constructor_variables.insert(var_name.clone());
             } else {
-                self.constructor_variables.remove(&var_name);
+                self.constructor_variables.remove(var_name);
             }
         }
 

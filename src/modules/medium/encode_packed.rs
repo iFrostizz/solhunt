@@ -43,7 +43,7 @@ build_visitor! {
                         }
                     });
 
-                    println!("a");
+                    // println!("a");
                     self.push_finding(0, Some(member_access.src.clone()));
 
                     if dynamic == 0 {

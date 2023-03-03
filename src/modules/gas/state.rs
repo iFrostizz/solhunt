@@ -135,10 +135,10 @@ fn state_struct_one_by_one() {
             "pragma solidity 0.8.0;
 
 struct Parameters {
-    address token0,
-    address token1,
-    uint112 reserve0,
-    uint112 reserve1
+    address token0;
+    address token1;
+    uint112 reserve0;
+    uint112 reserve1;
 }
 
 contract OneStruct {

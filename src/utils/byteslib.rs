@@ -108,6 +108,7 @@ pub fn type_as_bytes(id: &str) -> usize {
     }
 }
 
+// TODO: rebuild the struct with the 32 bytes stuff
 /// Finds all permutations and returns the most tightly packed one
 pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
     // ignore 32 slots

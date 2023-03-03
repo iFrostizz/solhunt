@@ -1,6 +1,5 @@
 // https://github.com/code-423n4/2022-12-backed-findings/blob/main/data/IllIllI-G.md#g02--internal-functions-only-called-once-can-be-inlined-to-save-gas
 use crate::build_visitor;
-use std::collections::HashMap;
 
 build_visitor! {
     BTreeMap::from([

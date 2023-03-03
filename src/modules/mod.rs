@@ -19,7 +19,8 @@ macro_rules! build_visitor {
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
-        use std::collections::{BTreeMap, HashSet};
+        #[allow(unused)]
+        use std::collections::{BTreeMap, HashSet, HashMap};
         #[allow(unused)]
         use ethers_contract::BaseContract;
         #[allow(unused)]
@@ -32,9 +33,10 @@ macro_rules! build_visitor {
             findings_map: FindingMap,
             pub function_definitions: Vec<FunctionDefinition>,
             pub function_calls: Vec<FunctionCall>,
-            /// wether or not the visitor is inside a function
+            /// wether or not the visitor is inside a block
             pub inside: Inside,
             pub state_variables: HashSet<String>,
+            pub state_name_to_var: HashMap<String, VariableDeclaration>,
             /// variables assigned in the constructor or in the state only
             pub constructor_variables: HashSet<String>,
             pub events: Vec<EmitStatement>,
@@ -51,6 +53,7 @@ macro_rules! build_visitor {
                     function_definitions: Vec::new(),
                     function_calls: Vec::new(),
                     state_variables: HashSet::new(),
+                    state_name_to_var: HashMap::new(),
                     constructor_variables: HashSet::new(),
                     events: Vec::new(),
                     inside: Default::default(),
