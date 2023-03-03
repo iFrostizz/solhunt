@@ -111,7 +111,9 @@ pub fn type_as_bytes(id: &str) -> usize {
 // TODO: rebuild the struct with the 32 bytes stuff
 /// Finds all permutations and returns the most tightly packed one
 pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
-    let old_len = loose_bytes.len();
+    loose_bytes
+        .iter()
+        .for_each(|bs| assert!(bs.iter().sum::<usize>() <= 32));
 
     // ignore 32 slots
     let bytes: Vec<Vec<_>> = loose_bytes
@@ -121,14 +123,18 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
         .filter(|bs| !bs.is_empty())
         .collect();
 
-    let stipend_len = loose_bytes.len() - old_len;
-    let mut stipend = vec![vec![32]; stipend_len];
-
-    let packed: Option<Vec<Vec<usize>>> = None;
     let loose_len = loose_bytes.len();
     let bytes_len = bytes.len();
 
-    for perm in bytes.into_iter().permutations(bytes_len).unique() {
+    let stipend_len = loose_len - bytes_len;
+    let mut stipend = vec![vec![32]; stipend_len];
+
+    let packed: Option<Vec<Vec<usize>>> = None;
+
+    let bytes: Vec<_> = bytes.into_iter().flatten().collect();
+    let len = bytes.len();
+
+    for perm in bytes.into_iter().permutations(len).unique() {
         let mut local_packed = pack(perm);
         // has found a packed one, we can return it
         if local_packed.len() + stipend_len < loose_len {
