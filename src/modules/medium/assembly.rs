@@ -1,42 +1,22 @@
 // Module that finds for external and dangerous calls
 
 use crate::build_visitor;
-use ethers_solc::artifacts::{yul::YulFunctionCall, InlineAssembly};
 
 build_visitor!(
-    BTreeMap::from([
-        // (
-        //     0,
-        //     FindingKey {
-        //         description: "usage of inline assembly, take extra care here".to_string(),
-        //         summary: "usage of inline assembly".to_string(),
-        //         severity: Severity::Informal
-        //     }
-        // ),
-        (
-            1,
-            FindingKey {
-                description: "using extcodesize. Can be an issue if determining if EOA."
-                    .to_string(),
-                summary: "extcodesize for EOA test".to_string(),
-                severity: Severity::Medium
-            }
-        )
-    ]),
-    fn visit_inline_assembly(&mut self, inline_assembly: &mut InlineAssembly) {
-        // self.push_finding(0, Some(inline_assembly.src.clone()));
-
-        // don't disrupt current ast traversal
-        inline_assembly.visit(self)
-    },
-    fn visit_yul_function_call(&mut self, function_call: &mut YulFunctionCall) {
-        let func_name = &function_call.function_name;
-
-        if func_name.name == "extcodesize" {
-            self.push_finding(1, Some(function_call.src.clone()))
+    BTreeMap::from([(
+        0,
+        FindingKey {
+            description: "using extcodesize. Can be an issue if determining if EOA.".to_string(),
+            summary: "extcodesize for EOA test".to_string(),
+            severity: Severity::Medium
+        }
+    )]),
+    fn visit_yul_identifier(&mut self, yul_identifier: &mut YulIdentifier) {
+        if yul_identifier.name == "extcodesize" {
+            self.push_finding(0, Some(yul_identifier.src.clone()))
         }
 
-        function_call.visit(self)
+        yul_identifier.visit(self)
     }
 );
 
@@ -60,12 +40,7 @@ contract ExtCodeSize {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
-        vec![7]
-    );
-
-    assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 1), // extcodesize
+        lines_for_findings_with_code(&findings, "assembly", 0), // extcodesize
         vec![8]
     );
 }
@@ -89,12 +64,7 @@ contract WithoutExtCodeSize {
         ),
     )]);
 
-    assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
-        vec![7]
-    );
-
-    assert!(!has_with_code(&findings, "assembly", 1)); // extcodesize);
+    assert!(!has_with_code(&findings, "assembly", 0)); // extcodesize);
 }
 
 #[test]
@@ -119,12 +89,7 @@ contract NestedExtCodeSize {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 0), // usage of assembly
-        vec![7]
-    );
-
-    assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 1), // extcodesize
+        lines_for_findings_with_code(&findings, "assembly", 0), // extcodesize
         vec![9]
     );
 }

@@ -50,7 +50,7 @@ build_visitor! {
 
     fn visit_variable_declaration(&mut self, variable_declaration: &mut VariableDeclaration) {
         if variable_declaration.state_variable {
-            self.state_variables.push(variable_declaration.name.clone());
+            self.state_variables.insert(variable_declaration.name.clone());
 
             if variable_declaration.visibility == Visibility::Public {
                 self.push_finding(1, Some(variable_declaration.src.clone()));

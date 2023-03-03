@@ -16,36 +16,51 @@ build_visitor! {
 
     fn visit_source_unit(&mut self, source_unit: &mut SourceUnit) {
         // get state variables and assignment
+        // get all variables only assigned in the constructor or in the state directly
         source_unit.visit(self)?;
         // check if assignments are done on state variables out of constructor
+
+        self.constructor_variables.iter().for_each(|var| {
+            if self.state_variables.contains(var) {
+                self.push_finding(0, Some(source_unit.src.clone()))
+            }
+        });
 
         Ok(())
     },
 
     fn visit_variable_declaration(&mut self, variable_declaration: &mut VariableDeclaration) {
+        // push to the vec of state variable names
         if variable_declaration.state_variable {
-            self.state_variables.push(variable_declaration.name.clone());
+            self.state_variables.insert(variable_declaration.name.clone());
         }
 
         variable_declaration.visit(self)
     },
 
     fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
+        // check if we are in a constructor or not
         if function_definition.kind == Some(FunctionKind::Constructor) {
             self.inside.constructor = true;
         }
 
         function_definition.visit(self)?;
 
-        self.inside.constructor = true;
+        self.inside.constructor = false;
 
         Ok(())
     },
 
     fn visit_assignment(&mut self, assignment: &mut Assignment) {
+        // make a list of all state variables changed in the constructor.
+        // remove them if they are changed in a function that is not the constructor.
         if let Expression::Identifier(identifier) = &assignment.lhs {
-            if self.state_variables.contains(&identifier.name) && !self.inside.constructor {
-                self.push_finding(0, Some(assignment.src.clone()));
+            let var_name = identifier.name;
+
+            if self.inside.constructor {
+                self.constructor_variables.insert(var_name);
+            } else {
+                self.constructor_variables.remove(&var_name);
             }
         }
 

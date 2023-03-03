@@ -13,13 +13,13 @@ macro_rules! build_visitor {
     ($map:expr, $(fn $func_name:ident (&mut $self:ident, $($param:ident : $type:ty),*) $(-> $return_type:ty)* $body:block),*) => {
         // compiler complains for Visitable, but is actually needed.
         #[allow(unused)]
-        use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::*};
+        use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::{*, yul::*}};
         #[allow(unused)]
         use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::{lines_for_findings_with_code, has_with_code, has_with_module}};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
-        use std::{collections::BTreeMap};
+        use std::collections::{BTreeMap, HashSet};
         #[allow(unused)]
         use ethers_contract::BaseContract;
         #[allow(unused)]
@@ -34,7 +34,9 @@ macro_rules! build_visitor {
             pub function_calls: Vec<FunctionCall>,
             /// wether or not the visitor is inside a function
             pub inside: Inside,
-            pub state_variables: Vec<String>,
+            pub state_variables: HashSet<String>,
+            /// variables assigned in the constructor or in the state only
+            pub constructor_variables: HashSet<String>,
             pub events: Vec<EmitStatement>,
             pub shared_data: ModuleState
         }
@@ -48,7 +50,8 @@ macro_rules! build_visitor {
                     findings_map: $map,
                     function_definitions: Vec::new(),
                     function_calls: Vec::new(),
-                    state_variables: Vec::new(),
+                    state_variables: HashSet::new(),
+                    constructor_variables: HashSet::new(),
                     events: Vec::new(),
                     inside: Default::default(),
                     shared_data: ModuleState {

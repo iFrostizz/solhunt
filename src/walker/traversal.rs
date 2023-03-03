@@ -147,7 +147,7 @@ pub fn visit_source<D>(
     findings_data
         .iter()
         .enumerate()
-        .filter(|(i, _)| i > &current_len)
+        .filter(|(i, _)| i >= &current_len)
         .for_each(|(i, finding)| {
             let src = finding.src.as_ref().unwrap_or(&SourceLocation {
                 start: Some(0),
