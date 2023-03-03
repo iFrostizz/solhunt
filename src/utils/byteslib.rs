@@ -114,9 +114,11 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
     let old_len = loose_bytes.len();
 
     // ignore 32 slots
-    let loose_bytes: Vec<Vec<usize>> = loose_bytes
+    let bytes: Vec<Vec<_>> = loose_bytes
+        .clone()
         .into_iter()
-        .map(|bs| bs.into_iter().filter(|b| *b < 32).collect())
+        .map(|bs| bs.into_iter().filter(|b| *b < 32).collect::<Vec<usize>>())
+        .filter(|bs| !bs.is_empty())
         .collect();
 
     let stipend_len = loose_bytes.len() - old_len;
@@ -124,14 +126,12 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
 
     let packed: Option<Vec<Vec<usize>>> = None;
     let loose_len = loose_bytes.len();
-
-    let bytes: Vec<usize> = loose_bytes.into_iter().flatten().collect();
     let bytes_len = bytes.len();
 
     for perm in bytes.into_iter().permutations(bytes_len).unique() {
         let mut local_packed = pack(perm);
         // has found a packed one, we can return it
-        if local_packed.len() < loose_len {
+        if local_packed.len() + stipend_len < loose_len {
             if let Some(p) = packed.clone() {
                 if local_packed.len() < p.len() {
                     local_packed.append(&mut stipend);
@@ -179,6 +179,6 @@ fn packs() {
 fn packs_tightly() {
     assert_eq!(
         tightly_pack(vec![vec![32], vec![20], vec![32], vec![8]]),
-        Some(vec![vec![32], vec![20, 8], vec![32]])
+        Some(vec![vec![20, 8], vec![32], vec![32]])
     );
 }

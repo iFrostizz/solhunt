@@ -32,7 +32,6 @@ build_visitor! {
     }
 }
 
-// TODO: be able to extract a specific node from the ast to unit test this function
 pub fn extract_struct_bytes(struct_definition: StructDefinition) -> Vec<Vec<usize>> {
     let mut struct_bytes = Vec::new();
     let mut local_bytes = Vec::new();
@@ -115,7 +114,6 @@ contract TightStruct {
     assert!(!has_with_code(&findings, "tight_pack", 0));
 }
 
-// TODO: write a dummy visitor for testing purposes which does not implements it with Vec<Finding> as Data
 #[derive(Default)]
 pub struct StructModule {
     expected_struct_bytes: Vec<Vec<usize>>,
