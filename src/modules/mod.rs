@@ -40,7 +40,8 @@ macro_rules! build_visitor {
             /// variables assigned in the constructor or in the state only
             pub constructor_variables: HashSet<String>,
             pub events: Vec<EmitStatement>,
-            pub shared_data: ModuleState
+            pub shared_data: ModuleState,
+            pub revert_reasons: HashMap<String, Vec<SourceLocation>>
         }
 
         /// populate the f_map on startup in order to specify the finding codes only
@@ -48,7 +49,6 @@ macro_rules! build_visitor {
             fn default() -> Self {
                 Self {
                     version: None,
-                    // findings: Vec::new(),
                     findings_map: $map,
                     function_definitions: Vec::new(),
                     function_calls: Vec::new(),
@@ -61,6 +61,7 @@ macro_rules! build_visitor {
                         name: get_module_name(),
                         findings: Vec::new(),
                     },
+                    revert_reasons: HashMap::new()
                 }
             }
         }

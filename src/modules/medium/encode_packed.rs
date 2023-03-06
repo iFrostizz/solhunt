@@ -27,13 +27,22 @@ build_visitor! {
                summary: "Only strings and bytes".to_string(),
                severity: Severity::Low
            }
+       ),
+       (
+           3,
+           FindingKey {
+                summary: "`abi.encode()` is less efficient than `abi.encodepacked()`".to_string(),
+                description: "see: https://github.com/ConnorBlockchain/Solidity-Encode-Gas-Comparison".to_string(),
+                severity: Severity::Gas
+           }
        )
     ]),
+
     fn visit_member_access(&mut self, member_access: &mut MemberAccess) {
-        if member_access.member_name == "encodePacked" {
-            let expression = &member_access.expression;
-            if let Expression::Identifier(identifier) = expression {
-                if identifier.name == "abi" {
+        // dbg!(&member_access);
+        if let Expression::Identifier(identifier) = &member_access.expression {
+            if identifier.name == "abi" && identifier.type_descriptions.type_string == Some("abi".to_string()) {
+                if member_access.member_name == "encodePacked" {
                     let mut dynamic = 0;
                     member_access.argument_types.iter().for_each(|at| {
                         if let Some(type_string) = &at.type_string {
@@ -53,6 +62,8 @@ build_visitor! {
                     } else {
                         self.push_finding(2, Some(member_access.src.clone()));
                     }
+                } else if member_access.member_name == "encode" {
+                    self.push_finding(3, Some(member_access.src.clone()));
                 }
             }
         }
@@ -61,17 +72,13 @@ build_visitor! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn encode_packed_collision() {
-        // inspired from: https://github.com/sherlock-audit/2022-10-nftport-judging/issues/118
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("EncodePacked"),
-            String::from(
-                "pragma solidity ^0.8.0;
+#[test]
+fn encode_packed_collision() {
+    // inspired from: https://github.com/sherlock-audit/2022-10-nftport-judging/issues/118
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("EncodePacked"),
+        String::from(
+            "pragma solidity ^0.8.0;
 contract EncodePacked {
     modifier signedOnly(bytes memory message, bytes memory signature) {
         // do some amazing checks
@@ -93,12 +100,33 @@ contract EncodePacked {
         // _deploy(templateName, latestVersion[templateName], initdata);
     }
 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code(&findings, "encode_packed", 0),
-            vec![16]
-        );
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "encode_packed", 0),
+        vec![16]
+    );
+}
+
+#[test]
+fn encode_less_efficient() {
+    // inspired from: https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/Rolezn-G.md#gas1-abiencode-is-less-efficient-than-abiencodepacked
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Encode"),
+        String::from(
+            "pragma solidity ^0.8.0;
+
+contract Encode {
+    function encode(bytes32 clear) public returns (bytes memory) {
+        return abi.encode(clear);
     }
+}",
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code(&findings, "encode_packed", 3),
+        vec![5]
+    );
 }

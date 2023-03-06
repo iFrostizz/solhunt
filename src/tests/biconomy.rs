@@ -40,7 +40,7 @@ fn biconomy_integration() {
     assert!(has_with_code_at_line(
         &findings,
         "aa-4337/core/EntryPoint.sol",
-        "custom_errors",
+        "require",
         0,
         36
     ));
