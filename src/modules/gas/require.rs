@@ -90,7 +90,7 @@ contract CustomError {
         vec![5]
     );
 
-    assert!(!has_with_code(&findings, "require", 1));
+    asser!(!has_with_code(&findings, "require", 1));
 }
 
 #[test]
