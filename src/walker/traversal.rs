@@ -186,6 +186,6 @@ pub fn visit_source<D>(
                 .and_modify(|f| f.push(meta_finding.clone()))
                 .or_insert(vec![meta_finding.clone()]);
 
-            visitor_len.insert(visitor_name.to_string(), i);
+            visitor_len.insert(visitor_name.to_string(), i + 1);
         });
 }
