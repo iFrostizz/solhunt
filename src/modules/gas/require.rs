@@ -1,5 +1,7 @@
 use crate::build_visitor;
 
+// unstable module
+// TODO: probably only keep track of same error for the same artifact
 build_visitor! {
     // https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/chrisdior4-G.md#g-01-use-custom-errors-instead-of-revert-strings
     BTreeMap::from([
@@ -14,7 +16,7 @@ build_visitor! {
         (
             1,
             FindingKey {
-                summary: "Duplicated require()/revert() Checks Should Be Refactored To A Modifier Or Function".to_string(),
+                summary: "Duplicated require()/revert() Checks Should Be Refactored To A Modifier Or an internal function".to_string(),
                 description: "Less code means a less costly deployment".to_string(),
                 severity: Severity::Gas
             }
@@ -42,16 +44,25 @@ build_visitor! {
     },
 
     fn visit_identifier(&mut self, identifier: &mut Identifier) {
-        if identifier.name == "require" {
+        if identifier.name == "require" || identifier.name == "revert" {
             let arg_ty = &identifier.argument_types;
 
-            let condition = &arg_ty[0];
-            if condition == &(TypeDescriptions {
-                type_identifier: Some(String::from("t_bool")),
-                type_string: Some(String::from("bool"))
-            }) {
-                // that's definitely a "require" statement
-                if let Some(reason) = arg_ty.get(1) {
+            if let Some(reason) = if identifier.name == "require" {
+                let condition = &arg_ty[0];
+                if condition == &(TypeDescriptions {
+                    type_identifier: Some(String::from("t_bool")),
+                    type_string: Some(String::from("bool"))
+                }
+                ) {
+                    arg_ty.get(1)
+                } else {
+                    None
+                }
+            } else if identifier.name == "revert" {
+arg_ty.get(0)
+            } else {
+                None
+            } {
                     if let Some(id) = &reason.type_identifier {
 
                         self.revert_reasons.entry(id.to_string()).and_modify(|times| {
@@ -62,8 +73,8 @@ build_visitor! {
                             self.push_finding(0, Some(identifier.src.clone()))
                         }
                     }
-                }
             }
+
         }
 
         identifier.visit(self)
@@ -86,15 +97,15 @@ contract CustomError {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "require", 0),
+        lines_for_findings_with_code_module(&findings, "require", 0),
         vec![5]
     );
 
-    asser!(!has_with_code(&findings, "require", 1));
+    assert!(!has_with_code(&findings, "require", 1));
 }
 
 #[test]
-fn require_once() {
+fn require_twice() {
     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
         String::from("Require"),
         String::from(
@@ -113,7 +124,79 @@ contract Require {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "require", 1),
+        lines_for_findings_with_code_module(&findings, "require", 1),
         vec![5, 9]
     );
+}
+
+#[test]
+fn revert_twice() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Revert"),
+        String::from(
+            r#"pragma solidity 0.8.0;
+
+contract Revert {
+    function revert1() public {
+        revert("Repeated error");
+    }
+
+    function revert2() public {
+        revert("Repeated error");
+    }
+}"#,
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "require", 1),
+        vec![5, 9]
+    );
+}
+
+#[test]
+fn mixed_rev() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Mixed"),
+        String::from(
+            r#"pragma solidity 0.8.0;
+
+contract Mixed {
+    function revert1() public {
+        revert("Repeated error");
+    }
+
+    function require1() public {
+        require(false, "Repeated error");
+    }
+}"#,
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "require", 1),
+        vec![5, 9]
+    );
+}
+
+#[test]
+fn not_repeated() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("NotRep"),
+        String::from(
+            r#"pragma solidity 0.8.0;
+
+contract NotRep {
+    function revert1() public {
+        revert("Repeated error");
+    }
+
+    function require1() public {
+        require(false, "Nope");
+    }
+}"#,
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "require", 1));
 }

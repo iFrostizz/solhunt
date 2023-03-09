@@ -66,6 +66,9 @@ pub struct ModuleState {
     pub name: String,
     /// findings included in the visitor pushed during the walking
     pub findings: Vec<Finding>,
+    /// dynamic absolute path of the current file containing the artifact being visited
+    pub current_file: String,
+    pub file_findings: HashMap<String, Vec<Finding>>,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]

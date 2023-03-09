@@ -84,7 +84,7 @@ contract LooseStruct {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "tight_pack", 0),
+        lines_for_findings_with_code_module(&findings, "tight_pack", 0),
         vec![4]
     );
 }

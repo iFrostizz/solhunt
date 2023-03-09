@@ -40,7 +40,7 @@ contract ExtCodeSize {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 0), // extcodesize
+        lines_for_findings_with_code_module(&findings, "assembly", 0), // extcodesize
         vec![8]
     );
 }
@@ -89,7 +89,7 @@ contract NestedExtCodeSize {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "assembly", 0), // extcodesize
+        lines_for_findings_with_code_module(&findings, "assembly", 0), // extcodesize
         vec![9]
     );
 }

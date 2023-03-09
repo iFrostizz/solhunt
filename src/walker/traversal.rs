@@ -8,7 +8,7 @@ use crate::{
 };
 use ethers_solc::{
     artifacts::{
-        ast::{lowfidelity::Ast, SourceLocation},
+        ast::lowfidelity::Ast,
         lowfidelity::TypedAst,
         visitor::{Visitable, Visitor},
     },
@@ -48,43 +48,28 @@ impl Walker {
     pub fn traverse(&mut self) -> eyre::Result<AllFindings> {
         let mut all_findings: AllFindings = HashMap::new();
 
-        let mut visitor_len = HashMap::new();
+        // let mut visitor_len = HashMap::new();
 
-        let mut ids: Vec<usize> = Vec::new();
+        let ids: Vec<usize> = Vec::new();
         let source_map = &self.source_map.clone();
 
-        self.artifact.iter().for_each(|(id, art)| {
-            let unique_id = id.identifier();
+        let sources: Vec<_> = self
+            .artifact
+            .iter()
+            .filter_map(|(id, art)| {
+                let unique_id = id.identifier();
 
-            let ast: Ast = art
-                .ast
-                .as_ref()
-                .unwrap_or_else(|| panic!("no ast found for {unique_id}"))
-                .clone();
-
-            let mut ast: TypedAst = ast.to_typed();
-            let source_unit = &ast.source_unit;
-            let source_id = source_unit.id;
-
-            // dedup same sources
-            // TODO: is that bug from the ast ?
-            if !ids.contains(&source_id) {
-                ids.push(source_id);
-
-                let abs_path = id.source.to_str().unwrap().to_string();
-
-                let (file_content, lines_to_bytes) = source_map
-                    .clone()
-                    .get(&abs_path)
-                    // .unwrap_or_else(|| {
-                    //     let msg = format!("source map not found for {}", abs_path);
-                    //     tracing::warn!(target: "walker::traversal", msg);
-                    //     &(String::new(), Vec::new())
-                    // })
-                    .unwrap_or(&(String::new(), Vec::new()))
+                let ast: Ast = art
+                    .ast
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("no ast found for {unique_id}"))
                     .clone();
 
-                let path = PathBuf::from(&source_unit.absolute_path);
+                let ast: TypedAst = ast.to_typed();
+                let source_unit = &ast.source_unit;
+                let source_id = source_unit.id;
+
+                let abs_path = id.source.to_str().unwrap().to_string();
 
                 let root = &self
                     .root_abs_path
@@ -93,6 +78,8 @@ impl Walker {
                     .to_str()
                     .unwrap()
                     .to_string();
+
+                let path = PathBuf::from(&source_unit.absolute_path);
 
                 // the file may be outside the project. In that case, it's rather a lib.
                 // TODO: remove each root ancestors until that strip returns Ok
@@ -103,89 +90,83 @@ impl Walker {
                     version: id.version.clone(),
                 };
 
-                self.visitors.iter_mut().for_each(|visitor| {
-                    visit_source::<ModuleState>(
-                        &mut ast,
-                        visitor,
-                        &lines_to_bytes,
-                        info.clone(),
-                        &mut all_findings,
-                        file_content.clone(),
-                        &mut visitor_len,
-                    );
-                });
-            }
+                if ids.contains(&source_id) {
+                    None
+                } else {
+                    Some((ast, info, abs_path))
+                }
+            })
+            .collect();
+
+        self.visitors.iter_mut().for_each(|visitor| {
+            visit_sources::<ModuleState>(sources.clone(), visitor, source_map, &mut all_findings)
         });
 
         Ok(all_findings)
     }
 }
 
-pub fn visit_source<D>(
-    source: &mut TypedAst,
+pub fn visit_sources<D>(
+    full_sources: Vec<(TypedAst, Information, String)>,
     visitor: &mut Box<dyn Visitor<ModuleState>>,
-    lines_to_bytes: &[usize],
-    info: Information,
+    source_map: &BTreeMap<String, (String, Vec<usize>)>,
     findings: &mut AllFindings,
-    file_content: String,
-    visitor_len: &mut HashMap<String, usize>,
 ) {
-    source
-        .clone()
-        .visit(visitor.as_mut())
-        .expect("ast traversal failed!");
+    let mut last_id = 0usize;
 
-    let file = info.name;
+    full_sources
+        .into_iter()
+        .for_each(|(mut source, info, abs_path)| {
+            let (file_content, lines_to_bytes) = source_map
+                .clone()
+                .get(&abs_path)
+                .unwrap_or(&(String::new(), Vec::new()))
+                .clone();
 
-    let data = visitor.shared_data();
+            source
+                .visit(visitor.as_mut())
+                .expect("ast traversal failed!");
 
-    let findings_data = &data.findings;
-    let visitor_name = &data.name;
+            let data = visitor.shared_data();
+            let findings_data = &data.findings.to_vec();
 
-    let current_len = *visitor_len.get(visitor_name).unwrap_or(&0);
+            let source_findings = &findings_data[last_id..].to_vec();
 
-    findings_data
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| i >= &current_len)
-        .for_each(|(i, finding)| {
-            let src = finding.src.as_ref().unwrap_or(&SourceLocation {
-                start: Some(0),
-                length: Some(0),
-                index: Some(0),
+            source_findings.iter().for_each(|finding| {
+                let (position, content) = if let Some(src) = &finding.src {
+                    if let Some(start) = src.start {
+                        (
+                            get_position(start, &lines_to_bytes),
+                            get_finding_content(
+                                file_content.clone(),
+                                start,
+                                src.length.unwrap_or_default(),
+                            ),
+                        )
+                    } else {
+                        ((0, 0), String::from("No source map for this file"))
+                    }
+                } else {
+                    ((0, 0), String::from("Error fetching content"))
+                };
+
+                let meta_finding = MetaFinding {
+                    finding: finding.clone(),
+                    meta: Meta {
+                        file: info.name.clone(),
+                        line: Some(position.0),
+                        width: Some(position.1),
+                        content,
+                    },
+                };
+
+                assert_eq!(finding.name.clone(), data.name.to_string());
+                findings
+                    .entry(finding.name.clone())
+                    .and_modify(|f| f.push(meta_finding.clone()))
+                    .or_insert(vec![meta_finding.clone()]);
             });
 
-            let (position, content) = if let Some(start) = src.start {
-                (
-                    get_position(start, lines_to_bytes),
-                    get_finding_content(
-                        file_content.clone(),
-                        start,
-                        src.length.unwrap_or_default(),
-                    ),
-                )
-            } else {
-                ((0, 0), String::from("Error fetching content"))
-            };
-
-            let meta_finding = MetaFinding {
-                finding: finding.clone(),
-                meta: Meta {
-                    file: file.clone(),
-                    line: Some(position.0),
-                    width: Some(position.1),
-                    content,
-                },
-            };
-
-            // println!("{:#?}", meta_finding);
-
-            // TODO: make a dedup data-structure. We don't wanna have the exact same finding on the same node anyway
-            findings
-                .entry(finding.name.clone())
-                .and_modify(|f| f.push(meta_finding.clone()))
-                .or_insert(vec![meta_finding.clone()]);
-
-            visitor_len.insert(visitor_name.to_string(), i + 1);
+            last_id = findings_data.len();
         });
 }

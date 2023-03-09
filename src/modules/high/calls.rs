@@ -184,7 +184,7 @@ contract DelegateCallForLoop {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![6]);
+    assert_eq!(lines_for_findings_with_code_module(&findings, "calls", 2), vec![6]);
 }
 
 #[test]
@@ -205,7 +205,7 @@ contract DelegateCallWhileLoop {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "calls", 2), vec![7]);
+    assert_eq!(lines_for_findings_with_code_module(&findings, "calls", 2), vec![7]);
 }
 
 #[test]
@@ -233,7 +233,7 @@ contract CallInt {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "calls", 0),
+        lines_for_findings_with_code_module(&findings, "calls", 0),
         vec![14]
     );
 }
@@ -267,7 +267,7 @@ contract CallContract {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "calls", 0),
+        lines_for_findings_with_code_module(&findings, "calls", 0),
         vec![18]
     );
 }

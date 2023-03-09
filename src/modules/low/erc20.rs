@@ -72,7 +72,7 @@ contract SafeTransfer {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "erc20", 0),
+        lines_for_findings_with_code_module(&findings, "erc20", 0),
         vec![11]
     );
 }
@@ -97,7 +97,7 @@ contract SafeApprove {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "erc20", 1), vec![9]);
+    assert_eq!(lines_for_findings_with_code_module(&findings, "erc20", 1), vec![9]);
 }
 
 #[test]

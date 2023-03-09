@@ -89,7 +89,7 @@ contract NotChange {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "immutable", 0),
+        lines_for_findings_with_code_module(&findings, "immutable", 0),
         vec![4]
     );
 }

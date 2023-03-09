@@ -1,6 +1,7 @@
 // https://github.com/code-423n4/2022-12-backed-findings/blob/main/data/IllIllI-G.md#g02--internal-functions-only-called-once-can-be-inlined-to-save-gas
 use crate::build_visitor;
 
+// unstable module
 build_visitor! {
     BTreeMap::from([
         (
@@ -89,7 +90,10 @@ contract OnlyOnce {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "tree", 0), vec![9]);
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "tree", 0),
+        vec![9]
+    );
 }
 
 #[test]
@@ -149,5 +153,8 @@ contract InComment {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "tree", 0), vec![9]);
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "tree", 0),
+        vec![9]
+    );
 }

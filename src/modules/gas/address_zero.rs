@@ -123,7 +123,7 @@ mod tests {
         )]);
 
         assert_eq!(
-            lines_for_findings_with_code(&findings, "address_zero", 0),
+            lines_for_findings_with_code_module(&findings, "address_zero", 0),
             vec![7]
         );
     }

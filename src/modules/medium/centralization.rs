@@ -71,7 +71,7 @@ contract OnlyOwnerModifer is Ownable {
 
     // TODO: found at l.22 but is actually at 21.
     assert_eq!(
-        lines_for_findings_with_code(&findings, "centralization", 0),
+        lines_for_findings_with_code_module(&findings, "centralization", 0),
         vec![21]
     );
 }

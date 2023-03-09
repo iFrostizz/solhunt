@@ -86,7 +86,7 @@ contract StateVarEvent {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "state", 0), vec![9]);
+    assert_eq!(lines_for_findings_with_code_module(&findings, "state", 0), vec![9]);
 }
 
 #[test]
@@ -124,7 +124,7 @@ contract StateVarPublic {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "state", 1), vec![4]);
+    assert_eq!(lines_for_findings_with_code_module(&findings, "state", 1), vec![4]);
 }
 
 #[test]
@@ -160,7 +160,7 @@ contract OneStruct {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "state", 1),
+        lines_for_findings_with_code_module(&findings, "state", 1),
         vec![19]
     );
 }

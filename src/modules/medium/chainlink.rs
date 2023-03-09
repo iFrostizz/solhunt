@@ -70,7 +70,7 @@ contract DeprecatedChainlink {
         )]);
 
         assert_eq!(
-            lines_for_findings_with_code(&findings, "chainlink", 0),
+            lines_for_findings_with_code_module(&findings, "chainlink", 0),
             vec![9]
         );
     }
@@ -99,7 +99,7 @@ contract StalePrice {
         )]);
 
         assert_eq!(
-            lines_for_findings_with_code(&findings, "chainlink", 1),
+            lines_for_findings_with_code_module(&findings, "chainlink", 1),
             vec![9]
         );
     }

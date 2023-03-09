@@ -71,7 +71,7 @@ contract Initialize {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "proxy", 0),
+        lines_for_findings_with_code_module(&findings, "proxy", 0),
         vec![12]
     );
 }
@@ -91,7 +91,7 @@ contract MissingInitialize {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code(&findings, "proxy", 1), vec![4]);
+    assert_eq!(lines_for_findings_with_code_module(&findings, "proxy", 1), vec![4]);
 }
 
 #[test]

@@ -15,7 +15,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::{*, yul::*}};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::{lines_for_findings_with_code, has_with_code, has_with_module}};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::*};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
@@ -26,6 +26,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_core::abi::parse_abi;
 
+        // TODO: these are valid across files, should clean the state if needed
         #[allow(dead_code)]
         pub struct DetectionModule {
             version: Option<Version>,
@@ -59,7 +60,9 @@ macro_rules! build_visitor {
                     inside: Default::default(),
                     shared_data: ModuleState {
                         name: get_module_name(),
+                        current_file: String::new(),
                         findings: Vec::new(),
+                        file_findings: HashMap::new()
                     },
                     revert_reasons: HashMap::new()
                 }

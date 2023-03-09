@@ -104,7 +104,7 @@ contract EncodePacked {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "encode_packed", 0),
+        lines_for_findings_with_code_module(&findings, "encode_packed", 0),
         vec![16]
     );
 }
@@ -126,7 +126,7 @@ contract Encode {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "encode_packed", 3),
+        lines_for_findings_with_code_module(&findings, "encode_packed", 3),
         vec![5]
     );
 }

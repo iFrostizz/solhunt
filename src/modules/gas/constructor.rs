@@ -40,7 +40,7 @@ contract NoPayableConstructor {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code(&findings, "constructor", 0),
+        lines_for_findings_with_code_module(&findings, "constructor", 0),
         vec![4]
     );
 

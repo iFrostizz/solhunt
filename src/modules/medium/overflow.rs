@@ -152,15 +152,15 @@ contract OldVerCheck {
 
     // TODO: check if any version under 0.8.0 can be selected
     assert_eq!(
-        lines_for_findings_with_code(&findings, "overflow", 0),
+        lines_for_findings_with_code_module(&findings, "overflow", 0),
         vec![1]
     ); // ver
     assert_eq!(
-        lines_for_findings_with_code(&findings, "overflow", 1),
+        lines_for_findings_with_code_module(&findings, "overflow", 1),
         vec![6]
     ); // +
     assert_eq!(
-        lines_for_findings_with_code(&findings, "overflow", 2),
+        lines_for_findings_with_code_module(&findings, "overflow", 2),
         vec![10]
     ); // -
 }
@@ -220,15 +220,15 @@ contract Unchecked {
 
     assert!(!has_with_code(&findings, "overflow", 0));
     assert_eq!(
-        lines_for_findings_with_code(&findings, "overflow", 3),
+        lines_for_findings_with_code_module(&findings, "overflow", 3),
         vec![6, 12]
     ); // unchecked
     assert_eq!(
-        lines_for_findings_with_code(&findings, "overflow", 1),
+        lines_for_findings_with_code_module(&findings, "overflow", 1),
         vec![7]
     ); // +
     assert_eq!(
-        lines_for_findings_with_code(&findings, "overflow", 2),
+        lines_for_findings_with_code_module(&findings, "overflow", 2),
         vec![13]
     ); // -
 }

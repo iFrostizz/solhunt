@@ -19,6 +19,7 @@ fn main() {
 mod test {
     use crate::walker::AllFindings;
 
+    #[cfg(test)]
     pub fn has_with_module(findings: &AllFindings, name: &str) -> bool {
         match findings.get(name) {
             Some(val) => !val.is_empty(),
@@ -26,6 +27,7 @@ mod test {
         }
     }
 
+    #[cfg(test)]
     pub fn has_with_code(findings: &AllFindings, name: &str, code: usize) -> bool {
         findings
             .get(name)
@@ -61,7 +63,7 @@ mod test {
     }
 
     #[allow(unused)]
-    pub fn findings_with_code(findings: &AllFindings, name: &str, code: usize) -> usize {
+    pub fn findings_with_code_module(findings: &AllFindings, name: &str, code: usize) -> usize {
         findings
             .get(name)
             .unwrap()
@@ -70,7 +72,8 @@ mod test {
             .count()
     }
 
-    pub fn lines_for_findings_with_code(
+    #[cfg(test)]
+    pub fn lines_for_findings_with_code_module(
         findings: &AllFindings,
         name: &str,
         code: usize,
@@ -86,7 +89,7 @@ mod test {
 
     #[cfg(test)]
     #[allow(unused)]
-    pub fn lines_for_findings_with_code_file(
+    pub fn lines_for_findings_with_code_file_module(
         findings: &AllFindings,
         file: &str,
         name: &str,
