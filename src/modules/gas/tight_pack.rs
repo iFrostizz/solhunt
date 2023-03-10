@@ -247,3 +247,31 @@ struct MyStruct {
 
     walker.traverse().unwrap();
 }
+
+#[test]
+fn can_pack() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Looz"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+interface IExecutor {
+    struct StoredBlockInfo {
+        uint64 blockNumber;
+        bytes32 blockHash;
+        uint64 indexRepeatedStorageChanges;
+        uint256 numberOfLayer1Txs;
+        bytes32 priorityOperationsHash;
+        bytes32 l2LogsTreeRoot;
+        uint256 timestamp;
+        bytes32 commitment;
+    }
+}",
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "tight_pack", 0),
+        vec![4]
+    );
+}
