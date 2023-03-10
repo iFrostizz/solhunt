@@ -28,6 +28,14 @@ build_visitor! {
                 description: "Assigning the values to the storage struct rather than one by one saves gas".to_string(),
                 severity: Severity::Gas,
             }
+        ),
+        (
+            3,
+            FindingKey {
+                summary: "Avoid using compound operators with state variables".to_string(),
+                description: "+= and -= are more expensive than = + and = -".to_string(),
+                severity: Severity::Gas
+            }
         )
     ]),
 
@@ -44,6 +52,8 @@ build_visitor! {
                 }
             });
         });
+
+        self.state_variables.clear();
 
         Ok(())
     },
@@ -64,6 +74,17 @@ build_visitor! {
         self.events.push(emit_statement.clone());
 
         emit_statement.visit(self)
+    },
+
+    fn visit_assignment(&mut self, assignment: &mut Assignment) {
+        match assignment.operator {
+            AssignmentOperator::AddAssign | AssignmentOperator::SubAssign => {
+                self.push_finding(3, Some(assignment.src.clone()));
+            }
+            _ => ()
+        }
+
+        assignment.visit(self)
     }
 }
 
@@ -86,7 +107,10 @@ contract StateVarEvent {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code_module(&findings, "state", 0), vec![9]);
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 0),
+        vec![9]
+    );
 }
 
 #[test]
@@ -124,7 +148,10 @@ contract StateVarPublic {
         ),
     )]);
 
-    assert_eq!(lines_for_findings_with_code_module(&findings, "state", 1), vec![4]);
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 1),
+        vec![4]
+    );
 }
 
 #[test]
@@ -164,3 +191,74 @@ contract OneStruct {
         vec![19]
     );
 }
+
+// https://code4rena.com/reports/2022-10-zksync#gas-optimizations
+#[test]
+fn compound_state() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Compound"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Compound {
+    uint private a;
+
+    function moreExpensive() public {
+        a += 1;
+    }
+
+    function moreExpensive2() public {
+        a -= 1;
+    }
+
+    function lessExpensive1() public {
+        a = a + 1;
+    }
+
+    function lessExpensive2() public {
+        a = a - 1;
+    }
+}",
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 3),
+        vec![7, 11]
+    );
+}
+
+// TODO: is that only more expensive for state ?
+// we should write tests first
+// #[test]
+// fn compound_non_state() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("Compound"),
+//         String::from(
+//             "pragma solidity 0.8.0;
+
+// contract Compound {
+//     function moreExpensive() public {
+//         a += 1;
+//     }
+
+//     function moreExpensive2() public {
+//         a -= 1;
+//     }
+
+//     function lessExpensive1() public {
+//         a = a + 1;
+//     }
+
+//     function lessExpensive2() public {
+//         a = a - 1;
+//     }
+// }",
+//         ),
+//     )]);
+
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "state", 3),
+//         vec![7, 11]
+//     );
+// }

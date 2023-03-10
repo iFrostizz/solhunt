@@ -52,6 +52,9 @@ build_visitor! {
             }
         });
 
+        self.function_calls.clear();
+        self.function_definitions.clear();
+
         Ok(())
     },
     fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {

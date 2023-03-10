@@ -27,6 +27,10 @@ build_visitor! {
             }
         });
 
+        self.constructor_variables.clear();
+        self.state_variables.clear();
+        self.state_name_to_var.clear();
+
         Ok(())
     },
 

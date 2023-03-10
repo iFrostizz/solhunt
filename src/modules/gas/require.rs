@@ -20,6 +20,14 @@ build_visitor! {
                 description: "Less code means a less costly deployment".to_string(),
                 severity: Severity::Gas
             }
+        ),
+        (
+            2,
+            FindingKey {
+                summary: "Use `require` instead of `assert`".to_string(),
+                description: "assert wastes all the transaction gas. Use require instead".to_string(),
+                severity: Severity::Gas
+            }
         )
     ]),
 
@@ -40,11 +48,14 @@ build_visitor! {
             }
         });
 
+        self.revert_reasons.clear();
+
         Ok(())
     },
 
     fn visit_identifier(&mut self, identifier: &mut Identifier) {
-        if identifier.name == "require" || identifier.name == "revert" {
+        let id_name = &identifier.name;
+        if id_name == "require" || id_name == "revert" {
             let arg_ty = &identifier.argument_types;
 
             if let Some(reason) = if identifier.name == "require" {
@@ -74,7 +85,8 @@ arg_ty.get(0)
                         }
                     }
             }
-
+        } else if id_name == "assert" {
+            self.push_finding(2, Some(identifier.src.clone()))
         }
 
         identifier.visit(self)
@@ -199,4 +211,25 @@ contract NotRep {
     )]);
 
     assert!(!has_with_code(&findings, "require", 1));
+}
+
+#[test]
+fn uses_assert() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Assert"),
+        String::from(
+            r#"pragma solidity 0.8.0;
+
+contract Assert {
+    function asserting() public {
+        assert(false);
+    }
+}"#,
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "require", 2),
+        vec![5]
+    );
 }
