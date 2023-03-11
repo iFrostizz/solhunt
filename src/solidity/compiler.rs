@@ -3,21 +3,15 @@ use crate::{
     solidity::{build_source_maps, get_finding_content},
     walker::{AllFindings, Walker},
 };
+use bytes::Bytes;
 use ethers_solc::{
-    artifacts::{output_selection::ContractOutputSelection, Optimizer, Settings},
-    // cache::SOLIDITY_FILES_CACHE_FILENAME,
+    artifacts::{output_selection::ContractOutputSelection, BytecodeObject, Optimizer, Settings},
     error::SolcError,
     output::ProjectCompileOutput,
     project_util::TempProject,
     remappings::{RelativeRemapping, Remapping},
-    // ProjectPathsConfig, Solc,
-    ArtifactId,
-    ConfigurableArtifacts,
-    ConfigurableContractArtifact,
-    Project,
-    ProjectPathsConfig,
-    Solc,
-    SolcConfig,
+    ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact, Project, ProjectPathsConfig,
+    Solc, SolcConfig,
 };
 use eyre::Result;
 use std::{
@@ -43,7 +37,7 @@ pub enum ProjectFile {
 
 // TODO: use cache and only recompile if files have changed
 // TODO: if no svm, display message & start timer after
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Solidity {
     pub root: PathBuf,
     pub allow_paths: Vec<String>,
@@ -65,6 +59,8 @@ pub struct Solidity {
     pub ephemeral: bool,
     pub solc: Option<Solc>,
     pub optimizer: Optimizer,
+    /// stfu ?
+    pub silent: bool,
 }
 
 impl Default for Solidity {
@@ -88,9 +84,10 @@ impl Default for Solidity {
             out: "out".into(),
             remappings: Default::default(),
             force: false,
-            ephemeral: true,
+            ephemeral: false,
             solc: None,
             optimizer: Default::default(),
+            silent: false,
         }
     }
 }
@@ -228,6 +225,11 @@ impl Solidity {
         self.update_root(root)
     }
 
+    pub fn silent(mut self) -> Self {
+        self.silent = true;
+        self
+    }
+
     /// update root and other folders
     fn update_root(mut self, root: PathBuf) -> Self {
         self.root = root;
@@ -266,16 +268,22 @@ impl Solidity {
             self.attach_remappings();
         }
 
-        let project = &self.project().unwrap();
-
         let path = self.root.clone();
         // dbg!(&path);
         // let path = self.root.clone().canonicalize().unwrap();
 
         let files = if path.is_dir() {
-            self.get_sol_files(path)
+            get_sol_files(path)
         } else if let Some(ext) = path.extension() {
             if ext == "sol" {
+                // walk back to find root and update it
+                // TODO: don't use the root variable if it's a single file
+                let mut root = path.clone();
+                root.pop();
+                root.pop();
+
+                *self = self.clone().with_path_root(root);
+
                 vec![path]
             } else {
                 eyre::bail!("Nothing valid to compile.");
@@ -283,11 +291,14 @@ impl Solidity {
         } else {
             eyre::bail!("Nothing valid to compile.");
         };
-
         let amount = files.len();
-        println!("Compiling {amount} files ...");
+        if !self.silent {
+            println!("Compiling {amount} files ...");
+        }
 
         let now = Instant::now();
+
+        let project = &self.project().unwrap();
 
         let compiled = if let Some(_solc) = &self.solc {
             /*let sources = project.paths.read_sources().unwrap();
@@ -308,8 +319,9 @@ impl Solidity {
                 let err_msg = error.formatted_message.clone();
                 println!("{}", Paint::red(err_msg.unwrap_or_default()).bold());
             });
+            // TODO: error handling and return Err()
             panic!();
-        } else {
+        } else if !self.silent {
             println!("Compiled in {}ms\n", now.elapsed().as_millis());
         }
 
@@ -324,61 +336,6 @@ impl Solidity {
             Ok(compiled) => Ok(compiled.into_artifacts().collect()),
             Err(err) => Err(err),
         }
-    }
-
-    // get path of all .sol files
-    fn get_sol_files(&self, path: PathBuf) -> Vec<PathBuf> {
-        let mut files = Vec::new();
-
-        self.visit_dirs(path.as_path(), &mut files)
-            .expect("failed to get contracts");
-
-        files
-    }
-
-    // could do caching, but explicitely excluding directory is probably good enough ?
-    fn visit_dirs(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
-        if dir.is_dir() {
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    if !(dir.ends_with("lib") // don't even try to go in libs, cache, etc...
-                    || dir.ends_with("node_modules")
-                    || dir.ends_with("out")
-                    || dir.ends_with("cache")
-                    || dir.ends_with("target")
-                    || dir.ends_with("artifacts"))
-                    {
-                        self.visit_dirs(&path, files)?;
-                    }
-                } else if self.is_sol_file(&path) {
-                    files.push(path.clone());
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn is_sol_file(&self, path: &Path) -> bool {
-        if path.is_file() {
-            match path.extension() {
-                Some(extension) => {
-                    if extension == "sol" {
-                        if let Some(str) = path.to_str() {
-                            if !(str.ends_with(".t.sol") || str.ends_with(".s.sol")) {
-                                // not a test or a script
-                                return true;
-                            }
-                        }
-                    }
-                }
-                _ => return false,
-            }
-        }
-
-        false
     }
 
     fn attach_remappings(&mut self) {
@@ -425,6 +382,60 @@ impl Solidity {
             })
             .collect()
     }
+}
+
+// get path of all .sol files
+pub fn get_sol_files(path: PathBuf) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+
+    visit_dirs(path.as_path(), &mut files).expect("failed to get contracts");
+
+    files
+}
+
+// could do caching, but explicitely excluding directory is probably good enough ?
+pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                if !(dir.ends_with("lib") // don't even try to go in libs, cache, etc...
+                    || dir.ends_with("node_modules")
+                    || dir.ends_with("out")
+                    || dir.ends_with("cache")
+                    || dir.ends_with("target")
+                    || dir.ends_with("artifacts"))
+                {
+                    visit_dirs(&path, files)?;
+                }
+            } else if is_sol_file(&path) {
+                files.push(path.clone());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn is_sol_file(path: &Path) -> bool {
+    if path.is_file() {
+        match path.extension() {
+            Some(extension) => {
+                if extension == "sol" {
+                    if let Some(str) = path.to_str() {
+                        if !(str.ends_with(".t.sol") || str.ends_with(".s.sol")) {
+                            // not a test or a script
+                            return true;
+                        }
+                    }
+                }
+            }
+            _ => return false,
+        }
+    }
+
+    false
 }
 
 #[cfg(test)]
@@ -503,13 +514,7 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
     walker.traverse().expect("failed to traverse ast")
 }
 
-#[cfg(test)]
-use bytes::Bytes;
-
-#[cfg(test)]
 pub fn compile_single_contract(contract: String) -> Bytes {
-    use ethers_solc::artifacts::BytecodeObject;
-
     let files = vec![ProjectFile::Contract(
         String::from("SingleContract"),
         contract,
@@ -550,6 +555,13 @@ pub fn compile_single_contract_to_artifacts(
     let artifacts = compiled.into_artifacts().collect();
 
     (project, artifacts)
+}
+
+pub fn compile_single_contract_to_artifacts_path(
+    path: PathBuf,
+) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
+    let mut solidity = Solidity::default().with_path_root(path).silent();
+    solidity.compile_artifacts()
 }
 
 /// Creates a temp project and compiles the files in it

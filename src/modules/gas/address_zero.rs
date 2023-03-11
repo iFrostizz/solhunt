@@ -56,52 +56,52 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn address_zero_gas_optimization() {
-        let abi = BaseContract::from(parse_abi(&["function saveMoney() external"]).unwrap());
-        let encoded = abi.encode("saveMoney", ()).unwrap();
-        let mut gas_compare = GasComparer::new(
-            String::from(
-                "pragma solidity 0.8.0;
+    // #[test]
+    // fn address_zero_gas_optimization() {
+    //     let abi = BaseContract::from(parse_abi(&["function saveMoney() external"]).unwrap());
+    //     let encoded = abi.encode("saveMoney", ()).unwrap();
+    //     let mut gas_compare = GasComparer::new(
+    //         String::from(
+    //             "pragma solidity 0.8.0;
 
-                contract AddressZero {
-                    event GasSaved();
+    //             contract AddressZero {
+    //                 event GasSaved();
 
-                    function saveMoney() public {
-                        if (msg.sender == address(0)) {
-                            emit GasSaved();
-                        }
-                    }
-                }",
-            ),
-            String::from(
-                "pragma solidity 0.8.0;
+    //                 function saveMoney() public {
+    //                     if (msg.sender == address(0)) {
+    //                         emit GasSaved();
+    //                     }
+    //                 }
+    //             }",
+    //         ),
+    //         String::from(
+    //             "pragma solidity 0.8.0;
 
-                contract AddressZero {
-                    event GasSaved();
+    //             contract AddressZero {
+    //                 event GasSaved();
 
-                    function saveMoney() public {
-                        bool zero;
+    //                 function saveMoney() public {
+    //                     bool zero;
 
-                        assembly {
-                            zero := iszero(caller())
-                        }
+    //                     assembly {
+    //                         zero := iszero(caller())
+    //                     }
 
-                        if (zero) {
-                            emit GasSaved();
-                        }
-                    }
-                }",
-            ),
-            B160::default(),
-            Bytes::from(hex::decode(hex::encode(&encoded)).unwrap()),
-            U256::default(),
-        );
+    //                     if (zero) {
+    //                         emit GasSaved();
+    //                     }
+    //                 }
+    //             }",
+    //         ),
+    //         B160::default(),
+    //         Bytes::from(hex::decode(hex::encode(&encoded)).unwrap()),
+    //         U256::default(),
+    //     );
 
-        let (before, after) = gas_compare.run();
+    //     let (before, after) = gas_compare.run();
 
-        println!("{before} {after}");
-    }
+    //     println!("{before} {after}");
+    // }
 
     #[test]
     fn finds_address_zero() {

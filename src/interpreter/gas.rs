@@ -1,53 +1,101 @@
-use crate::solidity::compile_single_contract;
+use crate::solidity::{compile_single_contract, compile_single_contract_to_artifacts_path};
+use ethers_contract::BaseContract;
+use ethers_core::abi::parse_abi;
+use ethers_solc::artifacts::BytecodeObject;
+use ethers_solc::ConfigurableContractArtifact;
+use eyre::ContextCompat;
+use revm::primitives::{CreateScheme, ExecutionResult, Output};
 use revm::{
     db::{CacheDB, EmptyDB, InMemoryDB},
     primitives::{Bytes, TransactTo, B160, U256},
     EVM,
 };
+use std::path::PathBuf;
 
 pub struct GasComparer {
-    contracts: (String, String),
+    /// location of the contract to meter
+    location: PathBuf,
+    /// sender of the transaction
     from: B160,
+    /// value of the tx
     value: U256,
+    /// data of the tx
     data: Bytes,
+    /// evm environment
     evm: EVM<CacheDB<EmptyDB>>,
 }
 
-impl GasComparer {
-    pub fn new(
-        contract_from: String,
-        contract_to: String,
-        from: B160,
-        data: Bytes,
-        value: U256,
-    ) -> Self {
-        let cache_db = InMemoryDB::default();
-        let mut evm = EVM::new();
-        evm.database(cache_db);
+impl Default for GasComparer {
+    fn default() -> Self {
+        let abi = BaseContract::from(parse_abi(&["function gasMeter() external"]).unwrap());
+        let data = abi.encode("gasMeter", ()).unwrap().0;
 
         Self {
-            contracts: (contract_from, contract_to),
+            location: Default::default(),
+            from: Default::default(),
+            value: Default::default(),
+            data,
+            evm: Default::default(),
+        }
+    }
+}
+
+impl From<PathBuf> for GasComparer {
+    fn from(path: PathBuf) -> Self {
+        Self {
+            location: path,
+            ..Default::default()
+        }
+    }
+}
+
+impl GasComparer {
+    pub fn new(location: PathBuf, from: B160, data: Bytes, value: U256) -> Self {
+        Self {
+            location,
             from,
             data,
             value,
-            evm,
+            ..Default::default()
         }
     }
 
     /// Run the gas metering on the "from" and the "to" contract
     /// Returns (from, to) gas usage
-    pub fn run(&mut self) -> (u64, u64) {
-        let gas_from = self.gas_meter(self.contracts.0.clone());
-        let gas_to = self.gas_meter(self.contracts.1.clone());
+    pub fn run(&mut self) -> eyre::Result<(u64, u64)> {
+        let cache_db = InMemoryDB::default();
+        self.evm.database(cache_db);
 
-        (gas_from, gas_to)
+        let artifacts = compile_single_contract_to_artifacts_path(self.location.clone())?;
+
+        let mut art_from = None;
+        let mut art_to = None;
+
+        artifacts.iter().for_each(|(id, artifact)| {
+            if id.source == self.location {
+                if id.name == "From" {
+                    art_from = Some(artifact);
+                } else if id.name == "To" {
+                    art_to = Some(artifact);
+                }
+            }
+        });
+
+        let gas_from = self.gas_meter(art_from.wrap_err("No `From` contract")?)?;
+        let gas_to = self.gas_meter(art_to.wrap_err("No `To` contract")?)?;
+
+        Ok((gas_from, gas_to))
     }
 
     /// Deploys a contract and runs a call to it, return the used gas
-    pub fn gas_meter(&mut self, contract: String) -> u64 {
-        use revm::primitives::ExecutionResult;
+    pub fn gas_meter(&mut self, artifact: &ConfigurableContractArtifact) -> eyre::Result<u64> {
+        let bytecode = self.check_compliance(artifact)?;
 
-        let addr = self.deploy(contract);
+        let addr = self.deploy(bytecode)?;
+
+        if addr.is_zero() {
+            eyre::bail!("deployment failed")
+        }
 
         self.evm.env.tx.caller = self.from;
         self.evm.env.tx.transact_to = TransactTo::Call(addr);
@@ -57,19 +105,16 @@ impl GasComparer {
         let exec = self.evm.transact_commit().unwrap();
 
         if let ExecutionResult::Success { gas_used, .. } = exec {
-            gas_used - 21000
+            // stipend the tx base price
+            Ok(gas_used - 21000)
         } else {
-            panic!("gas metering failed!");
+            eyre::bail!("function call failed: {:#?}", exec);
         }
     }
 
     // TODO: better error handling
-    /// Compiles and deploys a contract from source and return the address
-    pub fn deploy(&mut self, contract: String) -> B160 {
-        use revm::primitives::{CreateScheme, ExecutionResult, Output};
-
-        let bytecode = compile_single_contract(contract);
-
+    /// Compiles and deploys metering contracts from location and return the addresses
+    pub fn deploy(&mut self, bytecode: Bytes) -> eyre::Result<B160> {
         self.evm.env.tx.caller = self.from;
         self.evm.env.tx.data = bytecode;
         self.evm.env.tx.transact_to = TransactTo::Create(CreateScheme::Create);
@@ -81,9 +126,21 @@ impl GasComparer {
             ..
         } = exec
         {
-            return create.unwrap();
+            create.ok_or(eyre::eyre!("deployment failed"))
+        } else {
+            eyre::bail!("deployment failed with result: `{:#?}`", exec);
         }
+    }
 
-        panic!("Contract not deployed");
+    /// applies some sanity checks to make sure of the integrity of the gas metering contract. See the README.md for more informations
+    pub fn check_compliance(
+        &mut self,
+        artifact: &ConfigurableContractArtifact,
+    ) -> eyre::Result<Bytes> {
+        if let BytecodeObject::Bytecode(bytecode) = &artifact.bytecode.as_ref().unwrap().object {
+            Ok(bytecode.to_vec().into())
+        } else {
+            eyre::bail!("No bytecode found");
+        }
     }
 }

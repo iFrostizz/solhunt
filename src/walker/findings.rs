@@ -79,7 +79,9 @@ pub struct Finding {
     pub severity: Severity,
     pub src: Option<SourceLocation>, // Option<SourceLocation>,
     pub code: usize,                 // Identify finding type easily
-                                     // pub likelyhood: u8,              // 0-100% likelyhood to be correct
+    // pub likelyhood: u8,              // 0-100% likelyhood to be correct
+    /// gas saved
+    pub gas: Option<usize>,
 }
 
 #[derive(Debug, Clone)]

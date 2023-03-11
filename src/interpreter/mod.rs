@@ -1,5 +1,6 @@
-#[cfg(test)]
+// #[cfg(test)]
 pub(crate) mod gas;
+pub(crate) mod prepare;
 
-#[cfg(test)]
+// #[cfg(test)]
 pub use gas::*;

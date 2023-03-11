@@ -7,7 +7,7 @@ use ethers_solc::{
     },
     AggregatedCompilerOutput,
 };
-use semver::{Error, Version};
+use semver::{Error, Version, VersionReq};
 use std::{collections::BTreeMap, fs};
 
 pub fn build_source_maps(
@@ -212,6 +212,92 @@ pub fn path_from_id(id: String) -> String {
         .unwrap_or_else(|| panic!("Malformed id `{}`", &id))
         .0
         .to_string()
+}
+
+pub fn get_pragma_from_source(source: String) -> Option<String> {
+    source
+        .lines()
+        .find(|l| l.contains("pragma solidity "))
+        .map(|s| {
+            s.to_string()
+                .strip_prefix("pragma solidity ")
+                .unwrap()
+                // .trim()
+                .to_owned()
+        })
+}
+
+pub fn version_from_source(source: String) -> Result<VersionReq, semver::Error> {
+    let mut pragma_str = get_pragma_from_source(source).unwrap();
+
+    if pragma_str.chars().next().unwrap().is_ascii_digit() {
+        pragma_str = "=".to_owned() + &pragma_str;
+    }
+
+    // add comma before the < after the first bound (if any)
+    for (i, c) in pragma_str.clone().chars().enumerate() {
+        if let Some(cp) = pragma_str.chars().nth(i + 1) {
+            if c.is_ascii_digit() && (cp.is_whitespace() || cp == '<') {
+                pragma_str.insert(i + 1, ',');
+                break;
+            }
+        }
+    }
+
+    VersionReq::parse(&pragma_str)
+}
+
+pub fn char_pos(chars: String, of: char, from: usize) -> Option<usize> {
+    chars
+        .chars()
+        .enumerate()
+        .filter(|(i, _)| *i >= from)
+        .position(|(_, c)| c == of)
+}
+
+// TODO: file:///home/franfran/Projects/own/solhunt/target/doc/ethers_solc/utils/fn.find_version_pragma.html
+#[test]
+fn parses_versions() {
+    let source = String::from("pragma solidity ^0.8.0");
+    let req = version_from_source(source).unwrap();
+
+    assert!(!req.matches(&Version::new(0, 7, 0)));
+    assert!(req.matches(&Version::new(0, 8, 0)));
+    assert!(!req.matches(&Version::new(0, 9, 0)));
+
+    let source = String::from("pragma solidity =0.8.0");
+    let req = version_from_source(source).unwrap();
+
+    assert!(!req.matches(&Version::new(0, 7, 0)));
+    assert!(req.matches(&Version::new(0, 8, 0)));
+    assert!(!req.matches(&Version::new(0, 8, 1)));
+
+    let source = String::from("pragma solidity 0.8.0");
+    let req = version_from_source(source).unwrap();
+
+    assert!(!req.matches(&Version::new(0, 7, 0)));
+    assert!(req.matches(&Version::new(0, 8, 0)));
+    assert!(!req.matches(&Version::new(0, 8, 1)));
+
+    let source = String::from("pragma solidity >=0.8.0");
+    let req = version_from_source(source).unwrap();
+
+    assert!(!req.matches(&Version::new(0, 7, 0)));
+    assert!(req.matches(&Version::new(0, 8, 0)));
+    assert!(req.matches(&Version::new(0, 9, 0)));
+    assert!(req.matches(&Version::new(1, 0, 0)));
+
+    let source = String::from("pragma solidity >=0.5.0 <0.8.0");
+    let req = version_from_source(source).unwrap();
+
+    assert!(req.matches(&Version::new(0, 7, 0)));
+    assert!(!req.matches(&Version::new(0, 8, 0)));
+
+    let source = String::from("pragma solidity >=0.5.0 <=0.8.0");
+    let req = version_from_source(source).unwrap();
+
+    assert!(req.matches(&Version::new(0, 7, 0)));
+    assert!(req.matches(&Version::new(0, 8, 0)));
 }
 
 #[allow(unused)]

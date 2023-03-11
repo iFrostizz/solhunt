@@ -107,7 +107,8 @@ macro_rules! build_visitor {
                     summary: f_key.summary.clone(),
                     severity: f_key.severity.clone(),
                     description: f_key.description.clone(),
-                    src
+                    src,
+                    gas: Some(0)
                 };
 
                 self.shared_data.findings.push(finding);
