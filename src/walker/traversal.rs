@@ -20,7 +20,7 @@ use std::{
 };
 
 pub struct Walker {
-    artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+    artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, (String, Vec<usize>)>,
     visitors: Vec<Box<dyn Visitor<ModuleState>>>,
     root_abs_path: PathBuf,
@@ -28,13 +28,13 @@ pub struct Walker {
 
 impl Walker {
     pub fn new(
-        artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+        artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         source_map: BTreeMap<String, (String, Vec<usize>)>,
         visitors: Vec<Box<dyn Visitor<ModuleState>>>,
         root_abs_path: PathBuf,
     ) -> Self {
         Walker {
-            artifact,
+            artifacts,
             source_map,
             visitors,
             root_abs_path,
@@ -54,7 +54,7 @@ impl Walker {
         let source_map = &self.source_map.clone();
 
         let sources: Vec<_> = self
-            .artifact
+            .artifacts
             .iter()
             .filter_map(|(id, art)| {
                 let unique_id = id.identifier();

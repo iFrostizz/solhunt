@@ -13,7 +13,7 @@ mod walker;
 mod tests;
 
 fn main() {
-    parse();
+    parse().unwrap();
 }
 
 mod test {

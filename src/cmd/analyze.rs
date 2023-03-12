@@ -9,7 +9,7 @@ use crate::{
 };
 use std::{collections::HashMap, path::PathBuf};
 
-pub fn run_analysis(args: Analyze) {
+pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
     let mut severities = HashMap::from([
         ('h', Severity::High),
         ('m', Severity::Medium),
@@ -98,4 +98,6 @@ pub fn run_analysis(args: Analyze) {
 
     let report = Report::new(report_style, path, findings, verbosity);
     report.format();
+
+    Ok(())
 }

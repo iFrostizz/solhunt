@@ -65,7 +65,7 @@ pub fn get_working_path(add_path: String) -> PathBuf {
     path.canonicalize().expect("Invalid path")
 }
 
-pub fn parse() {
+pub fn parse() -> eyre::Result<()> {
     let cmd = Cmd::parse();
 
     // TODO: filter based on rust module name
@@ -91,9 +91,11 @@ pub fn parse() {
     // };
 
     match cmd.command {
-        Commands::Analyze(args) => run_analysis(args),
-        Commands::Gas(args) => run_gas_metering(args),
+        Commands::Analyze(args) => run_analysis(args)?,
+        Commands::Gas(args) => run_gas_metering(args)?,
     }
+
+    Ok(())
 }
 
 #[allow(unused)]

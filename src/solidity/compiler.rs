@@ -14,6 +14,7 @@ use ethers_solc::{
     Solc, SolcConfig,
 };
 use eyre::Result;
+use semver::Version;
 use std::{
     collections::BTreeMap,
     env, fs,
@@ -61,6 +62,7 @@ pub struct Solidity {
     pub optimizer: Optimizer,
     /// stfu ?
     pub silent: bool,
+    pub version: Option<Version>,
 }
 
 impl Default for Solidity {
@@ -88,6 +90,7 @@ impl Default for Solidity {
             solc: None,
             optimizer: Default::default(),
             silent: false,
+            version: None,
         }
     }
 }
@@ -188,8 +191,7 @@ impl Solidity {
             // } else {
             //     Severity::Error
             // })
-            // .set_auto_detect(self.is_auto_detect())
-            .set_auto_detect(true)
+            .set_auto_detect(self.is_auto_detect())
             // .set_offline(self.offline)
             // .set_cached(cached)
             .set_cached(true)
@@ -201,15 +203,15 @@ impl Solidity {
             project = project.ephemeral().no_artifacts();
         }
 
-        let project = project.build()?;
+        let mut project = project.build()?;
 
         if self.force {
             project.cleanup()?;
         }
 
-        /*if let Some(solc) = self.ensure_solc()? {
-            project.solc = solc;
-        }*/
+        if let Some(solc) = &self.solc {
+            project.solc = solc.clone();
+        }
 
         Ok(project)
     }
@@ -223,6 +225,16 @@ impl Solidity {
     pub fn with_path_root(self, root: PathBuf) -> Self {
         let root = root.canonicalize().unwrap();
         self.update_root(root)
+    }
+
+    pub fn with_version(mut self, version: Version) -> eyre::Result<Self> {
+        let solc = Solc::find_or_install_svm_version(version.to_string())?;
+        self.solc = Some(solc);
+        Ok(self)
+    }
+
+    pub fn is_auto_detect(&self) -> bool {
+        self.solc.is_none()
     }
 
     pub fn silent(mut self) -> Self {
@@ -251,6 +263,11 @@ impl Solidity {
         self
     }
 
+    pub fn force(mut self) -> Self {
+        self.force = true;
+        self
+    }
+
     #[allow(unused)]
     pub fn auto_remappings(mut self, remappings: bool) -> Self {
         self.auto_detect_remappings = remappings;
@@ -269,8 +286,6 @@ impl Solidity {
         }
 
         let path = self.root.clone();
-        // dbg!(&path);
-        // let path = self.root.clone().canonicalize().unwrap();
 
         let files = if path.is_dir() {
             get_sol_files(path)
@@ -298,20 +313,9 @@ impl Solidity {
 
         let now = Instant::now();
 
-        let project = &self.project().unwrap();
+        let project = &self.project()?;
 
-        let compiled = if let Some(_solc) = &self.solc {
-            /*let sources = project.paths.read_sources().unwrap();
-            project
-                .compile_with_version(
-                    &Solc::find_svm_installed_version("0.8.0").unwrap().unwrap(),
-                    sources,
-                )
-                .unwrap()*/
-            unimplemented!();
-        } else {
-            project.compile_files(files).unwrap()
-        };
+        let compiled = project.compile_files(files)?;
 
         if compiled.has_compiler_errors() {
             let output = compiled.output();
@@ -514,6 +518,7 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
     walker.traverse().expect("failed to traverse ast")
 }
 
+#[allow(unused)]
 pub fn compile_single_contract(contract: String) -> Bytes {
     let files = vec![ProjectFile::Contract(
         String::from("SingleContract"),
@@ -559,8 +564,13 @@ pub fn compile_single_contract_to_artifacts(
 
 pub fn compile_single_contract_to_artifacts_path(
     path: PathBuf,
+    version: Version,
 ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
-    let mut solidity = Solidity::default().with_path_root(path).silent();
+    let mut solidity = Solidity::default()
+        .with_path_root(path)
+        .with_version(version)?
+        .silent();
+
     solidity.compile_artifacts()
 }
 
