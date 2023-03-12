@@ -1,12 +1,17 @@
 use super::GasComparer;
-use crate::solidity::{get_sol_files, version_from_source};
+use crate::{
+    cmd::gas::MeteringData,
+    solidity::{get_sol_files, version_from_source},
+};
 use ethers_solc::{compile::Solc, SolcVersion};
-use std::path::PathBuf;
-use std::{fs::File, io::prelude::*};
+use semver::Version;
+use std::{collections::HashMap, fs::File, io::prelude::*, path::PathBuf};
 
 /// walk sol files in the gas-metering folder and return a map to keep track of their name (finding id), version, in order to compile them and run the metering for each patch of solc
-pub fn compile_metering() -> eyre::Result<()> {
+pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering/contracts");
+
+    let mut data = HashMap::new();
 
     let all_contracts = get_sol_files(root.clone());
 
@@ -42,10 +47,42 @@ pub fn compile_metering() -> eyre::Result<()> {
                     }
                 };
 
-                println!("{} {} {} {:?}", location.display(), from, to, ver.clone());
+                let file_stem = location
+                    .file_stem()
+                    .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
+                    .to_os_string()
+                    .into_string()
+                    .unwrap();
+
+                let code: usize = file_stem
+                    .parse()
+                    .expect("should be named `code.sol`, got {file_stem}");
+
+                let parent = location
+                    .parent()
+                    .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+
+                data.entry(parent)
+                    .and_modify(
+                        |f_v_g: &mut HashMap<String, HashMap<String, (String, String)>>| {
+                            f_v_g
+                                .entry(code.to_string())
+                                .and_modify(|v_g| {
+                                    v_g.insert(
+                                        ver.clone().to_string(),
+                                        (from.to_string(), to.to_string()),
+                                    );
+                                })
+                                .or_default();
+                        },
+                    )
+                    .or_default();
             }
         }
     }
 
-    Ok(())
+    Ok((data, root))
 }
