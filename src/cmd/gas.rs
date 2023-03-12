@@ -1,6 +1,6 @@
 use super::parse::GasMetering;
 use crate::interpreter::prepare::compile_metering;
-use semver::Version;
+// use semver::Version;
 use std::{collections::HashMap, fs::File, io::prelude::*, path::PathBuf};
 
 /// HashMap that represents the gas metering database
@@ -23,7 +23,6 @@ pub fn run_gas_metering(_args: GasMetering) -> eyre::Result<()> {
 }
 
 pub fn write_to_base(root: PathBuf, data: MeteringData) -> eyre::Result<()> {
-    dbg!(&data);
     let mut path = root;
     path.pop();
     let path = path.join("metering.toml");

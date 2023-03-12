@@ -9,13 +9,9 @@ contract From {
 
 contract To {
     function gasMeter() public {
-        bool zero;
-
         assembly {
-            zero := iszero(caller())
-        }
-
-        if (zero) {
+            if iszero(caller()) {
+            }
         }
     }
 }

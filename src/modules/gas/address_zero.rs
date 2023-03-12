@@ -4,6 +4,7 @@ use crate::build_visitor;
 
 build_visitor! {
     BTreeMap::from([
+        // https://medium.com/@kalexotsu/solidity-assembly-checking-if-an-address-is-0-efficiently-d2bfe071331
         (0,
             FindingKey {
                 description: "Use assembly to check for `address(0)`, *Saves 6 gas per instance*".to_string(),
