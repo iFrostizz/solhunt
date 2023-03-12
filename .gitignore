@@ -18,3 +18,5 @@ artifacts/
 cache/
 cli/examples/**
 cli/test-data/
+
+**/report.md
