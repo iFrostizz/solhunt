@@ -29,18 +29,25 @@ build_visitor! {
             //         String::from("")
             // };
 
-             match &fc.expression {
+            match &fc.expression {
                 Expression::Identifier(e) => {
-
-            function_calls.entry(e.name.clone()).and_modify(|c| c.push(fc.clone())).or_insert(vec![fc.clone()]);
+                    function_calls.entry(e.name.clone()).and_modify(|c| c.push(fc.clone())).or_insert(vec![fc.clone()]);
                 }
+                Expression::Assignment(_e) => (),
                 _ => ()
             };
 
             // function_calls.entry(fc_name).and_modify(|c| c.push(fc.clone())).or_insert(vec![fc.clone()]);
         });
 
-        self.function_definitions.clone().into_iter().filter(|fd| fd.visibility == Visibility::Internal).for_each(|fd| {
+        self.function_definitions
+            .clone()
+            .into_iter()
+            .filter(|fd|
+                 fd.visibility == Visibility::Internal
+                 || fd.visibility == Visibility::Private)
+            .for_each(|fd| {
+
             let calls = match function_calls.get(&fd.name) {
                 Some(c) => c.clone(),
                 None => Vec::new()
@@ -52,6 +59,7 @@ build_visitor! {
             }
         });
 
+        // clear for the next contract (won't work with overidden contracts)
         self.function_calls.clear();
         self.function_definitions.clear();
 
@@ -159,5 +167,37 @@ contract InComment {
     assert_eq!(
         lines_for_findings_with_code_module(&findings, "tree", 0),
         vec![9]
+    );
+}
+
+#[test]
+fn overriden() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Overriden"),
+        String::from(
+            "pragma solidity ^0.8.0;
+
+contract Kid {
+    function _once() internal {
+        //
+    }
+}
+
+contract Overriden is Kid {
+    function make() public {
+        _once();
+    }
+
+    function act() public {
+        // send it
+    }
+}
+",
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "tree", 0),
+        vec![11]
     );
 }

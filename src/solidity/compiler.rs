@@ -263,6 +263,7 @@ impl Solidity {
         self
     }
 
+    #[allow(unused)]
     pub fn force(mut self) -> Self {
         self.force = true;
         self

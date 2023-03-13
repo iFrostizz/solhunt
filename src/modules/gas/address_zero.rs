@@ -48,68 +48,12 @@ fn check_address_zero(expr: &Expression) -> Vec<PushedFinding> {
     vec![]
 }
 
-#[cfg(test)]
-mod tests {
-    use ethers_core::utils::hex;
-    use revm::primitives::{Bytes, B160, U256};
-
-    use crate::interpreter::GasComparer;
-
-    use super::*;
-
-    // #[test]
-    // fn address_zero_gas_optimization() {
-    //     let abi = BaseContract::from(parse_abi(&["function saveMoney() external"]).unwrap());
-    //     let encoded = abi.encode("saveMoney", ()).unwrap();
-    //     let mut gas_compare = GasComparer::new(
-    //         String::from(
-    //             "pragma solidity 0.8.0;
-
-    //             contract AddressZero {
-    //                 event GasSaved();
-
-    //                 function saveMoney() public {
-    //                     if (msg.sender == address(0)) {
-    //                         emit GasSaved();
-    //                     }
-    //                 }
-    //             }",
-    //         ),
-    //         String::from(
-    //             "pragma solidity 0.8.0;
-
-    //             contract AddressZero {
-    //                 event GasSaved();
-
-    //                 function saveMoney() public {
-    //                     bool zero;
-
-    //                     assembly {
-    //                         zero := iszero(caller())
-    //                     }
-
-    //                     if (zero) {
-    //                         emit GasSaved();
-    //                     }
-    //                 }
-    //             }",
-    //         ),
-    //         B160::default(),
-    //         Bytes::from(hex::decode(hex::encode(&encoded)).unwrap()),
-    //         U256::default(),
-    //     );
-
-    //     let (before, after) = gas_compare.run();
-
-    //     println!("{before} {after}");
-    // }
-
-    #[test]
-    fn finds_address_zero() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("AddressZero"),
-            String::from(
-                "pragma solidity 0.8.0;
+#[test]
+fn finds_address_zero() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("AddressZero"),
+        String::from(
+            "pragma solidity 0.8.0;
 
                 contract AddressZero {
                     event GasSaved();
@@ -120,12 +64,11 @@ mod tests {
                         }
                     }
                 }",
-            ),
-        )]);
+        ),
+    )]);
 
-        assert_eq!(
-            lines_for_findings_with_code_module(&findings, "address_zero", 0),
-            vec![7]
-        );
-    }
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "address_zero", 0),
+        vec![7]
+    );
 }

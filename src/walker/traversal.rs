@@ -50,7 +50,7 @@ impl Walker {
 
         // let mut visitor_len = HashMap::new();
 
-        let ids: Vec<usize> = Vec::new();
+        let mut ids: Vec<usize> = Vec::new();
         let source_map = &self.source_map.clone();
 
         let sources: Vec<_> = self
@@ -90,11 +90,15 @@ impl Walker {
                     version: id.version.clone(),
                 };
 
-                if ids.contains(&source_id) {
+                let ret = if ids.contains(&source_id) {
                     None
                 } else {
                     Some((ast, info, abs_path))
-                }
+                };
+
+                ids.push(source_id);
+
+                ret
             })
             .collect();
 

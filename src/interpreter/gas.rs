@@ -55,6 +55,7 @@ impl Default for GasComparer {
 }
 
 impl GasComparer {
+    #[allow(unused)]
     pub fn new(location: PathBuf, from: B160, data: Bytes, value: U256) -> Self {
         Self {
             location,
@@ -207,7 +208,7 @@ pub struct ComplianceModule {
 }
 
 impl ComplianceModule {
-    #[cfg(test)]
+    #[allow(unused)]
     fn new() -> Self {
         Self {
             ..Default::default()
