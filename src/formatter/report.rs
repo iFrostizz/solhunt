@@ -152,8 +152,6 @@ fn format_to_md(
     root: PathBuf,
     verbosity: Vec<Severity>,
 ) -> Result<(), std::io::Error> {
-    // dbg!(&findings);
-
     let mut file_path = root;
     file_path.push("report.md");
 

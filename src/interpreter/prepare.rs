@@ -98,21 +98,10 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
                     .unwrap()
                     .to_string();
 
-                data.entry(folder_name)
-                    .and_modify(
-                        |f_v_g: &mut HashMap<String, HashMap<String, (String, String)>>| {
-                            f_v_g
-                                .entry(code.to_string())
-                                .and_modify(|v_g| {
-                                    v_g.insert(
-                                        ver.clone().to_string(),
-                                        (from.to_string(), to.to_string()),
-                                    );
-                                })
-                                .or_default();
-                        },
-                    )
-                    .or_default();
+                let d1: &mut HashMap<String, HashMap<String, (String, String)>> =
+                    data.entry(folder_name).or_default();
+                let d2 = d1.entry(code.to_string()).or_default();
+                d2.insert(ver.clone().to_string(), (from.to_string(), to.to_string()));
 
                 bar.set_position(bar_pos);
                 bar_pos += 1;
