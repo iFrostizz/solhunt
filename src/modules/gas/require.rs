@@ -1,7 +1,5 @@
 use crate::build_visitor;
 
-// unstable module
-// TODO: probably only keep track of same error for the same artifact
 build_visitor! {
     // https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/chrisdior4-G.md#g-01-use-custom-errors-instead-of-revert-strings
     BTreeMap::from([

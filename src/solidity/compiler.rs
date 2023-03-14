@@ -6,6 +6,7 @@ use crate::{
 use bytes::Bytes;
 use ethers_solc::{
     artifacts::{output_selection::ContractOutputSelection, BytecodeObject, Optimizer, Settings},
+    cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::SolcError,
     output::ProjectCompileOutput,
     project_util::TempProject,
@@ -76,7 +77,6 @@ impl Default for Solidity {
             extra_output: Default::default(),
             extra_output_files: Default::default(),
             cache_path: Default::default(),
-            // cache: "cache".into(),
             src: "src".into(),
             test: "test".into(),
             auto_detect_remappings: false,
@@ -154,11 +154,11 @@ impl Solidity {
 
     fn project_paths(&self) -> ProjectPathsConfig {
         let mut builder = ProjectPathsConfig::builder()
-            // .cache(self.cache_path.join(SOLIDITY_FILES_CACHE_FILENAME))
+            .cache(self.cache_path.join(SOLIDITY_FILES_CACHE_FILENAME))
             .sources(&self.src)
             .tests(&self.test)
             .scripts(&self.script)
-            // .artifacts(&self.out)
+            .artifacts(&self.out)
             .libs(self.libs.clone())
             .remappings(self.get_all_remappings());
 

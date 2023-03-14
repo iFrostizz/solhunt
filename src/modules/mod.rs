@@ -62,7 +62,7 @@ macro_rules! build_visitor {
                         name: get_module_name(),
                         current_file: String::new(),
                         findings: Vec::new(),
-                        file_findings: HashMap::new()
+                        file_findings: HashMap::new(),
                     },
                     revert_reasons: HashMap::new()
                 }

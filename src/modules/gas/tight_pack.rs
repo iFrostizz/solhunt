@@ -7,6 +7,8 @@ use crate::{
 
 #[cfg(test)]
 use crate::{solidity::compile_single_contract_to_artifacts, walker::Walker};
+#[cfg(test)]
+use std::{cell::RefCell, rc::Rc};
 
 build_visitor! {
     BTreeMap::from([
@@ -164,7 +166,7 @@ struct MyStruct {
     let mut walker = Walker::new(
         artifacts,
         BTreeMap::new(),
-        vec![Box::from(module)],
+        vec![Rc::from(RefCell::from(module))],
         project.root().into(),
     );
 
@@ -199,7 +201,7 @@ struct MyStruct {
     let mut walker = Walker::new(
         artifacts,
         BTreeMap::new(),
-        vec![Box::from(module)],
+        vec![Rc::from(RefCell::from(module))],
         project.root().into(),
     );
 
@@ -241,7 +243,7 @@ struct MyStruct {
     let mut walker = Walker::new(
         artifacts,
         BTreeMap::new(),
-        vec![Box::from(module)],
+        vec![Rc::from(RefCell::from(module))],
         project.root().into(),
     );
 

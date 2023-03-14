@@ -1,11 +1,6 @@
 // Check if overflow may occur in unchecked or < 0.8.0 versions of solc
 
 use crate::{build_visitor, walker::smallest_version_from_literals};
-#[allow(unused_imports)]
-use ethers_solc::artifacts::ast::{
-    AssignmentOperator::{AddAssign, MulAssign, SubAssign},
-    Expression,
-};
 
 build_visitor!(
     BTreeMap::from([

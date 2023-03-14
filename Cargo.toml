@@ -20,8 +20,9 @@ bytes = "1.4.0"
 tracing = "0.1.37"
 toml = "0.7.2"
 indicatif = "0.17.3"
+as-any = "0.3.0"
 
-# [patch."https://github.com/iFrostizz/ethers-rs.git"]
-# ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }
-# ethers-core = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-core" }
-# ethers-contract = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-contract" }
+[patch."https://github.com/iFrostizz/ethers-rs.git"]
+ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }
+ethers-core = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-core" }
+ethers-contract = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-contract" }

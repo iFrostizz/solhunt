@@ -60,7 +60,7 @@ impl Default for Severity {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ModuleState {
     /// name of the visitor
     pub name: String,

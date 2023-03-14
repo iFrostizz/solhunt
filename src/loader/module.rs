@@ -1,5 +1,7 @@
 // A module contains the matching logic to be paired with the ast
 
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     modules::*,
     walker::{AllFindings, Finding, ModuleState},
@@ -34,27 +36,31 @@ pub struct PushedFinding {
 
 // TODO: automate this !
 // TODO: write benches for detection modules and only run *one* visitor
-pub fn get_all_visitors() -> Vec<Box<(dyn Visitor<ModuleState> + 'static)>> {
+pub fn get_all_visitors() -> Vec<Rc<RefCell<(dyn Visitor<ModuleState> + 'static)>>> {
     // Vec::new()
     vec![
-        Box::<high::calls::DetectionModule>::default(),
-        Box::<medium::assembly::DetectionModule>::default(),
-        Box::<medium::overflow::DetectionModule>::default(),
-        Box::<medium::chainlink::DetectionModule>::default(),
-        Box::<medium::centralization::DetectionModule>::default(),
-        Box::<medium::encode_packed::DetectionModule>::default(),
-        Box::<medium::proxy::DetectionModule>::default(),
-        Box::<low::misc::DetectionModule>::default(),
-        Box::<low::erc20::DetectionModule>::default(),
-        Box::<info::style::DetectionModule>::default(),
-        Box::<gas::address_zero::DetectionModule>::default(),
-        Box::<gas::tree::DetectionModule>::default(),
-        Box::<gas::tight_pack::DetectionModule>::default(),
-        Box::<gas::immutable::DetectionModule>::default(),
-        Box::<gas::state::DetectionModule>::default(),
-        Box::<gas::require::DetectionModule>::default(),
-        Box::<gas::constructor::DetectionModule>::default(),
-        Box::<oz::DetectionModule>::default(),
+        Rc::from(RefCell::from(high::calls::DetectionModule::default())),
+        Rc::from(RefCell::from(medium::assembly::DetectionModule::default())),
+        Rc::from(RefCell::from(medium::overflow::DetectionModule::default())),
+        Rc::from(RefCell::from(medium::chainlink::DetectionModule::default())),
+        Rc::from(RefCell::from(
+            medium::centralization::DetectionModule::default(),
+        )),
+        Rc::from(RefCell::from(
+            medium::encode_packed::DetectionModule::default(),
+        )),
+        Rc::from(RefCell::from(medium::proxy::DetectionModule::default())),
+        Rc::from(RefCell::from(low::misc::DetectionModule::default())),
+        Rc::from(RefCell::from(low::erc20::DetectionModule::default())),
+        Rc::from(RefCell::from(info::style::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::address_zero::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::tree::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::tight_pack::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::immutable::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::state::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::require::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::constructor::DetectionModule::default())),
+        Rc::from(RefCell::from(oz::DetectionModule::default())),
     ]
 }
 

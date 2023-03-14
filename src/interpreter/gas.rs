@@ -7,7 +7,7 @@ use ethers_core::abi::parse_abi;
 use ethers_solc::{
     artifacts::{
         visitor::{VisitError, Visitable, Visitor},
-        BytecodeObject, PragmaDirective,
+        BytecodeObject, FunctionDefinition, FunctionKind, PragmaDirective,
     },
     ArtifactId, ConfigurableContractArtifact,
 };
@@ -18,7 +18,7 @@ use revm::{
     EVM,
 };
 use semver::Version;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{cell::RefCell, collections::BTreeMap, ops::Deref, path::PathBuf, rc::Rc};
 
 pub struct GasComparer {
     /// root of the metering project
@@ -35,6 +35,12 @@ pub struct GasComparer {
     data: Bytes,
     /// evm environment
     evm: EVM<CacheDB<EmptyDB>>,
+}
+
+#[derive(Eq, PartialEq)]
+pub enum MeteringKind {
+    Deploy,
+    Call,
 }
 
 impl Default for GasComparer {
@@ -127,12 +133,16 @@ impl GasComparer {
         &mut self,
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     ) -> eyre::Result<u64> {
-        let bytecode = self.check_compliance(artifact)?;
+        let (bytecode, kind) = self.check_compliance(artifact)?;
 
-        let addr = self.deploy(bytecode)?;
+        let (addr, gas_used) = self.deploy(bytecode)?;
 
         if addr.is_zero() {
             eyre::bail!("deployment failed")
+        }
+
+        if kind == MeteringKind::Deploy {
+            return Ok(gas_used);
         }
 
         self.evm.env.tx.caller = self.from;
@@ -150,9 +160,8 @@ impl GasComparer {
         }
     }
 
-    // TODO: better error handling
     /// Compiles and deploys metering contracts from location and return the addresses
-    pub fn deploy(&mut self, bytecode: Bytes) -> eyre::Result<B160> {
+    pub fn deploy(&mut self, bytecode: Bytes) -> eyre::Result<(B160, u64)> {
         self.evm.env.tx.caller = self.from;
         self.evm.env.tx.data = bytecode;
         self.evm.env.tx.transact_to = TransactTo::Create(CreateScheme::Create);
@@ -160,11 +169,14 @@ impl GasComparer {
         let exec = self.evm.transact_commit().unwrap();
 
         if let ExecutionResult::Success {
+            gas_used,
             output: Output::Create(_, create),
             ..
         } = exec
         {
-            create.ok_or(eyre::eyre!("deployment failed"))
+            let addr = create.ok_or(eyre::eyre!("deployment failed"))?;
+
+            Ok((addr, gas_used))
         } else {
             eyre::bail!("deployment failed with result: `{:#?}`", exec);
         }
@@ -174,36 +186,50 @@ impl GasComparer {
     pub fn check_compliance(
         &mut self,
         artifact: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-    ) -> eyre::Result<Bytes> {
-        let module: ComplianceModule = ComplianceModule {
-            location: self.location.clone(),
-            ..Default::default()
-        };
+    ) -> eyre::Result<(Bytes, MeteringKind)> {
+        let module: Rc<RefCell<dyn Visitor<ModuleState>>> =
+            Rc::from(RefCell::from(ComplianceModule {
+                location: self.location.clone(),
+                ..Default::default()
+            }));
+
+        let visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>> = vec![Rc::clone(&module)];
 
         let mut walker = Walker::new(
             artifact.clone(),
             BTreeMap::new(),
-            vec![Box::from(module)],
+            visitors,
             self.root.clone(),
         );
 
         walker.traverse()?;
 
+        let mut_mod = module.borrow_mut();
+        let der_mod = mut_mod.deref();
+        let comp_mod = der_mod.as_any().downcast_ref::<ComplianceModule>().unwrap();
+
+        let kind = if comp_mod.has_constructor {
+            MeteringKind::Deploy
+        } else {
+            MeteringKind::Call
+        };
+
         let artifact = artifact.values().next().unwrap();
 
         if let BytecodeObject::Bytecode(bytecode) = &artifact.bytecode.as_ref().unwrap().object {
-            Ok(bytecode.to_vec().into())
+            Ok((bytecode.to_vec().into(), kind))
         } else {
             eyre::bail!("No bytecode found");
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ComplianceModule {
     /// amount of pragma definitions, should be only one
     pragma_dir: usize,
     location: PathBuf,
+    has_constructor: bool,
     shared_data: ModuleState,
 }
 
@@ -244,5 +270,16 @@ impl Visitor<ModuleState> for ComplianceModule {
         self.pragma_dir += 1;
 
         pragma_directive.visit(self)
+    }
+
+    fn visit_function_definition(
+        &mut self,
+        function_definition: &mut FunctionDefinition,
+    ) -> eyre::Result<(), VisitError> {
+        if function_definition.kind == Some(FunctionKind::Constructor) {
+            self.has_constructor = true;
+        }
+
+        function_definition.visit(self)
     }
 }

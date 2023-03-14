@@ -11,7 +11,7 @@ use ethers_solc::artifacts::{
     InlineAssembly,
 };
 use semver::Version;
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 #[test]
 fn parses_versions() {
@@ -309,7 +309,7 @@ contract SourceLocations {
     let mut walker = Walker::new(
         artifacts,
         BTreeMap::new(),
-        vec![Box::from(module)],
+        vec![Rc::from(RefCell::from(module))],
         project.root().into(),
     );
 

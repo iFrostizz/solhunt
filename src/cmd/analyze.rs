@@ -1,5 +1,3 @@
-use ethers_solc::artifacts::Optimizer;
-
 use super::parse::Analyze;
 use crate::{
     formatter::Report,
@@ -7,6 +5,7 @@ use crate::{
     solidity::{build_source_maps, Solidity},
     walker::{Severity, Walker},
 };
+use ethers_solc::artifacts::Optimizer;
 use std::{collections::HashMap, path::PathBuf};
 
 pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
@@ -90,9 +89,7 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
 
     println!("Starting the analysis...");
 
-    // TODO: it seems like findings are already messed up by here
     let findings = walker.traverse().expect("failed to traverse ast");
-    // println!("{:#?}", findings);
     let num_findings = findings.len();
     println!("Caught {num_findings} findings");
 

@@ -15,14 +15,17 @@ use ethers_solc::{
     ArtifactId, ConfigurableContractArtifact,
 };
 use std::{
+    cell::RefCell,
     collections::{btree_map::BTreeMap, HashMap},
+    ops::DerefMut,
     path::PathBuf,
+    rc::Rc,
 };
 
 pub struct Walker {
     artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, (String, Vec<usize>)>,
-    visitors: Vec<Box<dyn Visitor<ModuleState>>>,
+    visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>>,
     root_abs_path: PathBuf,
 }
 
@@ -30,7 +33,7 @@ impl Walker {
     pub fn new(
         artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         source_map: BTreeMap<String, (String, Vec<usize>)>,
-        visitors: Vec<Box<dyn Visitor<ModuleState>>>,
+        visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>>,
         root_abs_path: PathBuf,
     ) -> Self {
         Walker {
@@ -47,8 +50,6 @@ impl Walker {
     // - ast.NodeTransformer (allows modification)
     pub fn traverse(&mut self) -> eyre::Result<AllFindings> {
         let mut all_findings: AllFindings = HashMap::new();
-
-        // let mut visitor_len = HashMap::new();
 
         let mut ids: Vec<usize> = Vec::new();
         let source_map = &self.source_map.clone();
@@ -102,9 +103,9 @@ impl Walker {
             })
             .collect();
 
-        self.visitors.iter_mut().for_each(|visitor| {
+        self.visitors.iter().try_for_each(|visitor| {
             visit_sources::<ModuleState>(sources.clone(), visitor, source_map, &mut all_findings)
-        });
+        })?;
 
         Ok(all_findings)
     }
@@ -112,65 +113,62 @@ impl Walker {
 
 pub fn visit_sources<D>(
     full_sources: Vec<(TypedAst, Information, String)>,
-    visitor: &mut Box<dyn Visitor<ModuleState>>,
+    visitor: &Rc<RefCell<dyn Visitor<ModuleState>>>,
     source_map: &BTreeMap<String, (String, Vec<usize>)>,
     findings: &mut AllFindings,
-) {
+) -> eyre::Result<()> {
     let mut last_id = 0usize;
+    let mut visitor = visitor.borrow_mut();
 
-    full_sources
-        .into_iter()
-        .for_each(|(mut source, info, abs_path)| {
-            let (file_content, lines_to_bytes) = source_map
-                .clone()
-                .get(&abs_path)
-                .unwrap_or(&(String::new(), Vec::new()))
-                .clone();
+    for (mut source, info, abs_path) in full_sources.into_iter() {
+        source.visit(visitor.deref_mut())?;
 
-            source
-                .visit(visitor.as_mut())
-                .expect("ast traversal failed!");
+        let data = visitor.shared_data();
+        let findings_data = &data.findings.to_vec();
 
-            let data = visitor.shared_data();
-            let findings_data = &data.findings.to_vec();
+        let source_findings = &findings_data[last_id..].to_vec();
 
-            let source_findings = &findings_data[last_id..].to_vec();
-
-            source_findings.iter().for_each(|finding| {
-                let (position, content) = if let Some(src) = &finding.src {
-                    if let Some(start) = src.start {
+        source_findings.iter().for_each(|finding| {
+            let (position, content) = if let Some(src) = &finding.src {
+                if let Some(start) = src.start {
+                    if let Some((file_content, lines_to_bytes)) = source_map.get(&abs_path) {
                         (
-                            get_position(start, &lines_to_bytes),
+                            get_position(start, lines_to_bytes),
                             get_finding_content(
-                                file_content.clone(),
+                                file_content.to_string(),
                                 start,
                                 src.length.unwrap_or_default(),
                             ),
                         )
                     } else {
-                        ((0, 0), String::from("No source map for this file"))
+                        ((0, 0), String::from("Path not indexed in source map"))
                     }
                 } else {
-                    ((0, 0), String::from("Error fetching content"))
-                };
+                    ((0, 0), String::from("No source map for this file"))
+                }
+            } else {
+                ((0, 0), String::from("Error fetching content"))
+            };
 
-                let meta_finding = MetaFinding {
-                    finding: finding.clone(),
-                    meta: Meta {
-                        file: info.name.clone(),
-                        line: Some(position.0),
-                        width: Some(position.1),
-                        content,
-                    },
-                };
+            let meta_finding = MetaFinding {
+                finding: finding.clone(),
+                meta: Meta {
+                    file: info.name.clone(),
+                    line: Some(position.0),
+                    width: Some(position.1),
+                    content,
+                },
+            };
 
-                assert_eq!(finding.name.clone(), data.name.to_string());
-                findings
-                    .entry(finding.name.clone())
-                    .and_modify(|f| f.push(meta_finding.clone()))
-                    .or_insert(vec![meta_finding.clone()]);
-            });
-
-            last_id = findings_data.len();
+            assert_eq!(finding.name.clone(), data.name.to_string());
+            findings
+                .entry(finding.name.clone())
+                .and_modify(|f| f.push(meta_finding.clone()))
+                .or_insert(vec![meta_finding.clone()]);
         });
+
+        last_id = findings_data.len();
+    }
+
+    Ok(())
 }
