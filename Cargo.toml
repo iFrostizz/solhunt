@@ -11,7 +11,6 @@ serde = "^1.0.143"
 yansi = "^0.5.1"
 revm = "^3.0.0"
 cli-table = "^0.4.7"
-
 ethers-solc = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor", features = ["svm-solc", "project-util"] }
 ethers-core = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor" }
 ethers-contract = { git = "https://github.com/iFrostizz/ethers-rs.git", branch = "franfran/visitor" }

@@ -1,7 +1,7 @@
 use super::GasComparer;
 use crate::{
     cmd::gas::MeteringData,
-    solidity::{get_sol_files, version_from_source, Solidity},
+    solidity::{equi_ver, get_sol_files, version_from_source, Solidity},
 };
 use ethers_solc::{compile::Solc, ArtifactId, ConfigurableContractArtifact, SolcVersion};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -35,49 +35,61 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
         .collect();
 
     // map of the location of each contract per their compatible solc version
-    let mut contract_versions: HashMap<Version, Vec<PathBuf>> = HashMap::new();
+    let mut versioned_locations: HashMap<Version, Vec<PathBuf>> = HashMap::new();
 
-    let all_runs = all_contracts
-        .iter()
-        .map(|loc| {
-            let mut file = File::open(loc.to_str().unwrap())?;
-            let mut source = String::new();
-            file.read_to_string(&mut source)?;
+    for loc in all_contracts.iter() {
+        let mut file = File::open(loc.to_str().unwrap())?;
+        let mut source = String::new();
+        file.read_to_string(&mut source)?;
 
-            let ver_req = version_from_source(source)?;
+        let ver_req = version_from_source(source)?;
 
-            Ok(all_sversions
-                .clone()
-                .into_iter()
-                .filter(|ver| {
-                    if ver_req.matches(ver) {
-                        let locs = contract_versions.entry(ver.clone()).or_default();
-                        locs.push(loc.to_path_buf());
-                        true
-                    } else {
-                        false
-                    }
-                })
-                .count())
-        })
-        .sum::<eyre::Result<usize>>()?;
+        all_sversions.clone().into_iter().for_each(|ver| {
+            if ver_req.matches(&ver) {
+                let entry = versioned_locations.entry(ver).or_default();
+                entry.push(loc.to_path_buf());
+            }
+        });
+    }
 
-    // TODO: write compilation time
-    let versioned_artifacts = contract_versions
+    let spinner = ProgressBar::new_spinner();
+
+    spinner.enable_steady_tick(std::time::Duration::from_millis(100));
+    spinner.set_style(
+        ProgressStyle::with_template("{spinner:.green} {msg}")
+            .unwrap()
+            .tick_strings(&["┤", "┘", "┴", "└", "├", "┌", "┬", "┐"]),
+    );
+    spinner.set_message("Compiling...");
+
+    let versioned_artifacts = versioned_locations
         .par_iter()
         .map(|(ver, files)| {
             let mut solidity = Solidity::default()
                 .with_path_root(root.clone())
                 .with_locations(files.to_vec())
+                .use_cache(false) // cache is buggy with this configuration
                 .silent()
                 .with_version(ver.clone())
                 .unwrap();
 
-            (ver.clone(), solidity.compile_artifacts().unwrap())
+            let artifacts = solidity.compile_artifacts().unwrap();
+            for id in artifacts.keys() {
+                assert!(equi_ver(&id.version, ver));
+            }
+
+            (ver.clone(), artifacts)
         })
         .collect::<HashMap<Version, BTreeMap<ArtifactId, ConfigurableContractArtifact>>>();
 
-    let bar = ProgressBar::new(all_runs as u64);
+    spinner.finish_with_message("Done compiling");
+
+    let bar = ProgressBar::new(
+        versioned_locations
+            .values()
+            .map(|l| (l.len() * 2) as u64)
+            .sum::<u64>(),
+    );
 
     bar.set_style(
         ProgressStyle::with_template(
@@ -87,8 +99,6 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
         .progress_chars("##-"),
     );
     bar.set_message("Running gas meterings...");
-
-    let mut bar_pos = 1;
 
     for (ver, artifacts) in versioned_artifacts.into_iter() {
         let artifacts_locations: Vec<PathBuf> =
@@ -153,8 +163,7 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
             let d2 = d1.entry(code.to_string()).or_default();
             d2.insert(ver.clone().to_string(), (from.to_string(), to.to_string()));
 
-            bar.set_position(bar_pos);
-            bar_pos += 1;
+            bar.inc(1);
         }
     }
 

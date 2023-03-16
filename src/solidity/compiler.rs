@@ -46,16 +46,16 @@ pub struct Solidity {
     pub include_paths: Vec<String>,
     pub extra_output: Vec<ContractOutputSelection>,
     pub extra_output_files: Vec<ContractOutputSelection>,
-    pub cache_path: PathBuf,
     pub src: PathBuf,
     pub test: PathBuf,
     pub script: PathBuf,
     pub out: PathBuf,
+    pub cache: PathBuf,
     pub libs: Vec<PathBuf>,
     pub remappings: Vec<RelativeRemapping>,
     pub auto_detect_remappings: bool,
     pub libraries: Vec<String>,
-    pub cache: bool,
+    pub use_cache: bool,
     pub build_info_path: Option<PathBuf>,
     pub force: bool,
     pub ephemeral: bool,
@@ -77,14 +77,14 @@ impl Default for Solidity {
             include_paths: Default::default(),
             extra_output: Default::default(),
             extra_output_files: Default::default(),
-            cache_path: Default::default(),
-            src: "src".into(),
-            test: "test".into(),
-            auto_detect_remappings: false,
-            script: "script".into(),
-            cache: true,
+            src: Default::default(),
+            test: Default::default(),
+            script: Default::default(),
             libraries: Default::default(),
-            out: "out".into(),
+            out: Default::default(),
+            cache: Default::default(),
+            use_cache: true,
+            auto_detect_remappings: false,
             remappings: Default::default(),
             force: false,
             ephemeral: false,
@@ -156,7 +156,7 @@ impl Solidity {
 
     fn project_paths(&self) -> ProjectPathsConfig {
         let mut builder = ProjectPathsConfig::builder()
-            .cache(self.cache_path.join(SOLIDITY_FILES_CACHE_FILENAME))
+            .cache(&self.cache)
             .sources(&self.src)
             .tests(&self.test)
             .scripts(&self.script)
@@ -196,7 +196,7 @@ impl Solidity {
             .set_auto_detect(self.is_auto_detect())
             // .set_offline(self.offline)
             // .set_cached(cached)
-            .set_cached(true)
+            .set_cached(self.use_cache)
             // .set_build_info(cached & self.build_info)
             .set_no_artifacts(false)
             .set_build_info(true);
@@ -248,14 +248,15 @@ impl Solidity {
     fn update_root(mut self, root: PathBuf) -> Self {
         self.root = root;
         self.src = self.root.join("src");
-        self.test = self.test.join("test");
-        self.script = self.script.join("script");
-        self.out = self.out.join("out");
+        self.test = self.root.join("test");
+        self.script = self.root.join("script");
+        self.out = self.root.join("out");
+        self.cache = self.root.join("cache");
         self
     }
 
-    pub fn with_cache_path(mut self, cache_path: PathBuf) -> Self {
-        self.cache_path = cache_path;
+    pub fn with_cache(mut self, cache: PathBuf) -> Self {
+        self.cache = cache;
         self
     }
 
@@ -285,6 +286,11 @@ impl Solidity {
 
     pub fn with_locations(mut self, locations: Vec<PathBuf>) -> Self {
         self.locations = Some(locations);
+        self
+    }
+
+    pub fn use_cache(mut self, use_cache: bool) -> Self {
+        self.use_cache = use_cache;
         self
     }
 
@@ -335,7 +341,6 @@ impl Solidity {
                 let err_msg = error.formatted_message.clone();
                 println!("{}", Paint::red(err_msg.unwrap_or_default()).bold());
             });
-            // TODO: error handling and return Err()
             panic!();
         } else if !self.silent {
             println!("Compiled in {}ms\n", now.elapsed().as_millis());
@@ -344,7 +349,6 @@ impl Solidity {
         Ok(compiled)
     }
 
-    #[allow(unused)]
     pub fn compile_artifacts(
         &mut self,
     ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {

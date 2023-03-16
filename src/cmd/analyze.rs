@@ -33,7 +33,7 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
 
     let mut solidity = Solidity::default()
         .with_path_root(path.clone())
-        .with_cache_path(path.join("cache"))
+        .with_cache(path.join("cache"))
         .with_optimizer(Optimizer {
             enabled: if runs.is_some() { Some(true) } else { None },
             runs,
