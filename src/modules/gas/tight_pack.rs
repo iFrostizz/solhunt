@@ -7,6 +7,7 @@ use crate::{
 
 #[cfg(test)]
 use crate::{solidity::compile_single_contract_to_artifacts, walker::Walker};
+use std::ops::Deref;
 #[cfg(test)]
 use std::{cell::RefCell, rc::Rc};
 
@@ -26,8 +27,12 @@ build_visitor! {
         let struct_bytes = extract_struct_bytes(struct_definition.clone());
 
         // TODO: propose a better packing in a "comment" section
-        if let Some(_packed) = tightly_pack(struct_bytes) {
-            self.push_finding(0, Some(struct_definition.src.clone()));
+        if let Some(packed) = tightly_pack(struct_bytes.clone()) {
+            let packed_struct = propose_better_packing(struct_definition, struct_bytes.into_iter().flatten().collect(), packed.into_iter().flatten().collect());
+
+            let repr = struct_to_sol_representation(&packed_struct);
+
+            self.push_finding_comment(0, Some(struct_definition.src.clone()), repr);
         };
 
         struct_definition.visit(self)
@@ -62,9 +67,60 @@ pub fn extract_struct_bytes(struct_definition: StructDefinition) -> Vec<Vec<usiz
             }
         });
 
-    // Remove any empty element
-    // struct_bytes.into_iter().filter(|b| !b.is_empty()).collect()
     struct_bytes
+}
+
+/// rearrange the struct members to match the tight representation of it in bytes
+pub fn propose_better_packing(
+    struc: &StructDefinition,
+    mut loose: Vec<usize>,
+    tight: Vec<usize>,
+) -> StructDefinition {
+    let mut packed_struc = struc.clone();
+    let mut members = struc.members.clone();
+
+    while loose != tight {
+        for i in 0..loose.len() {
+            if loose[i] != tight[i] {
+                // get the next index whose value is the current one to swap it
+                let next_id = tight
+                    .iter()
+                    .enumerate()
+                    .find(|(_, &x)| x == loose[i])
+                    .map(|(j, _)| j)
+                    .unwrap();
+
+                // update the mirrored vec as well as the struct
+                loose.swap(i, next_id);
+                members.swap(i, next_id);
+
+                dbg!(&loose);
+                dbg!(&tight);
+            }
+        }
+    }
+
+    packed_struc.members = members.to_vec();
+
+    packed_struc
+}
+
+pub fn struct_to_sol_representation(struc: &StructDefinition) -> String {
+    let mut rep = String::new();
+
+    rep.push_str(&format!("```solidity\nstruct {} {{\n", struc.name));
+
+    struc.members.iter().for_each(|mem| {
+        rep.push_str(&format!(
+            "   {} {};\n",
+            mem.type_descriptions.type_string.clone().unwrap(),
+            mem.name,
+        ))
+    });
+
+    rep.push_str("}\n```");
+
+    rep
 }
 
 #[test]
@@ -119,6 +175,7 @@ contract TightStruct {
 #[derive(Default)]
 pub struct StructModule {
     expected_struct_bytes: Vec<Vec<usize>>,
+    tight_struct_bytes: Option<Vec<Vec<usize>>>,
     shared_data: ModuleState,
 }
 
@@ -143,7 +200,13 @@ impl Visitor<ModuleState> for StructModule {
     ) -> eyre::Result<(), VisitError> {
         let struct_bytes = extract_struct_bytes(struct_definition.clone());
 
+        assert_eq!(
+            struct_definition.members.len(),
+            struct_bytes.iter().flatten().collect::<Vec<&usize>>().len()
+        );
         assert_eq!(struct_bytes, self.expected_struct_bytes);
+
+        self.tight_struct_bytes = tightly_pack(struct_bytes);
 
         struct_definition.visit(self)
     }
@@ -277,3 +340,52 @@ interface IExecutor {
         vec![4]
     );
 }
+
+// #[test]
+// fn escher_sale() {
+//     let (project, artifacts) = compile_single_contract_to_artifacts(String::from(
+//         "pragma solidity 0.8.0;
+
+// struct Sale {
+//     // slot 1
+//     uint48 currentId;
+//     uint48 finalId;
+//     address edition;
+//     // slot 2
+//     uint80 startPrice;
+//     uint80 finalPrice;
+//     uint80 dropPerSecond;
+//     // slot 3
+//     uint96 endTime;
+//     address payable saleReceiver;
+//     // slot 4
+//     uint96 startTime;
+// }",
+//     ));
+
+//     let module: Rc<RefCell<dyn Visitor<ModuleState>>> =
+//         Rc::from(RefCell::from(StructModule::new(vec![
+//             vec![6, 6, 20],
+//             vec![10, 10, 10],
+//             vec![12, 20],
+//             vec![12],
+//         ])));
+
+//     let mut walker = Walker::new(
+//         artifacts,
+//         BTreeMap::new(),
+//         vec![module.clone()],
+//         project.root().into(),
+//     );
+
+//     walker.traverse().unwrap();
+
+//     let mut_mod = module.borrow_mut();
+//     let der_mod = mut_mod.deref();
+//     let struct_mod = der_mod.as_any().downcast_ref::<StructModule>().unwrap();
+
+//     assert_eq!(
+//         struct_mod.tight_struct_bytes.clone().unwrap(),
+//         vec![vec![6, 6, 20], vec![10, 10, 10], vec![12, 20], vec![12],]
+//     );
+// }

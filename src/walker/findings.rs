@@ -80,6 +80,8 @@ pub struct Finding {
     pub src: Option<SourceLocation>, // Option<SourceLocation>,
     pub code: usize,                 // Identify finding type easily
     // pub likelyhood: u8,              // 0-100% likelyhood to be correct
+    /// additional comments
+    pub comment: Option<String>,
     /// gas saved
     pub gas: Option<usize>,
 }

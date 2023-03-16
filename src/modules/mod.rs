@@ -72,8 +72,9 @@ macro_rules! build_visitor {
         trait FindingsPusher {
             fn new(findings_map: FindingMap) -> Self;
             fn push_finding(&mut self, code: usize, src: Option<SourceLocation>);
+            fn push_finding_comment(&mut self, code: usize, src: Option<SourceLocation>, comment: String);
             fn push_findings(&mut self, f: Vec<PushedFinding>);
-            fn p_finding(&mut self, code: usize, src: Option<SourceLocation>);
+            fn p_finding(&mut self, code: usize, src: Option<SourceLocation>, comment: Option<String>);
         }
 
         impl FindingsPusher for DetectionModule {
@@ -85,18 +86,20 @@ macro_rules! build_visitor {
             }
 
             fn push_finding(&mut self, code: usize, src: Option<SourceLocation>) {
-                self.p_finding(code, src);
+                self.p_finding(code, src, None);
+            }
+
+            fn push_finding_comment(&mut self, code: usize, src: Option<SourceLocation>, comment: String) {
+                self.p_finding(code, src, Some(comment));
             }
 
             fn push_findings(&mut self, findings: Vec<PushedFinding>) {
                 findings.iter().for_each(|f| {
-                    self.p_finding(f.code, f.src.clone());
+                    self.p_finding(f.code, f.src.clone(), None);
                 });
             }
 
-            // TODO: allow having the same module names across folders
-            fn p_finding(&mut self, code: usize, src: Option<SourceLocation>) {
-
+            fn p_finding(&mut self, code: usize, src: Option<SourceLocation>, comment: Option<String>) {
                 let name = get_module_name();
 
                 let f_key = &self.findings_map.get(&code).expect("Unrecognized finding code");
@@ -108,6 +111,7 @@ macro_rules! build_visitor {
                     severity: f_key.severity.clone(),
                     description: f_key.description.clone(),
                     src,
+                    comment,
                     gas: Some(0)
                 };
 

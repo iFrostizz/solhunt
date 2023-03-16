@@ -34,10 +34,11 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
     let mut solidity = Solidity::default()
         .with_path_root(path.clone())
         .with_optimizer(Optimizer {
-            enabled: if runs.is_some() { Some(true) } else { None },
+            enabled: Some(runs.is_some()),
             runs,
             details: None,
         })
+        .use_cache(false)
         .auto_remappings(true);
 
     let compiled = solidity.compile().expect("Compilation failed");

@@ -275,13 +275,18 @@ fn format_to_md(
                         // TODO: write the comment section and prioritize any comment that 1. doesn't have the same finding code 2. doesn't have the same comment
                         .filter(|(i, _)| i < &max_content)
                         .for_each(|(_, mf)| {
-                            let formatted_finding = format!(
+                            let mut formatted_finding = format!(
                                 "`{}`\n{}:{}\n\n```solidity\n{}```\n\n",
                                 mf.meta.file,
                                 mf.meta.line.unwrap_or_default(),
                                 mf.meta.width.unwrap_or_default(),
                                 mf.meta.content
                             );
+
+                            if let Some(comment) = &mf.finding.comment {
+                                formatted_finding
+                                    .push_str(&format!("### Comments\n\n{}\n\n", comment));
+                            }
 
                             description.push_str(&formatted_finding);
                         });

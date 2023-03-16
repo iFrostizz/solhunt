@@ -14,8 +14,6 @@ use std::{
     path::PathBuf,
 };
 
-// TODO: compile the whole folder only once (use cache), and pass all the artifacts
-// compile as much files at once with the same version as we can
 /// walk sol files in the gas-metering folder and return a map to keep track of their name (finding id), version, in order to compile them and run the metering for each patch of solc
 pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering/contracts");

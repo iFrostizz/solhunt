@@ -5,6 +5,7 @@ pub fn type_as_bytes(id: &str) -> usize {
 
     match id {
         "address" => 20,
+        "address payable" => 20,
         "bool" => 1,
         "bytes1" => 1,
         "bytes2" => 2,
@@ -108,7 +109,6 @@ pub fn type_as_bytes(id: &str) -> usize {
     }
 }
 
-// TODO: rebuild the struct with the 32 bytes stuff
 /// Finds all permutations and returns the most tightly packed one
 pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
     loose_bytes
@@ -129,24 +129,22 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
     let stipend_len = loose_len - bytes_len;
     let mut stipend = vec![vec![32]; stipend_len];
 
-    let packed: Option<Vec<Vec<usize>>> = None;
+    let mut packed: Option<Vec<Vec<usize>>> = None;
 
     let bytes: Vec<_> = bytes.into_iter().flatten().collect();
     let len = bytes.len();
 
+    let mut smollest = loose_len;
+
     for perm in bytes.into_iter().permutations(len).unique() {
         let mut local_packed = pack(perm);
-        // has found a packed one, we can return it
-        if local_packed.len() + stipend_len < loose_len {
-            if let Some(p) = packed.clone() {
-                if local_packed.len() < p.len() {
-                    local_packed.append(&mut stipend);
-                    return Some(local_packed);
-                }
-            } else {
-                local_packed.append(&mut stipend);
-                return Some(local_packed);
-            }
+        let per_len = local_packed.len() + stipend_len;
+
+        // get the most packed one
+        if per_len < smollest {
+            local_packed.append(&mut stipend);
+            packed = Some(local_packed);
+            smollest = per_len;
         }
     }
 
