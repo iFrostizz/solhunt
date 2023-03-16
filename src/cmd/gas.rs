@@ -1,5 +1,9 @@
+use semver::{Version, VersionReq};
+
 use super::parse::GasMetering;
 use crate::interpreter::prepare::compile_metering;
+use std::collections::hash_map::Entry;
+use std::fs;
 // use semver::Version;
 use std::{collections::HashMap, fs::File, io::prelude::*, path::PathBuf};
 
@@ -33,4 +37,51 @@ pub fn write_to_base(root: PathBuf, data: MeteringData) -> eyre::Result<()> {
     file.write_all(toml.as_bytes())?;
 
     Ok(())
+}
+
+/// return the biggest gas saved (if any) for a module code satisfying a version
+pub fn get_gas_diff(module: String, code: usize, ver_req: VersionReq) -> Option<u64> {
+    let file =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering/contracts/metering.toml");
+
+    if file.exists() {
+        let mut content = String::new();
+        let mut file = fs::File::open(file).unwrap();
+        file.read_to_string(&mut content).unwrap();
+
+        let mut data: MeteringData = match toml::from_str(&content) {
+            Ok(d) => d,
+            Err(_) => {
+                return None;
+            }
+        };
+
+        match data.entry(module) {
+            Entry::Occupied(mut entry) => {
+                let entry = entry.get_mut();
+
+                match entry.entry(code.to_string()) {
+                    Entry::Occupied(entry) => entry
+                        .get()
+                        .iter()
+                        .map(|(v, g)| {
+                            let version = Version::parse(v).unwrap();
+                            let (gf, gt) =
+                                (g.0.parse::<u64>().unwrap(), g.1.parse::<u64>().unwrap());
+
+                            if ver_req.matches(&version) {
+                                gf.saturating_sub(gt)
+                            } else {
+                                0
+                            }
+                        })
+                        .max(),
+                    Entry::Vacant(_) => None,
+                }
+            }
+            Entry::Vacant(_) => None,
+        }
+    } else {
+        None
+    }
 }

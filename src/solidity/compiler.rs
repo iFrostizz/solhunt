@@ -251,10 +251,11 @@ impl Solidity {
         self.test = self.root.join("test");
         self.script = self.root.join("script");
         self.out = self.root.join("out");
-        self.cache = self.root.join("cache");
+        self.cache = self.root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME);
         self
     }
 
+    #[allow(unused)]
     pub fn with_cache(mut self, cache: PathBuf) -> Self {
         self.cache = cache;
         self
@@ -272,13 +273,11 @@ impl Solidity {
         self
     }
 
-    #[allow(unused)]
     pub fn auto_remappings(mut self, remappings: bool) -> Self {
         self.auto_detect_remappings = remappings;
         self
     }
 
-    #[allow(unused)]
     pub fn with_optimizer(mut self, optimizer: Optimizer) -> Self {
         self.optimizer = optimizer;
         self

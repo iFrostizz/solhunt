@@ -103,6 +103,7 @@ impl Walker {
             })
             .collect();
 
+        // TODO: parallel this
         self.visitors.iter().try_for_each(|visitor| {
             visit_sources::<ModuleState>(sources.clone(), visitor, source_map, &mut all_findings)
         })?;

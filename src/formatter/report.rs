@@ -159,8 +159,9 @@ fn format_to_md(
 
     let mut content = String::from("# Solhunt report\n");
 
-    let mut summary =
-        String::from("## Findings summary\nName | Finding | Instances\n--- | --- | ---\n");
+    let mut summary = String::from(
+        "## Findings summary\nName | Finding | Instances | Gas saved\n--- | --- | --- | ---\n",
+    );
 
     // details of findings including title, summary, description, and view of code
     // for gas, also display the gas savings
@@ -238,7 +239,6 @@ fn format_to_md(
                 });
 
             // group findings by their summary
-
             let findings_id_vec: Vec<_> = findings_id
                 .values()
                 .sorted_by(|((_, c1, _), _), ((_, c2, _), _)| Ord::cmp(c1, c2))
@@ -248,7 +248,7 @@ fn format_to_md(
                 .iter()
                 .for_each(|((id, f_count, sum), mfs)| {
                     let findings_title =
-                        get_table_title(id.clone(), *f_count, sum.clone(), mfs.len());
+                        get_table_title(id.clone(), *f_count, sum.clone(), mfs.len(), 0);
                     summary += &findings_title;
                 });
 
@@ -275,9 +275,6 @@ fn format_to_md(
                         // TODO: write the comment section and prioritize any comment that 1. doesn't have the same finding code 2. doesn't have the same comment
                         .filter(|(i, _)| i < &max_content)
                         .for_each(|(_, mf)| {
-                            // let file = mf.meta.file;
-                            // let
-
                             let formatted_finding = format!(
                                 "`{}`\n{}:{}\n\n```solidity\n{}```\n\n",
                                 mf.meta.file,
@@ -285,7 +282,6 @@ fn format_to_md(
                                 mf.meta.width.unwrap_or_default(),
                                 mf.meta.content
                             );
-                            // formatted_finding.push_str("\n");
 
                             description.push_str(&formatted_finding);
                         });
@@ -312,6 +308,21 @@ fn get_title(id: String, f_code: usize, summary: String) -> String {
 }
 
 /// create a table row in a markdown style for the summary of the report
-fn get_table_title(id: String, finding_code: usize, summary: String, instances: usize) -> String {
-    format!("[{}-{}] | {} | {}\n", id, finding_code, summary, instances)
+fn get_table_title(
+    id: String,
+    finding_code: usize,
+    summary: String,
+    instances: usize,
+    gas_saved: usize,
+) -> String {
+    let saved = if gas_saved == 0 {
+        String::from("/")
+    } else {
+        gas_saved.to_string()
+    };
+
+    format!(
+        "[{}-{}] | {} | {} | {}\n",
+        id, finding_code, summary, instances, saved
+    )
 }
