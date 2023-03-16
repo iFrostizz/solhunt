@@ -1,11 +1,18 @@
 use super::GasComparer;
 use crate::{
     cmd::gas::MeteringData,
-    solidity::{get_sol_files, version_from_source},
+    solidity::{get_sol_files, version_from_source, Solidity},
 };
-use ethers_solc::{compile::Solc, SolcVersion};
+use ethers_solc::{compile::Solc, ArtifactId, ConfigurableContractArtifact, SolcVersion};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{collections::HashMap, fs::File, io::prelude::*, path::PathBuf};
+use rayon::prelude::*;
+use semver::Version;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::File,
+    io::prelude::*,
+    path::PathBuf,
+};
 
 // TODO: compile the whole folder only once (use cache), and pass all the artifacts
 // compile as much files at once with the same version as we can
@@ -17,6 +24,7 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
 
     let all_contracts = get_sol_files(root.clone());
 
+    // list all svm versions, wether installed or not
     let all_sversions: Vec<_> = Solc::all_versions()
         .into_iter()
         .map(|ver| match ver {
@@ -25,6 +33,9 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
         })
         .filter(|ver| ver.minor >= 5) // older ast is not supported
         .collect();
+
+    // map of the location of each contract per their compatible solc version
+    let mut contract_versions: HashMap<Version, Vec<PathBuf>> = HashMap::new();
 
     let all_runs = all_contracts
         .iter()
@@ -36,11 +47,35 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
             let ver_req = version_from_source(source)?;
 
             Ok(all_sversions
-                .iter()
-                .filter(|ver| ver_req.matches(ver))
+                .clone()
+                .into_iter()
+                .filter(|ver| {
+                    if ver_req.matches(ver) {
+                        let locs = contract_versions.entry(ver.clone()).or_default();
+                        locs.push(loc.to_path_buf());
+                        true
+                    } else {
+                        false
+                    }
+                })
                 .count())
         })
         .sum::<eyre::Result<usize>>()?;
+
+    // TODO: write compilation time
+    let versioned_artifacts = contract_versions
+        .par_iter()
+        .map(|(ver, files)| {
+            let mut solidity = Solidity::default()
+                .with_path_root(root.clone())
+                .with_locations(files.to_vec())
+                .silent()
+                .with_version(ver.clone())
+                .unwrap();
+
+            (ver.clone(), solidity.compile_artifacts().unwrap())
+        })
+        .collect::<HashMap<Version, BTreeMap<ArtifactId, ConfigurableContractArtifact>>>();
 
     let bar = ProgressBar::new(all_runs as u64);
 
@@ -55,57 +90,71 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
 
     let mut bar_pos = 1;
 
-    for location in all_contracts {
-        let mut file = File::open(location.to_str().unwrap())?;
-        let mut source = String::new();
-        file.read_to_string(&mut source)?;
+    for (ver, artifacts) in versioned_artifacts.into_iter() {
+        let artifacts_locations: Vec<PathBuf> =
+            artifacts.keys().map(|id| id.source.clone()).collect();
 
-        let ver_req = version_from_source(source)?;
+        for location in artifacts_locations.iter() {
+            let from_to_artifacts_iter = artifacts.iter().filter(|(id, _)| &id.source == location);
 
-        for ver in all_sversions.iter() {
-            // compare for all matching versions
-            if ver_req.matches(ver) {
-                let mut gas_comparer = GasComparer::default()
-                    .with_root(root.clone())
-                    .with_location(location.clone())
-                    .with_version(ver.clone());
+            // should only find two artifacts, on "from" and one "to"
+            assert_eq!(from_to_artifacts_iter.clone().count(), 2);
 
-                let (from, to) = match gas_comparer.run() {
-                    Ok(a) => a,
-                    Err(err) => {
-                        let mini_path = location.strip_prefix(root).unwrap();
-                        panic!("err for location `{}`: `{err}`", mini_path.display());
-                    }
-                };
+            let mut art_from = None;
+            let mut art_to = None;
 
-                let file_stem = location
-                    .file_stem()
-                    .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
-                    .to_os_string()
-                    .into_string()
-                    .unwrap();
+            from_to_artifacts_iter.for_each(|(id, artifact)| {
+                if id.name == "From" {
+                    art_from = Some(BTreeMap::from([(id.clone(), artifact.clone())]));
+                } else if id.name == "To" {
+                    art_to = Some(BTreeMap::from([(id.clone(), artifact.clone())]));
+                }
+            });
 
-                let code: usize = file_stem
-                    .parse()
-                    .expect("should be named `code.sol`, got {file_stem}");
+            let art_from = art_from.ok_or(eyre::eyre!("No `From` artifact"))?;
+            let art_to = art_to.ok_or(eyre::eyre!("No `To` artifact"))?;
 
-                let folder_name = location
-                    .parent()
-                    .ok_or(eyre::eyre!("couldn't get parent for {:#?}", location))?
-                    .file_name()
-                    .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
-                    .to_str()
-                    .unwrap()
-                    .to_string();
+            let mut gas_comparer = GasComparer::default()
+                .with_root(root.clone())
+                .with_location(location.clone())
+                .with_artifacts((art_from, art_to))
+                .with_version(ver.clone());
 
-                let d1: &mut HashMap<String, HashMap<String, (String, String)>> =
-                    data.entry(folder_name).or_default();
-                let d2 = d1.entry(code.to_string()).or_default();
-                d2.insert(ver.clone().to_string(), (from.to_string(), to.to_string()));
+            let (from, to) = match gas_comparer.run() {
+                Ok(a) => a,
+                Err(err) => {
+                    let mini_path = location.strip_prefix(root).unwrap();
+                    panic!("err for location `{}`: `{err}`", mini_path.display());
+                }
+            };
 
-                bar.set_position(bar_pos);
-                bar_pos += 1;
-            }
+            let file_stem = location
+                .file_stem()
+                .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
+                .to_os_string()
+                .into_string()
+                .unwrap();
+
+            let code: usize = file_stem
+                .parse()
+                .expect("should be named `code.sol`, got {file_stem}");
+
+            let folder_name = location
+                .parent()
+                .ok_or(eyre::eyre!("couldn't get parent for {:#?}", location))?
+                .file_name()
+                .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
+                .to_str()
+                .unwrap()
+                .to_string();
+
+            let d1: &mut HashMap<String, HashMap<String, (String, String)>> =
+                data.entry(folder_name).or_default();
+            let d2 = d1.entry(code.to_string()).or_default();
+            d2.insert(ver.clone().to_string(), (from.to_string(), to.to_string()));
+
+            bar.set_position(bar_pos);
+            bar_pos += 1;
         }
     }
 

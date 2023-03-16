@@ -1,5 +1,5 @@
 use crate::{
-    solidity::{compile_single_contract_to_artifacts_path, equi_ver},
+    solidity::equi_ver,
     walker::{ModuleState, Walker},
 };
 use ethers_contract::BaseContract;
@@ -11,7 +11,6 @@ use ethers_solc::{
     },
     ArtifactId, ConfigurableContractArtifact,
 };
-use eyre::ContextCompat;
 use revm::{
     db::{CacheDB, EmptyDB, InMemoryDB},
     primitives::{Bytes, CreateScheme, ExecutionResult, Output, TransactTo, B160, U256},
@@ -35,6 +34,11 @@ pub struct GasComparer {
     data: Bytes,
     /// evm environment
     evm: EVM<CacheDB<EmptyDB>>,
+    /// ("from", "to") artifacts
+    artifacts: Option<(
+        BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+        BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+    )>,
 }
 
 #[derive(Eq, PartialEq)]
@@ -56,6 +60,7 @@ impl Default for GasComparer {
             value: Default::default(),
             data,
             evm: Default::default(),
+            artifacts: Default::default(),
         }
     }
 }
@@ -87,30 +92,45 @@ impl GasComparer {
         self
     }
 
+    pub fn with_artifacts(
+        mut self,
+        artifacts: (
+            BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+            BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+        ),
+    ) -> Self {
+        self.artifacts = Some(artifacts);
+        self
+    }
+
     /// Run the gas metering on the "from" and the "to" contract
     /// Returns (from, to) gas usage
     pub fn run(&mut self) -> eyre::Result<(u64, u64)> {
         let cache_db = InMemoryDB::default();
         self.evm.database(cache_db);
 
-        let artifacts =
-            compile_single_contract_to_artifacts_path(self.location.clone(), self.version.clone())?;
+        // let artifacts =
+        //     compile_single_contract_to_artifacts_path(self.location.clone(), self.version.clone())?;
 
-        let mut art_from = None;
-        let mut art_to = None;
+        // let mut art_from = None;
+        // let mut art_to = None;
 
-        artifacts.into_iter().for_each(|(id, artifact)| {
-            if id.source == self.location {
-                if id.name == "From" {
-                    art_from = Some(BTreeMap::from([(id, artifact)]));
-                } else if id.name == "To" {
-                    art_to = Some(BTreeMap::from([(id, artifact)]));
-                }
-            }
-        });
+        // self.artifacts.into_iter().for_each(|(id, artifact)| {
+        //     if id.source == self.location {
+        //         if id.name == "From" {
+        //             art_from = Some(BTreeMap::from([(id, artifact)]));
+        //         } else if id.name == "To" {
+        //             art_to = Some(BTreeMap::from([(id, artifact)]));
+        //         }
+        //     }
+        // });
 
-        let art_from = art_from.wrap_err("No `From` contract")?;
-        let art_to = art_to.wrap_err("No `To` contract")?;
+        let artifacts = self
+            .artifacts
+            .clone()
+            .ok_or(eyre::eyre!("No from / to artifacts"))?;
+
+        let (art_from, art_to) = (artifacts.0, artifacts.1);
 
         // make sure that compiled versions are matching requested one
         let (ver_from, ver_to) = (

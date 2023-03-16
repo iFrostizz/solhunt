@@ -64,6 +64,7 @@ pub struct Solidity {
     /// stfu ?
     pub silent: bool,
     pub version: Option<Version>,
+    pub locations: Option<Vec<PathBuf>>,
 }
 
 impl Default for Solidity {
@@ -91,6 +92,7 @@ impl Default for Solidity {
             optimizer: Default::default(),
             silent: false,
             version: None,
+            locations: Default::default(),
         }
     }
 }
@@ -281,6 +283,11 @@ impl Solidity {
         self
     }
 
+    pub fn with_locations(mut self, locations: Vec<PathBuf>) -> Self {
+        self.locations = Some(locations);
+        self
+    }
+
     pub fn compile(&mut self) -> Result<ProjectCompileOutput> {
         if self.auto_detect_remappings {
             self.attach_remappings();
@@ -288,12 +295,15 @@ impl Solidity {
 
         let path = self.root.clone();
 
-        let files = if path.is_dir() {
+        let files = if let Some(locations) = self.locations.clone() {
+            locations
+        } else if path.is_dir() {
             get_sol_files(path)
         } else if let Some(ext) = path.extension() {
             if ext == "sol" {
                 // walk back to find root and update it
                 // TODO: don't use the root variable if it's a single file
+                // need to change this!
                 let mut root = path.clone();
                 root.pop();
                 root.pop();
@@ -307,6 +317,7 @@ impl Solidity {
         } else {
             eyre::bail!("Nothing valid to compile.");
         };
+
         let amount = files.len();
         if !self.silent {
             println!("Compiling {amount} files ...");
@@ -517,6 +528,19 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
     let mut walker = Walker::new(artifacts, source_map, visitors, project.root.into_path());
 
     walker.traverse().expect("failed to traverse ast")
+}
+
+pub fn compile_locations(
+    root: PathBuf,
+    locations: Vec<PathBuf>,
+    version: Version,
+) -> eyre::Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
+    let mut solidity = Solidity::default()
+        .with_path_root(root)
+        .with_locations(locations)
+        .with_version(version)?;
+
+    solidity.compile_artifacts()
 }
 
 #[allow(unused)]
