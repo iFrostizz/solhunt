@@ -10,3 +10,6 @@
 [submodule "test-data/lib/forge-std"]
 	path = test-data/lib/forge-std
 	url = git@github.com:foundry-rs/forge-std.git
+[submodule "test-data/lib/ds-test"]
+	path = test-data/lib/ds-test
+	url = git@github.com:dapphub/ds-test.git
