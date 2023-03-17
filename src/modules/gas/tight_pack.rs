@@ -7,7 +7,6 @@ use crate::{
 
 #[cfg(test)]
 use crate::{solidity::compile_single_contract_to_artifacts, walker::Walker};
-use std::ops::Deref;
 #[cfg(test)]
 use std::{cell::RefCell, rc::Rc};
 
@@ -94,8 +93,8 @@ pub fn propose_better_packing(
                 loose.swap(i, next_id);
                 members.swap(i, next_id);
 
-                dbg!(&loose);
-                dbg!(&tight);
+                //                 dbg!(&loose);
+                //                 dbg!(&tight);
             }
         }
     }
@@ -214,7 +213,7 @@ impl Visitor<ModuleState> for StructModule {
 
 #[test]
 fn extract_types_from_struct() {
-    let (project, artifacts) = compile_single_contract_to_artifacts(String::from(
+    let (_project, artifacts) = compile_single_contract_to_artifacts(String::from(
         "pragma solidity 0.8.0;
 
 struct MyStruct {
@@ -230,12 +229,11 @@ struct MyStruct {
         artifacts,
         BTreeMap::new(),
         vec![Rc::from(RefCell::from(module))],
-        project.root().into(),
     );
 
     walker.traverse().unwrap();
 
-    let (project, artifacts) = compile_single_contract_to_artifacts(String::from(
+    let (_project, artifacts) = compile_single_contract_to_artifacts(String::from(
         "pragma solidity 0.8.0;
 
 struct MyStruct {
@@ -265,12 +263,11 @@ struct MyStruct {
         artifacts,
         BTreeMap::new(),
         vec![Rc::from(RefCell::from(module))],
-        project.root().into(),
     );
 
     walker.traverse().unwrap();
 
-    let (project, artifacts) = compile_single_contract_to_artifacts(String::from(
+    let (_project, artifacts) = compile_single_contract_to_artifacts(String::from(
         "pragma solidity 0.8.0;
 
 struct MyStruct {
@@ -307,7 +304,6 @@ struct MyStruct {
         artifacts,
         BTreeMap::new(),
         vec![Rc::from(RefCell::from(module))],
-        project.root().into(),
     );
 
     walker.traverse().unwrap();

@@ -41,8 +41,7 @@ pub fn write_to_base(root: PathBuf, data: MeteringData) -> eyre::Result<()> {
 
 /// return the biggest gas saved (if any) for a module code satisfying a version
 pub fn get_gas_diff(module: String, code: usize, ver_req: VersionReq) -> Option<u64> {
-    let file =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering/contracts/metering.toml");
+    let file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering/metering.toml");
 
     if file.exists() {
         let mut content = String::new();

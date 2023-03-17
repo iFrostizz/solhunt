@@ -424,13 +424,13 @@ pub fn to_cached_artifacts(
 pub fn get_sol_files(path: PathBuf) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
-    visit_dirs(path.as_path(), &mut files, &vec![]).expect("failed to get contracts");
+    visit_dirs(path.as_path(), &mut files).expect("failed to get contracts");
 
     files
 }
 
 // could do caching, but explicitely excluding directory is probably good enough ?
-pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>, filter: &Vec<&str>) -> Result<()> {
+pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
@@ -443,7 +443,7 @@ pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>, filter: &Vec<&str>) -> R
                     || dir.ends_with("target")
                     || dir.ends_with("artifacts"))
                 {
-                    visit_dirs(&path, files, filter)?;
+                    visit_dirs(&path, files)?;
                 }
             } else if is_sol_file(&path) {
                 files.push(path.clone());
@@ -515,14 +515,14 @@ pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -
 
     let visitors = get_all_visitors();
 
-    let mut walker = Walker::new(artifacts, source_map, visitors, PathBuf::from(path));
+    let mut walker = Walker::new(artifacts, source_map, visitors);
 
     walker.traverse().expect("failed to traverse ast")
 }
 
 /// Tests utils to compile a temp project similar to reality
 pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
-    let (project, compiled) = make_temp_project(files);
+    let (_project, compiled) = make_temp_project(files);
     let output = compiled.clone().output();
 
     let source_map = build_source_maps(output);
@@ -545,11 +545,12 @@ pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
 
     let visitors = get_all_visitors();
 
-    let mut walker = Walker::new(artifacts, source_map, visitors, project.root.into_path());
+    let mut walker = Walker::new(artifacts, source_map, visitors);
 
     walker.traverse().expect("failed to traverse ast")
 }
 
+#[allow(unused)]
 pub fn compile_locations(
     root: PathBuf,
     locations: Vec<PathBuf>,
@@ -607,6 +608,7 @@ pub fn compile_single_contract_to_artifacts(
     (project, artifacts)
 }
 
+#[allow(unused)]
 pub fn compile_single_contract_to_artifacts_path(
     path: PathBuf,
     version: Version,

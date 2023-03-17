@@ -1,7 +1,8 @@
-use ethers_solc::{artifacts::Source, compile::Solc, error::SolcError, AggregatedCompilerOutput};
-use ethers_solc::{ArtifactId, ConfigurableContractArtifact};
+use ethers_solc::{
+    artifacts::Source, compile::Solc, error::SolcError, AggregatedCompilerOutput, ArtifactId,
+    ConfigurableContractArtifact,
+};
 use semver::{Version, VersionReq};
-use std::path::PathBuf;
 use std::{collections::BTreeMap, fs};
 
 pub fn build_source_maps(

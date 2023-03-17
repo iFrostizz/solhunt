@@ -26,7 +26,6 @@ pub struct Walker {
     artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, (String, Vec<usize>)>,
     visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>>,
-    root_abs_path: PathBuf,
 }
 
 impl Walker {
@@ -34,13 +33,11 @@ impl Walker {
         artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
         source_map: BTreeMap<String, (String, Vec<usize>)>,
         visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>>,
-        root_abs_path: PathBuf,
     ) -> Self {
         Walker {
             artifacts,
             source_map,
             visitors,
-            root_abs_path,
         }
     }
 
@@ -108,7 +105,6 @@ pub fn visit_sources<D>(
     source_map: &BTreeMap<String, (String, Vec<usize>)>,
     findings: &mut AllFindings,
 ) -> eyre::Result<()> {
-    dbg!(&source_map.keys());
     let mut last_id = 0usize;
     let mut visitor = visitor.borrow_mut();
 

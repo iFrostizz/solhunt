@@ -1,3 +1,4 @@
+use crate::cmd::gas::get_gas_diff;
 use crate::walker::{AllFindings, Findings, Severity};
 use clap::{Parser, ValueEnum};
 use cli_table::{print_stdout, Cell, Style, Table};
@@ -275,6 +276,12 @@ fn format_to_md(
                         // TODO: write the comment section and prioritize any comment that 1. doesn't have the same finding code 2. doesn't have the same comment
                         .filter(|(i, _)| i < &max_content)
                         .for_each(|(_, mf)| {
+                            let gas_saved = get_gas_diff(
+                                mf.finding.name.clone(),
+                                mf.finding.code,
+                                Default::default(),
+                            );
+
                             let mut formatted_finding = format!(
                                 "`{}`\n{}:{}\n\n```solidity\n{}```\n\n",
                                 mf.meta.file,
@@ -286,6 +293,11 @@ fn format_to_md(
                             if let Some(comment) = &mf.finding.comment {
                                 formatted_finding
                                     .push_str(&format!("### Comments\n\n{}\n\n", comment));
+                            }
+
+                            if let Some(gas_saved) = gas_saved {
+                                formatted_finding
+                                    .push_str(&format!("### Gas saved\n\n{}\n\n", gas_saved));
                             }
 
                             description.push_str(&formatted_finding);

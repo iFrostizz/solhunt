@@ -215,12 +215,7 @@ impl GasComparer {
 
         let visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>> = vec![Rc::clone(&module)];
 
-        let mut walker = Walker::new(
-            artifact.clone(),
-            BTreeMap::new(),
-            visitors,
-            self.root.clone(),
-        );
+        let mut walker = Walker::new(artifact.clone(), BTreeMap::new(), visitors);
 
         walker.traverse()?;
 

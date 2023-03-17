@@ -295,7 +295,7 @@ contract SourceLocations {
 }",
     );
 
-    let (project, artifacts) = super::compile_single_contract_to_artifacts(content.clone());
+    let (_project, artifacts) = super::compile_single_contract_to_artifacts(content.clone());
 
     // note: solidity source mappings are giving the byte before the first character
     let source = SourceLocation {
@@ -310,7 +310,6 @@ contract SourceLocations {
         artifacts,
         BTreeMap::new(),
         vec![Rc::from(RefCell::from(module))],
-        project.root().into(),
     );
 
     walker.traverse().unwrap();
