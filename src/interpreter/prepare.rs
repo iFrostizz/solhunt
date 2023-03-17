@@ -16,7 +16,7 @@ use std::{
 
 /// walk sol files in the gas-metering folder and return a map to keep track of their name (finding id), version, in order to compile them and run the metering for each patch of solc
 pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering/contracts");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering");
 
     let mut data = HashMap::new();
 

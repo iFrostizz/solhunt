@@ -11,8 +11,8 @@ use ethers_solc::{
     output::ProjectCompileOutput,
     project_util::TempProject,
     remappings::{RelativeRemapping, Remapping},
-    ArtifactId, ConfigurableArtifacts, ConfigurableContractArtifact, Project, ProjectPathsConfig,
-    Solc, SolcConfig,
+    ArtifactId, ArtifactOutput, ConfigurableArtifacts, ConfigurableContractArtifact, Project,
+    ProjectPathsConfig, Solc, SolcConfig,
 };
 use eyre::Result;
 use semver::Version;
@@ -352,7 +352,7 @@ impl Solidity {
         &mut self,
     ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
         match self.compile() {
-            Ok(compiled) => Ok(compiled.into_artifacts().collect()),
+            Ok(compiled) => Ok(to_cached_artifacts(compiled.into_artifacts().collect())?),
             Err(err) => Err(err),
         }
     }
@@ -403,17 +403,34 @@ impl Solidity {
     }
 }
 
+/// read compiled artifacts, merge the cached ones
+pub fn to_cached_artifacts(
+    mut artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
+    let cart = artifacts.clone();
+
+    for id in cart.keys() {
+        let path = &id.path;
+        let cached_artifact = Project::<ConfigurableArtifacts>::read_cached_artifact(path)?;
+        // dbg!(&cached_artifact);
+
+        artifacts.insert(id.clone(), cached_artifact);
+    }
+
+    Ok(artifacts)
+}
+
 // get path of all .sol files
 pub fn get_sol_files(path: PathBuf) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
-    visit_dirs(path.as_path(), &mut files).expect("failed to get contracts");
+    visit_dirs(path.as_path(), &mut files, &vec![]).expect("failed to get contracts");
 
     files
 }
 
 // could do caching, but explicitely excluding directory is probably good enough ?
-pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>, filter: &Vec<&str>) -> Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
@@ -426,7 +443,7 @@ pub fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
                     || dir.ends_with("target")
                     || dir.ends_with("artifacts"))
                 {
-                    visit_dirs(&path, files)?;
+                    visit_dirs(&path, files, filter)?;
                 }
             } else if is_sol_file(&path) {
                 files.push(path.clone());

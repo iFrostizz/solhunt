@@ -2,7 +2,7 @@ use super::parse::Analyze;
 use crate::{
     formatter::Report,
     loader::get_all_visitors,
-    solidity::{build_source_maps, Solidity},
+    solidity::{build_artifacts_source_maps, build_source_maps, to_cached_artifacts, Solidity},
     walker::{Severity, Walker},
 };
 use ethers_solc::artifacts::Optimizer;
@@ -38,20 +38,21 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
             runs,
             details: None,
         })
-        .use_cache(false)
+        // .use_cache(false)
         .auto_remappings(true);
 
     let compiled = solidity.compile().expect("Compilation failed");
     let output = compiled.clone().output();
 
-    let source_map = build_source_maps(output);
-
     // TODO: configurable with glob
     let _included_folders: Vec<String> = vec![String::from("src")];
 
+    // TODO: merge `cached_artifacts` or overwrite for all empty artifacts
     let artifacts = compiled
         .into_artifacts()
         .filter(|(id, _art)| {
+            dbg!(&id);
+
             let root_path = &path;
             if root_path.is_dir() {
                 // only filter if not "file-only"
@@ -82,6 +83,9 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
             }
         })
         .collect();
+
+    let artifacts = to_cached_artifacts(artifacts)?;
+    let source_map = build_artifacts_source_maps(&artifacts);
 
     let visitors = get_all_visitors();
 

@@ -1,5 +1,7 @@
 use ethers_solc::{artifacts::Source, compile::Solc, error::SolcError, AggregatedCompilerOutput};
+use ethers_solc::{ArtifactId, ConfigurableContractArtifact};
 use semver::{Version, VersionReq};
+use std::path::PathBuf;
 use std::{collections::BTreeMap, fs};
 
 pub fn build_source_maps(
@@ -13,6 +15,24 @@ pub fn build_source_maps(
 
             let file_content = fs::read_to_string(abs_path.clone())
                 .unwrap_or_else(|e| panic!("Failed to open file `{abs_path}` {e}"));
+            (
+                abs_path,
+                (file_content.clone(), get_source_map(&file_content)),
+            )
+        })
+        .collect()
+}
+
+pub fn build_artifacts_source_maps(
+    artifacts: &BTreeMap<ArtifactId, ConfigurableContractArtifact>,
+) -> BTreeMap<String, (String, Vec<usize>)> {
+    artifacts
+        .keys()
+        .map(|id| {
+            let abs_path = id.source.clone().to_str().unwrap().to_string();
+
+            let file_content = fs::read_to_string(abs_path.clone())
+                .unwrap_or_else(|e| panic!("Failed to open file `{}` {e}", abs_path));
             (
                 abs_path,
                 (file_content.clone(), get_source_map(&file_content)),

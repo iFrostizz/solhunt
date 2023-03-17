@@ -70,21 +70,11 @@ impl Walker {
                 let source_unit = &ast.source_unit;
                 let source_id = source_unit.id;
 
-                let abs_path = id.source.to_str().unwrap().to_string();
-
-                let root = &self
-                    .root_abs_path
-                    .canonicalize()
-                    .unwrap_or_else(|_| panic!("failed to canonicalize {:#?}", self.root_abs_path))
-                    .to_str()
-                    .unwrap()
-                    .to_string();
-
-                let path = PathBuf::from(&source_unit.absolute_path);
+                let abs_path = &id.source;
 
                 // the file may be outside the project. In that case, it's rather a lib.
                 // TODO: remove each root ancestors until that strip returns Ok
-                let name = path.strip_prefix(root).unwrap_or(&path).to_str().unwrap();
+                let name = &source_unit.absolute_path;
 
                 let info = Information {
                     name: name.to_string(),
@@ -113,11 +103,12 @@ impl Walker {
 }
 
 pub fn visit_sources<D>(
-    full_sources: Vec<(TypedAst, Information, String)>,
+    full_sources: Vec<(TypedAst, Information, &PathBuf)>,
     visitor: &Rc<RefCell<dyn Visitor<ModuleState>>>,
     source_map: &BTreeMap<String, (String, Vec<usize>)>,
     findings: &mut AllFindings,
 ) -> eyre::Result<()> {
+    dbg!(&source_map.keys());
     let mut last_id = 0usize;
     let mut visitor = visitor.borrow_mut();
 
@@ -132,7 +123,9 @@ pub fn visit_sources<D>(
         source_findings.iter().for_each(|finding| {
             let (position, content) = if let Some(src) = &finding.src {
                 if let Some(start) = src.start {
-                    if let Some((file_content, lines_to_bytes)) = source_map.get(&abs_path) {
+                    if let Some((file_content, lines_to_bytes)) =
+                        source_map.get(abs_path.to_str().unwrap())
+                    {
                         (
                             get_position(start, lines_to_bytes),
                             get_finding_content(
