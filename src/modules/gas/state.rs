@@ -36,6 +36,14 @@ build_visitor! {
                 description: "+= and -= are more expensive than = + and = -".to_string(),
                 severity: Severity::Gas
             }
+        ),
+        (
+            4,
+            FindingKey {
+                summary: "Avoid using state booleans".to_string(),
+                description: "more expensive than using uint256(1) and uint256(2)".to_string(),
+                severity: Severity::Gas
+            }
         )
     ]),
 
@@ -64,6 +72,10 @@ build_visitor! {
 
             if variable_declaration.visibility == Visibility::Public {
                 self.push_finding(1, Some(variable_declaration.src.clone()));
+            }
+
+            if variable_declaration.type_descriptions.type_string == Some(String::from("bool")) {
+                self.push_finding(4, Some(variable_declaration.src.clone()));
             }
         }
 
@@ -229,36 +241,55 @@ contract Compound {
 }
 
 // TODO: is that only more expensive for state ?
-// we should write tests first
-// #[test]
-// fn compound_non_state() {
-//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-//         String::from("Compound"),
-//         String::from(
-//             "pragma solidity 0.8.0;
+// we should gas write tests first
+#[test]
+fn compound_non_state() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Compound"),
+        String::from(
+            "pragma solidity 0.8.0;
 
-// contract Compound {
-//     function moreExpensive() public {
-//         a += 1;
-//     }
+contract Compound {
+    function moreExpensive() public {
+        a += 1;
+    }
 
-//     function moreExpensive2() public {
-//         a -= 1;
-//     }
+    function moreExpensive2() public {
+        a -= 1;
+    }
 
-//     function lessExpensive1() public {
-//         a = a + 1;
-//     }
+    function lessExpensive1() public {
+        a = a + 1;
+    }
 
-//     function lessExpensive2() public {
-//         a = a - 1;
-//     }
-// }",
-//         ),
-//     )]);
+    function lessExpensive2() public {
+        a = a - 1;
+    }
+}",
+        ),
+    )]);
 
-//     assert_eq!(
-//         lines_for_findings_with_code_module(&findings, "state", 3),
-//         vec![7, 11]
-//     );
-// }
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 3),
+        vec![7, 11]
+    );
+}
+
+#[test]
+fn bool_storage() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Bool"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Bool {
+    bool public flip;
+}",
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 4),
+        vec![4]
+    );
+}

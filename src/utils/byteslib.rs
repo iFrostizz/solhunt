@@ -1,8 +1,11 @@
 use itertools::Itertools;
 
 pub fn type_as_bytes(id: &str) -> usize {
-    // from ethers_core / lexer
+    if id.starts_with("enum ") {
+        return 1;
+    }
 
+    // from ethers_core / lexer
     match id {
         "address" => 20,
         "address payable" => 20,

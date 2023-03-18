@@ -520,6 +520,7 @@ pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -
     walker.traverse().expect("failed to traverse ast")
 }
 
+// TODO: make an easier version that give it a random contract name if there is only one
 /// Tests utils to compile a temp project similar to reality
 pub fn compile_and_get_findings(files: Vec<ProjectFile>) -> AllFindings {
     let (_project, compiled) = make_temp_project(files);

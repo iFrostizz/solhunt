@@ -8,7 +8,7 @@ use crate::{
 #[cfg(test)]
 use crate::{solidity::compile_single_contract_to_artifacts, walker::Walker};
 #[cfg(test)]
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 build_visitor! {
     BTreeMap::from([
@@ -47,6 +47,7 @@ pub fn extract_struct_bytes(struct_definition: StructDefinition) -> Vec<Vec<usiz
         .iter()
         .enumerate()
         .for_each(|(i, m)| {
+            dbg!(&m);
             let bytes = type_as_bytes(&m.type_descriptions.type_string.clone().unwrap());
 
             // copy the solidity behaviour, only pack variables next to each other
@@ -173,6 +174,7 @@ contract TightStruct {
 
 #[derive(Default)]
 pub struct StructModule {
+    struct_name: Option<String>,
     expected_struct_bytes: Vec<Vec<usize>>,
     tight_struct_bytes: Option<Vec<Vec<usize>>>,
     shared_data: ModuleState,
@@ -197,6 +199,12 @@ impl Visitor<ModuleState> for StructModule {
         &mut self,
         struct_definition: &mut StructDefinition,
     ) -> eyre::Result<(), VisitError> {
+        if let Some(name) = &self.struct_name {
+            if name != &struct_definition.name {
+                return struct_definition.visit(self);
+            }
+        }
+
         let struct_bytes = extract_struct_bytes(struct_definition.clone());
 
         assert_eq!(
@@ -337,51 +345,89 @@ interface IExecutor {
     );
 }
 
-// #[test]
-// fn escher_sale() {
-//     let (project, artifacts) = compile_single_contract_to_artifacts(String::from(
-//         "pragma solidity 0.8.0;
+// https://code4rena.com/reports/2022-04-jpegd/#g-16-nftvaultsol-struct-positionpreview-can-be-tightly-packed-to-save-1-storage-slot
+#[test]
+fn jpeg_sale() {
+    let (_project, artifacts) = compile_single_contract_to_artifacts(String::from(
+        "pragma solidity 0.8.0;
 
-// struct Sale {
-//     // slot 1
-//     uint48 currentId;
-//     uint48 finalId;
-//     address edition;
-//     // slot 2
-//     uint80 startPrice;
-//     uint80 finalPrice;
-//     uint80 dropPerSecond;
-//     // slot 3
-//     uint96 endTime;
-//     address payable saleReceiver;
-//     // slot 4
-//     uint96 startTime;
-// }",
-//     ));
+enum BorrowType {
+    NOT_CONFIRMED,
+    NON_INSURANCE,
+    USE_INSURANCE
+}
 
-//     let module: Rc<RefCell<dyn Visitor<ModuleState>>> =
-//         Rc::from(RefCell::from(StructModule::new(vec![
-//             vec![6, 6, 20],
-//             vec![10, 10, 10],
-//             vec![12, 20],
-//             vec![12],
-//         ])));
+struct Rate {
+    uint128 numerator;
+    uint128 denominator;
+}
 
-//     let mut walker = Walker::new(
-//         artifacts,
-//         BTreeMap::new(),
-//         vec![module.clone()],
-//         project.root().into(),
-//     );
+struct VaultSettings {
+    Rate debtInterestApr;
+    Rate creditLimitRate;
+    Rate liquidationLimitRate;
+    Rate valueIncreaseLockRate;
+    Rate organizationFeeRate;
+    Rate insurancePurchaseRate;
+    Rate insuranceLiquidationPenaltyRate;
+    uint256 insuraceRepurchaseTimeLimit;
+    uint256 borrowAmountCap;
+}
 
-//     walker.traverse().unwrap();
+struct PositionPreview { // @audit gas: can be tightly packed by moving borrowType and liquidatable at the end
+    address owner;
+    uint256 nftIndex;
+    bytes32 nftType;
+    uint256 nftValueUSD;
+    VaultSettings vaultSettings;
+    uint256 creditLimit;
+    uint256 debtPrincipal;
+    uint256 debtInterest; // @audit gas: 32 bytes
+    BorrowType borrowType; // @audit gas: 1 byte (this enum is equivalent to uint8 as it has less than 256 options)
+    bool liquidatable; // @audit gas: 1 byte
+    uint256 liquidatedAt; // @audit gas: 32 bytes
+    address liquidator; // @audit gas: 20 bytes
+}
+"));
 
-//     let mut_mod = module.borrow_mut();
-//     let der_mod = mut_mod.deref();
-//     let struct_mod = der_mod.as_any().downcast_ref::<StructModule>().unwrap();
+    let module: Rc<RefCell<dyn Visitor<ModuleState>>> = Rc::from(RefCell::from(StructModule {
+        struct_name: Some(String::from("PositionPreview")),
+        expected_struct_bytes: vec![
+            vec![20],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![16, 16],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![1, 1],
+            vec![32],
+            vec![20],
+        ],
+        ..Default::default()
+    }));
 
-//     assert_eq!(
-//         struct_mod.tight_struct_bytes.clone().unwrap(),
-//         vec![vec![6, 6, 20], vec![10, 10, 10], vec![12, 20], vec![12],]
-//     );
-// }
+    let mut walker = Walker::new(artifacts, BTreeMap::new(), vec![module.clone()]);
+
+    walker.traverse().unwrap();
+
+    let mut_mod = module.borrow_mut();
+    let der_mod = mut_mod.deref();
+    let struct_mod = der_mod.as_any().downcast_ref::<StructModule>().unwrap();
+
+    assert_eq!(
+        struct_mod.tight_struct_bytes.clone().unwrap(),
+        vec![vec![6, 6, 20], vec![10, 10, 10], vec![12, 20], vec![12],]
+    );
+}

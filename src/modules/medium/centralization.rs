@@ -3,36 +3,36 @@
 use crate::build_visitor;
 
 build_visitor! {
-    BTreeMap::from(
-        [
-           (0,
-             FindingKey {
-                 description: "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.".to_string(),
-                 summary: "Centralization of power".to_string(),
-                 severity: Severity::Medium
-             }
-             )
-        ]
-    ),
-    fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
-        // function_definition.modifiers.iter().for_each(|m| {
-        // });
-
-        // dbg!(&function_definition);
-
-        function_definition.visit(self)
-    },
+    BTreeMap::from([
+        (
+            0,
+                FindingKey {
+                    description: "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.".to_string(),
+                    summary: "Centralization of power".to_string(),
+                    severity: Severity::Medium
+                }
+            ),
+        (
+            1,
+            FindingKey {
+                    summary: "Functions guaranteed to revert for normal users should be marked as `payable`".to_string(),
+                    description: "When a function is restricted to only one account, it's less expensive to mark it as ".to_string(),
+                    severity: Severity::Gas
+            }
+        )
+    ]),
     fn visit_modifier_invocation(&mut self, modifier_invocation: &mut ModifierInvocation) {
-        // dbg!(&modifier_invocation);
         if let IdentifierOrIdentifierPath::IdentifierPath(modifier) = &modifier_invocation.modifier_name {
             let name = &modifier.name;
             // TODO: onlyRole
             if name == "onlyOwner" {
                 self.push_finding(0, Some(modifier_invocation.src.clone()));
+                self.push_finding(1, Some(modifier_invocation.src.clone()));
             }
         }
 
-        modifier_invocation.visit(self)
+        // modifier_invocation.visit(self)
+        Ok(())
     }
 }
 
@@ -65,13 +65,18 @@ contract OnlyOwnerModifer is Ownable {
     function rugEverybody() external onlyOwner {
         payable(owner()).transfer(address(this).balance);
     }
-}"#,
+}
+"#,
         ),
     )]);
 
-    // TODO: found at l.22 but is actually at 21.
     assert_eq!(
         lines_for_findings_with_code_module(&findings, "centralization", 0),
+        vec![21]
+    );
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "centralization", 1),
         vec![21]
     );
 }
