@@ -38,13 +38,15 @@ build_visitor!(
         )
     ]),
     fn visit_pragma_directive(&mut self, pragma_directive: &mut PragmaDirective) {
-        let sem_ver = smallest_version_from_literals(pragma_directive.literals.clone()).unwrap();
+        if let Some(sem_ver) = smallest_version_from_literals(pragma_directive.literals.clone()) {
+            let sem_ver = sem_ver.unwrap();
 
-        if sem_ver.minor < 8 {
-            // self.push_finding(0, Some(pragma_directive.src.clone()));
-        } // else will need to check for "unchecked"
+            if sem_ver.minor < 8 {
+                // self.push_finding(0, Some(pragma_directive.src.clone()));
+            } // else will need to check for "unchecked"
 
-        self.version = Some(sem_ver);
+            self.version = Some(sem_ver);
+        }
 
         pragma_directive.visit(self)
     },

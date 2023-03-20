@@ -1,30 +1,35 @@
+use eyre::Context;
 use semver::{Version, VersionReq};
 
 // https://docs.soliditylang.org/en/v0.8.17/layout-of-source-files.html?#version-pragma
-pub fn smallest_version_from_literals(literals: Vec<String>) -> Result<Version, semver::Error> {
+pub fn smallest_version_from_literals(literals: Vec<String>) -> Option<eyre::Result<Version>> {
     let mut pragma = literals;
-    assert_eq!(pragma.remove(0), "solidity");
+    if pragma.remove(0) == "solidity" {
+        let maybe_upper = pragma.remove(0);
 
-    let maybe_upper = pragma.remove(0);
+        let version_str = if maybe_upper == "^" || maybe_upper == ">=" {
+            // version is eq or more than ...
+            pragma[0].clone() + &pragma[1]
+        } else {
+            // fixed pragma
+            maybe_upper + &pragma[0]
+        };
 
-    let version_str = if maybe_upper == "^" || maybe_upper == ">=" {
-        // version is eq or more than ...
-        pragma[0].clone() + &pragma[1]
+        Some(Version::parse(&version_str).wrap_err_with(|| "issue parsing version"))
     } else {
-        // fixed pragma
-        maybe_upper + &pragma[0]
-    };
-
-    Version::parse(&version_str)
+        None
+    }
 }
 
 pub fn is_unspecific_version(literals: Vec<String>) -> bool {
     let mut pragma = literals;
-    assert_eq!(pragma.remove(0), "solidity");
+    if pragma.remove(0) == "solidity" {
+        let maybe_upper = pragma.remove(0);
 
-    let maybe_upper = pragma.remove(0);
-
-    maybe_upper == "^" || maybe_upper == ">="
+        maybe_upper == "^" || maybe_upper == ">="
+    } else {
+        false
+    }
 }
 
 #[allow(unused)]
@@ -90,6 +95,7 @@ fn finds_smallest_version() {
         String::from("0.8"),
         String::from(".4"),
     ])
+    .unwrap()
     .unwrap();
 
     assert_eq!(ver, Version::new(0, 8, 4));
@@ -106,10 +112,20 @@ fn finds_smallest_version() {
         String::from("0.9"),
         String::from(".0"),
     ])
+    .unwrap()
     .unwrap();
 
     assert_eq!(ver, Version::new(0, 4, 22));
     assert_eq!(ver.major, 0);
     assert_eq!(ver.minor, 4);
     assert_eq!(ver.patch, 22);
+}
+
+#[test]
+fn exp_pragma() {
+    assert!(smallest_version_from_literals(vec![
+        String::from("experimental"),
+        String::from("ABIEncoderV2"),
+    ])
+    .is_none());
 }

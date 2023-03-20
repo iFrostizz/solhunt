@@ -60,7 +60,7 @@ macro_rules! build_visitor {
                     inside: Default::default(),
                     shared_data: ModuleState {
                         name: get_module_name(),
-                        current_file: String::new(),
+                        current_file: Default::default(),
                         findings: Vec::new(),
                         file_findings: HashMap::new(),
                     },

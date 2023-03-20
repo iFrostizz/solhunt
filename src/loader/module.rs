@@ -60,6 +60,7 @@ pub fn get_all_visitors() -> Vec<Rc<RefCell<(dyn Visitor<ModuleState> + 'static)
         Rc::from(RefCell::from(gas::state::DetectionModule::default())),
         Rc::from(RefCell::from(gas::require::DetectionModule::default())),
         Rc::from(RefCell::from(gas::constructor::DetectionModule::default())),
+        Rc::from(RefCell::from(gas::condition::DetectionModule::default())),
         Rc::from(RefCell::from(oz::DetectionModule::default())),
     ]
 }

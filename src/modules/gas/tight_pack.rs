@@ -47,7 +47,7 @@ pub fn extract_struct_bytes(struct_definition: StructDefinition) -> Vec<Vec<usiz
         .iter()
         .enumerate()
         .for_each(|(i, m)| {
-            dbg!(&m);
+            // dbg!(&m);
             let bytes = type_as_bytes(&m.type_descriptions.type_string.clone().unwrap());
 
             // copy the solidity behaviour, only pack variables next to each other

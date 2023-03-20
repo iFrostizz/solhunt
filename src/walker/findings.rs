@@ -5,6 +5,7 @@ use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Display,
+    path::PathBuf,
 };
 use yansi::Paint;
 
@@ -67,7 +68,7 @@ pub struct ModuleState {
     /// findings included in the visitor pushed during the walking
     pub findings: Vec<Finding>,
     /// dynamic absolute path of the current file containing the artifact being visited
-    pub current_file: String,
+    pub current_file: PathBuf,
     pub file_findings: HashMap<String, Vec<Finding>>,
 }
 

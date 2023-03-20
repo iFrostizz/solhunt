@@ -1,5 +1,7 @@
 use crate::build_visitor;
 
+// TODO: https://github.com/code-423n4/2023-03-neotokyo-findings/blob/main/data/JCN-G.md#avoid-emitting-constants
+
 build_visitor! {
     BTreeMap::from([
         // https://github.com/code-423n4/2023-01-timeswap-findings/blob/main/data/0xSmartContract-G.md#g-03-avoid-using-state-variable-in-emit-130-gas

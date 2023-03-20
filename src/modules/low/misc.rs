@@ -54,7 +54,10 @@ contract UnlockedPragma {
             ),
         )]);
 
-        assert_eq!(lines_for_findings_with_code_module(&findings, "misc", 0), vec![1]);
+        assert_eq!(
+            lines_for_findings_with_code_module(&findings, "misc", 0),
+            vec![1]
+        );
     }
 
     #[test]
@@ -74,6 +77,9 @@ contract DeprecatedFunctions {
             ),
         )]);
 
-        assert_eq!(lines_for_findings_with_code_module(&findings, "misc", 1), vec![7]);
+        assert_eq!(
+            lines_for_findings_with_code_module(&findings, "misc", 1),
+            vec![7]
+        );
     }
 }

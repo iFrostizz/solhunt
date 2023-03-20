@@ -27,9 +27,7 @@ pub fn run_gas_metering(_args: GasMetering) -> eyre::Result<()> {
 }
 
 pub fn write_to_base(root: PathBuf, data: MeteringData) -> eyre::Result<()> {
-    let mut path = root;
-    path.pop();
-    let path = path.join("metering.toml");
+    let path = root.join("metering.toml");
 
     let mut file = File::create(path)?;
     let toml = toml::to_string(&data)?;

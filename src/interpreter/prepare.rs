@@ -71,7 +71,10 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
                 .with_version(ver.clone())
                 .unwrap();
 
-            let artifacts = solidity.compile_artifacts().unwrap();
+            let artifacts = solidity
+                .compile_artifacts()
+                .expect("failed to compile artifacts");
+
             for id in artifacts.keys() {
                 assert!(equi_ver(&id.version, ver));
             }

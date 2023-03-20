@@ -14,7 +14,7 @@ use ethers_solc::{
     ArtifactId, ArtifactOutput, ConfigurableArtifacts, ConfigurableContractArtifact, Project,
     ProjectPathsConfig, Solc, SolcConfig,
 };
-use eyre::Result;
+use eyre::{Context, Result};
 use semver::Version;
 use std::{
     collections::BTreeMap,
@@ -352,7 +352,12 @@ impl Solidity {
         &mut self,
     ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
         match self.compile() {
-            Ok(compiled) => Ok(to_cached_artifacts(compiled.into_artifacts().collect())?),
+            Ok(compiled) => {
+                // let cached = to_cached_artifacts(compiled.into_artifacts().collect())?;
+                // Ok(cached)
+
+                Ok(compiled.into_artifacts().collect())
+            }
             Err(err) => Err(err),
         }
     }
@@ -411,8 +416,8 @@ pub fn to_cached_artifacts(
 
     for id in cart.keys() {
         let path = &id.path;
-        let cached_artifact = Project::<ConfigurableArtifacts>::read_cached_artifact(path)?;
-        // dbg!(&cached_artifact);
+        let cached_artifact = Project::<ConfigurableArtifacts>::read_cached_artifact(path)
+            .wrap_err_with(|| eyre::eyre!("artifact reading failed for path: {:?}", path))?;
 
         artifacts.insert(id.clone(), cached_artifact);
     }
