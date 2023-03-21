@@ -3,7 +3,7 @@
 use ethers_solc::artifacts::ast::SourceLocation;
 use itertools::Itertools;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Display,
     path::PathBuf,
 };
@@ -141,7 +141,7 @@ impl MetaFinding {
     }
 }
 
-pub type Findings = Vec<MetaFinding>;
+pub type Findings = HashSet<MetaFinding>;
 
 /// Module name -> Findings
 pub type AllFindings = HashMap<String, Findings>;

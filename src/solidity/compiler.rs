@@ -303,7 +303,7 @@ impl Solidity {
         let files = if let Some(locations) = self.locations.clone() {
             locations
         } else if path.is_dir() {
-            get_sol_files(path)
+            get_sol_files(&path)
         } else if let Some(ext) = path.extension() {
             if ext == "sol" {
                 // walk back to find root and update it
@@ -426,7 +426,7 @@ pub fn to_cached_artifacts(
 }
 
 // get path of all .sol files
-pub fn get_sol_files(path: PathBuf) -> Vec<PathBuf> {
+pub fn get_sol_files(path: &PathBuf) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
     visit_dirs(path.as_path(), &mut files).expect("failed to get contracts");

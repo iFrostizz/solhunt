@@ -1,7 +1,7 @@
 use crate::build_visitor;
 
 // TODO: https://github.com/code-423n4/2023-03-neotokyo-findings/blob/main/data/JCN-G.md#avoid-emitting-constants
-
+// TODO: make it work with inherited contracts as well
 build_visitor! {
     BTreeMap::from([
         // https://github.com/code-423n4/2023-01-timeswap-findings/blob/main/data/0xSmartContract-G.md#g-03-avoid-using-state-variable-in-emit-130-gas
@@ -72,10 +72,18 @@ build_visitor! {
         });
 
         self.state_variables.clone().iter().for_each(|var| {
-            let var_declaration = &self.state_name_to_var[var];
+            let var_d = &self.state_name_to_var[var];
 
-            if self.constructor_variables.contains(var) || !self.assigned_variables.contains(var){
-                self.push_finding(5, Some(var_declaration.src.clone()));
+            if let Some(td) = &var_d.type_descriptions.type_string {
+                if !(
+                    td.starts_with("mapping")
+                    || td.starts_with("string")
+                    || td.starts_with("bytes"))
+                    && (self.constructor_variables.contains(var)
+                        || !self.assigned_variables.contains(var))
+                    && var_d.mutability() == &Mutability::Mutable {
+                    self.push_finding(5, Some(var_d.src.clone()));
+                }
             }
         });
 
@@ -349,7 +357,7 @@ contract Bool {
 }
 
 #[test]
-fn not_changing() {
+fn not_primitive_const() {
     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
         String::from("NotChange"),
         String::from(
@@ -357,6 +365,7 @@ fn not_changing() {
 
 contract NotChange {
     string public baseURI;
+    mapping(uint256 => uint256) public map;
 
     constructor(string memory _baseURI) {
         baseURI = _baseURI;
@@ -365,10 +374,7 @@ contract NotChange {
         ),
     )]);
 
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "state", 5),
-        vec![4]
-    );
+    assert!(!has_with_code(&findings, "state", 5));
 }
 
 #[test]

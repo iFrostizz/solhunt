@@ -11,7 +11,9 @@ build_visitor! {
         )
     ]),
     fn visit_if_statement(&mut self, ifs: &mut IfStatement) {
-        self.push_finding(0, Some(ifs.src.clone()));
+        if ifs.false_body.is_some() {
+            self.push_finding(0, Some(ifs.src.clone()));
+        }
 
         Ok(())
     }
@@ -59,4 +61,23 @@ contract Ternary {
     )]);
 
     assert!(!has_with_code(&findings, "condition", 0),);
+}
+
+#[test]
+fn if_only() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("IfOnly"),
+        String::from(
+            "pragma solidity ^0.8.0;
+
+contract IfOnly {
+    function flip() public returns(bool) {
+        if (true) {
+            return false;
+        }    }
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "condition", 0));
 }

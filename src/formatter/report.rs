@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 use cli_table::{print_stdout, Cell, Style, Table};
 use itertools::Itertools;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{fmt::Debug, fs::File, io::Write, path::PathBuf, str::FromStr};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Parser, ValueEnum)]
@@ -41,6 +41,7 @@ pub struct Report {
     style: ReportStyle,
     findings: AllFindings,
     verbosity: Vec<Severity>,
+    github: Option<String>,
 }
 
 impl Report {
@@ -49,6 +50,7 @@ impl Report {
         root: PathBuf,
         findings: AllFindings,
         verbosity: Vec<Severity>,
+        github: Option<String>,
     ) -> Self {
         // only take findings with the chosen verbosity
         let findings = findings
@@ -78,6 +80,7 @@ impl Report {
             root,
             findings,
             verbosity,
+            github,
         }
     }
 
@@ -88,6 +91,7 @@ impl Report {
                     self.findings.clone(),
                     self.root.clone(),
                     self.verbosity.clone(),
+                    self.github.clone(),
                 )
                 .unwrap();
 
@@ -152,6 +156,7 @@ fn format_to_md(
     findings: AllFindings,
     root: PathBuf,
     verbosity: Vec<Severity>,
+    github: Option<String>,
 ) -> Result<(), std::io::Error> {
     let mut file_path = root;
     file_path.push("report.md");
@@ -159,7 +164,6 @@ fn format_to_md(
     let mut buffer = File::create(file_path)?;
 
     let mut content = String::from("# Solhunt report\n");
-
     let mut summary = String::from(
         "## Findings summary\nName | Finding | Instances | Gas saved\n--- | --- | --- | ---\n",
     );
@@ -222,7 +226,7 @@ fn format_to_md(
                         findings_id
                             .entry((module.clone(), mf.finding.code))
                             .and_modify(|(_, mfs)| {
-                                mfs.push(mf.clone());
+                                mfs.insert(mf.clone());
                             })
                             .or_insert_with(|| {
                                 findings_count += 1;
@@ -233,7 +237,7 @@ fn format_to_md(
                                         findings_count,
                                         mf.finding.summary.clone(),
                                     ),
-                                    vec![mf.clone()],
+                                    HashSet::from([mf.clone()]),
                                 )
                             });
                     })
@@ -262,13 +266,14 @@ fn format_to_md(
 
                     details.push_str(&format!(
                         "### {}\n\n{}\n\n",
-                        findings_title, mfs[0].finding.description
+                        findings_title,
+                        mfs.iter().next().unwrap().finding.description
                     ));
 
                     let mut description = String::new();
 
                     // max amount of code examples given a module giving a lot of them
-                    let max_content = 10;
+                    let max_content = 1;
 
                     // add the description
                     mfs.iter()
@@ -302,6 +307,34 @@ fn format_to_md(
 
                             description.push_str(&formatted_finding);
                         });
+
+                    if let Some(mut gh) = github.clone() {
+                        if !gh.ends_with('/') {
+                            gh += "/";
+                        }
+
+                        // We should consume the iterator on the first round and keep up with the elements left here after checking that it's not empty
+                        if mfs.len() > max_content {
+                            description
+                                .push_str("<details>\n<summary>Locations</summary>\n<br>\n\n");
+
+                            mfs.iter()
+                                .enumerate()
+                                .filter(|(i, _)| i >= &max_content)
+                                .for_each(|(_, mf)| {
+                                    let gh_link = gh.clone()
+                                        + &mf.meta.file
+                                        + "#L"
+                                        + &mf.meta.line.unwrap_or_default().to_string();
+
+                                    description.push_str("- ");
+                                    description.push_str(&gh_link);
+                                    description.push_str("\n\n");
+                                });
+
+                            description.push_str("</details>\n\n")
+                        }
+                    }
 
                     details.push_str(&description);
                 });

@@ -16,25 +16,46 @@ pub type MeteringData = HashMap<String, HashMap<String, HashMap<String, (String,
 /// The contract "From" will be compared to "To" with the function "gasMeter()" by default.
 /// Can add decorators to custom the calldata. Version is parsed from the **single** pragma mentionned at the start
 /// A lockfile will be written to in the TOML format to keep track of the gas changes
-pub fn run_gas_metering(_args: GasMetering) -> eyre::Result<()> {
-    // TODO: add some args parsing logic
+pub fn run_gas_metering(args: GasMetering) -> eyre::Result<()> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering");
+    let base_path = root.join("metering.toml");
 
-    let (data, root) = compile_metering()?;
+    let path = if let Some(path) = &args.path {
+        let path = path.canonicalize()?;
 
-    write_to_base(root, data)?;
+        if !path.starts_with(&root) {
+            eyre::bail!("Please provide a path that is a subdir of the gas-metering/ folder")
+        }
+
+        path
+    } else {
+        root.clone()
+    };
+
+    let data = compile_metering(&root, &base_path, &path)?;
+    write_to_base(&base_path, data)?;
 
     Ok(())
 }
 
-pub fn write_to_base(root: PathBuf, data: MeteringData) -> eyre::Result<()> {
-    let path = root.join("metering.toml");
-
+pub fn write_to_base(path: &PathBuf, data: MeteringData) -> eyre::Result<()> {
     let mut file = File::create(path)?;
     let toml = toml::to_string(&data)?;
 
     file.write_all(toml.as_bytes())?;
 
     Ok(())
+}
+
+pub fn read_base(path: &PathBuf) -> eyre::Result<MeteringData> {
+    let mut file = File::open(path)?;
+    let mut content = String::new();
+
+    file.read_to_string(&mut content)?;
+
+    let data = toml::from_str(&content)?;
+
+    Ok(data)
 }
 
 /// return the biggest gas saved (if any) for a module code satisfying a version

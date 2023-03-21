@@ -1,6 +1,9 @@
 use super::GasComparer;
 use crate::{
-    cmd::{bars::get_bar, gas::MeteringData},
+    cmd::{
+        bars::get_bar,
+        gas::{read_base, MeteringData},
+    },
     solidity::{equi_ver, get_sol_files, version_from_source, Solidity},
 };
 use ethers_solc::{compile::Solc, ArtifactId, ConfigurableContractArtifact, SolcVersion};
@@ -15,12 +18,14 @@ use std::{
 };
 
 /// walk sol files in the gas-metering folder and return a map to keep track of their name (finding id), version, in order to compile them and run the metering for each patch of solc
-pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering");
+pub fn compile_metering(
+    root: &PathBuf,
+    base_path: &PathBuf,
+    path: &PathBuf, // represents the path of the only contracts we wil meter
+) -> eyre::Result<MeteringData> {
+    let mut data = read_base(base_path)?;
 
-    let mut data = HashMap::new();
-
-    let all_contracts = get_sol_files(root.clone());
+    let all_contracts = get_sol_files(path);
 
     // list all svm versions, wether installed or not
     let all_sversions: Vec<_> = Solc::all_versions()
@@ -160,5 +165,5 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
         }
     }
 
-    Ok((data, root))
+    Ok(data)
 }

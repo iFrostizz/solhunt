@@ -17,7 +17,7 @@ use ethers_solc::{
 };
 use std::{
     cell::RefCell,
-    collections::{btree_map::BTreeMap, HashMap},
+    collections::{btree_map::BTreeMap, HashMap, HashSet},
     ops::DerefMut,
     path::PathBuf,
     rc::Rc,
@@ -178,8 +178,10 @@ pub fn visit_sources<D>(
             assert_eq!(finding.name.clone(), data.name.to_string());
             findings
                 .entry(finding.name.clone())
-                .and_modify(|f| f.push(meta_finding.clone()))
-                .or_insert(vec![meta_finding.clone()]);
+                .and_modify(|f| {
+                    f.insert(meta_finding.clone());
+                })
+                .or_insert(HashSet::from([meta_finding.clone()]));
         });
 
         last_id = findings_data.len();

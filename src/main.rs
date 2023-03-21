@@ -16,10 +16,13 @@ fn main() {
     parse().unwrap();
 }
 
+#[cfg(test)]
 mod test {
-    use crate::walker::AllFindings;
+    use itertools::Itertools;
 
-    #[cfg(test)]
+    use crate::walker::AllFindings;
+    use std::collections::HashSet;
+
     pub fn has_with_module(findings: &AllFindings, name: &str) -> bool {
         match findings.get(name) {
             Some(val) => !val.is_empty(),
@@ -27,25 +30,22 @@ mod test {
         }
     }
 
-    #[cfg(test)]
     pub fn has_with_code(findings: &AllFindings, name: &str, code: usize) -> bool {
         findings
             .get(name)
-            .unwrap_or(&Vec::new())
+            .unwrap_or(&HashSet::new())
             .iter()
             .any(|mf| mf.finding.code == code)
     }
 
-    #[cfg(test)]
     pub fn has_with_code_file(findings: &AllFindings, file: &str, name: &str, code: usize) -> bool {
         findings
             .get(name)
-            .unwrap_or(&Vec::new())
+            .unwrap_or(&HashSet::new())
             .iter()
             .any(|mf| mf.meta.file == file && mf.finding.code == code)
     }
 
-    #[cfg(test)]
     pub fn has_with_code_at_line(
         findings: &AllFindings,
         file: &str,
@@ -53,13 +53,17 @@ mod test {
         code: usize,
         line: usize,
     ) -> bool {
-        findings.get(name).unwrap_or(&Vec::new()).iter().any(|mf| {
-            if let Some(l) = mf.meta.line {
-                mf.meta.file == file && mf.finding.code == code && l == line
-            } else {
-                false
-            }
-        })
+        findings
+            .get(name)
+            .unwrap_or(&HashSet::new())
+            .iter()
+            .any(|mf| {
+                if let Some(l) = mf.meta.line {
+                    mf.meta.file == file && mf.finding.code == code && l == line
+                } else {
+                    false
+                }
+            })
     }
 
     #[allow(unused)]
@@ -72,7 +76,6 @@ mod test {
             .count()
     }
 
-    #[cfg(test)]
     pub fn lines_for_findings_with_code_module(
         findings: &AllFindings,
         name: &str,
@@ -80,14 +83,14 @@ mod test {
     ) -> Vec<usize> {
         findings
             .get(name)
-            .unwrap_or(&Vec::new())
+            .unwrap_or(&HashSet::new())
             .iter()
             .filter(|mf| mf.finding.code == code)
             .filter_map(|mf| mf.meta.line)
+            .sorted_by(|a, b| Ord::cmp(a, b))
             .collect()
     }
 
-    #[cfg(test)]
     #[allow(unused)]
     pub fn lines_for_findings_with_code_file_module(
         findings: &AllFindings,
@@ -97,10 +100,11 @@ mod test {
     ) -> Vec<usize> {
         findings
             .get(name)
-            .unwrap_or(&Vec::new())
+            .unwrap_or(&HashSet::new())
             .iter()
             .filter(|mf| mf.meta.file == file && mf.finding.code == code)
             .filter_map(|mf| mf.meta.line)
+            .sorted_by(|a, b| Ord::cmp(a, b))
             .collect()
     }
 }

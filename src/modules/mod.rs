@@ -15,7 +15,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::{*, yul::*}};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}, test::*};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
@@ -25,6 +25,10 @@ macro_rules! build_visitor {
         use ethers_contract::BaseContract;
         #[allow(unused)]
         use ethers_core::abi::parse_abi;
+
+        #[allow(unused)]
+        #[cfg(test)]
+        use $crate::test::*;
 
         // TODO: these are valid across files, should clean the state if needed
         #[allow(dead_code)]

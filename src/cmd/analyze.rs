@@ -73,7 +73,7 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
         println!("Caught {num_findings} findings");
 
         if let Some(report_style) = args.style {
-            let report = Report::new(report_style, path, findings, verbosity);
+            let report = Report::new(report_style, path, findings, verbosity, args.github);
             report.format();
         }
     } else {

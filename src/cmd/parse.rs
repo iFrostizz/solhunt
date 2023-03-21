@@ -55,12 +55,16 @@ pub struct Analyze {
         default_value = "{src,contracts}/**/*.sol"
     )]
     pub glob: String,
+    #[clap(long, visible_alias = "gh", help = "base location of github path")]
+    pub github: Option<String>,
 }
 
 #[derive(Parser, Debug, Serialize)]
 pub struct GasMetering {
     #[clap(short, long, help = "Exclude these modules")]
     pub except_modules: Option<Vec<String>>,
+    #[clap(short, long, help = "Location of files to meter")]
+    pub path: Option<PathBuf>,
 }
 
 #[allow(unused)]
