@@ -17,7 +17,7 @@ build_visitor! {
         (
             1,
             FindingKey {
-                summary: "Avoid using public for state variables".to_string(),
+                summary: "Avoid using public for immutable/constant state variables".to_string(),
                 description: "Public state variable are generating a getter function which costs more gas on deployment. Some variables may not need to require a getter function.".to_string(),
                 severity: Severity::Gas,
             }
@@ -46,6 +46,14 @@ build_visitor! {
                 description: "more expensive than using uint256(1) and uint256(2)".to_string(),
                 severity: Severity::Gas
             }
+        ),
+        (
+            5,
+            FindingKey {
+                summary: "State variables that never change should be directly inlined in the bytecode".to_string(),
+                description: "When state variables are guaranteed to never change, they should be inlined in the bytecode of the contract by declaring them as immutables or constants to avoid paying the upfront cost of SLOAD which are expensive, mainly when the slot is cold.".to_string(),
+                severity: Severity::Gas,
+            }
         )
     ]),
 
@@ -63,25 +71,38 @@ build_visitor! {
             });
         });
 
+        self.state_variables.clone().iter().for_each(|var| {
+            let var_declaration = &self.state_name_to_var[var];
+
+            if self.constructor_variables.contains(var) || !self.assigned_variables.contains(var){
+                self.push_finding(5, Some(var_declaration.src.clone()));
+            }
+        });
+
+        self.constructor_variables.clear();
         self.state_variables.clear();
+        self.state_name_to_var.clear();
+        self.assigned_variables.clear();
 
         Ok(())
     },
 
-    fn visit_variable_declaration(&mut self, variable_declaration: &mut VariableDeclaration) {
-        if variable_declaration.state_variable {
-            self.state_variables.insert(variable_declaration.name.clone());
+    fn visit_variable_declaration(&mut self, var: &mut VariableDeclaration) {
+        if var.state_variable {
+            let name = &var.name;
+            self.state_variables.insert(name.clone());
+            self.state_name_to_var.insert(name.clone(), var.clone());
 
-            if variable_declaration.visibility == Visibility::Public {
-                self.push_finding(1, Some(variable_declaration.src.clone()));
+            if var.visibility == Visibility::Public && var.mutability() != &Mutability::Mutable {
+                self.push_finding(1, Some(var.src.clone()));
             }
 
-            if variable_declaration.type_descriptions.type_string == Some(String::from("bool")) {
-                self.push_finding(4, Some(variable_declaration.src.clone()));
+            if var.type_descriptions.type_string == Some(String::from("bool")) {
+                self.push_finding(4, Some(var.src.clone()));
             }
         }
 
-        variable_declaration.visit(self)
+        var.visit(self)
     },
 
     fn visit_emit_statement(&mut self, emit_statement: &mut EmitStatement) {
@@ -90,10 +111,38 @@ build_visitor! {
         emit_statement.visit(self)
     },
 
+    fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
+        // check if we are in a constructor or not
+        if function_definition.kind == Some(FunctionKind::Constructor) {
+            self.inside.constructor = true;
+        }
+
+        function_definition.visit(self)?;
+
+        self.inside.constructor = false;
+
+        Ok(())
+    },
+
     fn visit_assignment(&mut self, assignment: &mut Assignment) {
+        if let Expression::Identifier(identifier) = &assignment.lhs {
+            let var_name = &identifier.name;
+            self.assigned_variables.insert(var_name.to_owned());
+
+            if self.inside.constructor {
+                self.constructor_variables.insert(var_name.clone());
+            } else {
+                self.constructor_variables.remove(var_name);
+            }
+        }
+
         match assignment.operator {
             AssignmentOperator::AddAssign | AssignmentOperator::SubAssign => {
-                self.push_finding(3, Some(assignment.src.clone()));
+                if let Expression::Identifier(id) = &assignment.lhs {
+                    if self.state_variables.contains(&id.name) {
+                        self.push_finding(3, Some(assignment.src.clone()));
+                    }
+                }
             }
             _ => ()
         }
@@ -163,38 +212,24 @@ contract StateVarPublic {
     )]);
 
     assert_eq!(
-        lines_for_findings_with_code_module(&findings, "state", 1),
+        lines_for_findings_with_code_module(&findings, "state", 5),
         vec![4]
     );
 }
 
 #[test]
-fn state_struct_one_by_one() {
+fn immut_public() {
     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("OneStruct"),
+        String::from("Immut"),
         String::from(
             "pragma solidity 0.8.0;
 
-struct Parameters {
-    address token0;
-    address token1;
-    uint112 reserve0;
-    uint112 reserve1;
-}
+contract Immut {
+    uint256 immutable public num;
+    address constant public addr = 0x0000000000000000000000000000000000000000;
 
-contract OneStruct {
-    Parameters public parameters;
-
-    function SetParams(
-        address token0,
-        address token1,
-        uint112 reserve0,
-        uint112 reserve1
-    ) public {
-        parameters.token0 = token0;
-        parameters.token1 = token1;
-        parameters.reserve0 = reserve0;
-        parameters.reserve1 = reserve1;
+    constructor(uint256 _num) {
+        num = _num;
     }
 }",
         ),
@@ -202,8 +237,24 @@ contract OneStruct {
 
     assert_eq!(
         lines_for_findings_with_code_module(&findings, "state", 1),
-        vec![19]
+        vec![4, 5]
     );
+}
+
+#[test]
+fn mut_public() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Immut"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Immut {
+    uint256 public num;
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "state", 1));
 }
 
 // https://code4rena.com/reports/2022-10-zksync#gas-optimizations
@@ -242,8 +293,8 @@ contract Compound {
     );
 }
 
-// TODO: is that only more expensive for state ?
-// we should gas write tests first
+// TODO
+// this is indeed not a gas optimization, coumpound is cheaper for state only
 #[test]
 fn compound_non_state() {
     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
@@ -253,28 +304,29 @@ fn compound_non_state() {
 
 contract Compound {
     function moreExpensive() public {
+        uint a;
         a += 1;
     }
 
     function moreExpensive2() public {
+        uint a;
         a -= 1;
     }
 
     function lessExpensive1() public {
+        uint a;
         a = a + 1;
     }
 
     function lessExpensive2() public {
+        uint a;
         a = a - 1;
     }
 }",
         ),
     )]);
 
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "state", 3),
-        vec![7, 11]
-    );
+    assert!(!has_with_code(&findings, "state", 3),);
 }
 
 #[test]
@@ -294,4 +346,104 @@ contract Bool {
         lines_for_findings_with_code_module(&findings, "state", 4),
         vec![4]
     );
+}
+
+#[test]
+fn not_changing() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("NotChange"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract NotChange {
+    string public baseURI;
+
+    constructor(string memory _baseURI) {
+        baseURI = _baseURI;
+    }
+}",
+        ),
+    )]);
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 5),
+        vec![4]
+    );
+}
+
+#[test]
+fn changing() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Changes"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Changes {
+    string public baseURI;
+
+    constructor(string memory _baseURI) {
+        baseURI = _baseURI;
+    }
+
+    function setURI(string memory _baseURI) public {
+        baseURI = _baseURI;
+    }
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "immutable", 5));
+}
+
+#[test]
+fn immut() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("NotChange"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Immut {
+    uint256 immutable num;
+
+    constructor(uint256 _num) {
+        num = _num;
+    }
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "immutable", 5));
+}
+
+// dynamic types such as string and bytes cannot be declared as immutable
+#[test]
+fn not_primitive() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Dynamic"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Immut {
+    string num;
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "immutable", 5));
+}
+
+#[test]
+fn const_var() {
+    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+        String::from("Const"),
+        String::from(
+            "pragma solidity 0.8.0;
+
+contract Const {
+    uint256 constant num = 100;
+}",
+        ),
+    )]);
+
+    assert!(!has_with_code(&findings, "immutable", 5));
 }

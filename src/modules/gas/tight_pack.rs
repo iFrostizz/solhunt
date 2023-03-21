@@ -26,13 +26,13 @@ build_visitor! {
         let struct_bytes = extract_struct_bytes(struct_definition.clone());
 
         // TODO: propose a better packing in a "comment" section
-        if let Some(packed) = tightly_pack(struct_bytes.clone()) {
-            let packed_struct = propose_better_packing(struct_definition, struct_bytes.into_iter().flatten().collect(), packed.into_iter().flatten().collect());
+        // if let Some(packed) = tightly_pack(struct_bytes.clone()) {
+        //     let packed_struct = propose_better_packing(struct_definition, struct_bytes.into_iter().flatten().collect(), packed.into_iter().flatten().collect());
 
-            let repr = struct_to_sol_representation(&packed_struct);
+        //     let repr = struct_to_sol_representation(&packed_struct);
 
-            self.push_finding_comment(0, Some(struct_definition.src.clone()), repr);
-        };
+        //     self.push_finding_comment(0, Some(struct_definition.src.clone()), repr);
+        // };
 
         struct_definition.visit(self)
     }

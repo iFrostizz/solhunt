@@ -8,14 +8,13 @@ build_visitor! {
             0,
             FindingKey {
                 summary: String::from("Setting the constructor to payable"),
-                description: String::from("Saves ~13 gas per instance"),
+                description: String::from("Marking the constructor as payable removes any value check from the compiler and saves some gas on deployment."),
                 severity: Severity::Gas
             }
         )
     ]),
 
     fn visit_function_definition(&mut self, function_definition: &mut FunctionDefinition) {
-        // dbg!(&function_definition);
         if function_definition.name.is_empty() && function_definition.kind == Some(FunctionKind::Constructor) && function_definition.state_mutability != Some(StateMutability::Payable) {
             self.push_finding(0, Some(function_definition.src.clone()));
         }
@@ -51,7 +50,7 @@ contract NoPayableConstructor {
 
 contract PayableConstructor {
     constructor() payable {
-        revert("I'm not payable at all ahah!");
+        revert("I'm payable!");
     }
 }"#,
         ),

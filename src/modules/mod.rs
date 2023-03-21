@@ -37,6 +37,7 @@ macro_rules! build_visitor {
             /// wether or not the visitor is inside a block
             pub inside: Inside,
             pub state_variables: HashSet<String>,
+            pub assigned_variables: HashSet<String>,
             pub state_name_to_var: HashMap<String, VariableDeclaration>,
             /// variables assigned in the constructor or in the state only
             pub constructor_variables: HashSet<String>,
@@ -56,6 +57,7 @@ macro_rules! build_visitor {
                     state_variables: HashSet::new(),
                     state_name_to_var: HashMap::new(),
                     constructor_variables: HashSet::new(),
+                    assigned_variables: HashSet::new(),
                     events: Vec::new(),
                     inside: Default::default(),
                     shared_data: ModuleState {

@@ -21,6 +21,7 @@ toml = "0.7.2"
 indicatif = "0.17.3"
 as-any = "0.3.0"
 rayon = "1.7.0"
+glob = "0.3.1"
 
 # [patch."https://github.com/iFrostizz/ethers-rs.git"]
 # ethers-solc = { path = "/home/franfran/Projects/utils/ethers-rs/ethers-solc" }

@@ -30,7 +30,7 @@ pub enum Commands {
 // TODO: allow configuring of ignored directories through a .toml file
 #[derive(Parser, Debug, Serialize)]
 pub struct Analyze {
-    #[clap(value_name = "PATH", default_value = ".")]
+    #[clap(value_name = "PATH", default_value = ".", help = "root of the project")]
     pub path: String,
     #[clap(short, long, help = "Include only these modules")]
     pub modules: Option<Vec<String>>,
@@ -43,11 +43,18 @@ pub struct Analyze {
     // g: Gas
     #[clap(short, long, help = "Verbosity of the findings")]
     pub verbosity: Option<String>,
-    #[clap(short, long, help = "Style of the report", value_enum, default_value_t=ReportStyle::Cmd)]
-    pub style: ReportStyle,
+    #[clap(short, long, help = "Style of the report", value_enum)]
+    pub style: Option<ReportStyle>,
     pub name: Option<String>,
     #[clap(short, long, help = "specifiy the optimizer runs")]
     pub optimizer_runs: Option<usize>,
+    #[clap(
+        short,
+        long,
+        help = "glob path for artifacts to analyze",
+        default_value = "{src,contracts}/**/*.sol"
+    )]
+    pub glob: String,
 }
 
 #[derive(Parser, Debug, Serialize)]

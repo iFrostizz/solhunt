@@ -2,6 +2,7 @@
 
 use super::{Meta, MetaFinding, ModuleState};
 use crate::{
+    cmd::bars::get_bar,
     loader::Information,
     solidity::{get_finding_content, get_position},
     walker::AllFindings,
@@ -26,6 +27,7 @@ pub struct Walker {
     artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
     source_map: BTreeMap<String, (String, Vec<usize>)>,
     visitors: Vec<Rc<RefCell<dyn Visitor<ModuleState>>>>,
+    display_bar: bool,
 }
 
 impl Walker {
@@ -38,7 +40,13 @@ impl Walker {
             artifacts,
             source_map,
             visitors,
+            display_bar: false,
         }
+    }
+
+    pub fn with_bar(mut self, flag: bool) -> Self {
+        self.display_bar = flag;
+        self
     }
 
     // For analyzing a syntax tree, we need an AST "walker" — an object to facilitate the traversal of the tree.
@@ -90,8 +98,25 @@ impl Walker {
             })
             .collect();
 
+        let bar = if self.display_bar {
+            Some(get_bar(self.visitors.len() as u64, Default::default()))
+        } else {
+            None
+        };
+
         // TODO: parallel this
         self.visitors.iter().try_for_each(|visitor| {
+            {
+                let mut vis = visitor.borrow_mut();
+                let data = vis.shared_data();
+
+                if self.display_bar {
+                    let b = bar.as_ref().unwrap();
+                    b.set_message(data.name.clone());
+                    b.inc(1);
+                }
+            }
+
             visit_sources::<ModuleState>(sources.clone(), visitor, source_map, &mut all_findings)
         })?;
 

@@ -1,6 +1,6 @@
 use super::GasComparer;
 use crate::{
-    cmd::gas::MeteringData,
+    cmd::{bars::get_bar, gas::MeteringData},
     solidity::{equi_ver, get_sol_files, version_from_source, Solidity},
 };
 use ethers_solc::{compile::Solc, ArtifactId, ConfigurableContractArtifact, SolcVersion};
@@ -85,21 +85,13 @@ pub fn compile_metering() -> eyre::Result<(MeteringData, PathBuf)> {
 
     spinner.finish_with_message("Done compiling");
 
-    let bar = ProgressBar::new(
-        versioned_locations
-            .values()
-            .map(|l| (l.len() * 2) as u64)
-            .sum::<u64>(),
-    );
+    let len = versioned_locations
+        .values()
+        .map(|l| (l.len() * 2) as u64)
+        .sum::<u64>();
+    let message = String::from("Running gas meterings...");
 
-    bar.set_style(
-        ProgressStyle::with_template(
-            "{msg} {spinner:.blue} [{elapsed_precise}] {bar:100.cyan/blue} [{human_pos}/{human_len}]",
-        )
-        .unwrap()
-        .progress_chars("##-"),
-    );
-    bar.set_message("Running gas meterings...");
+    let bar = get_bar(len, message);
 
     for (ver, artifacts) in versioned_artifacts.into_iter() {
         let artifacts_locations: Vec<PathBuf> =
