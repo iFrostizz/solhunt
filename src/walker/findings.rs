@@ -84,7 +84,7 @@ pub struct Finding {
     /// additional comments
     pub comment: Option<String>,
     /// gas saved
-    pub gas: Option<usize>,
+    pub gas: Option<u64>,
 }
 
 #[derive(Debug, Clone)]

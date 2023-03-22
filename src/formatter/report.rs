@@ -193,15 +193,6 @@ fn format_to_md(
 
         // has at least one finding
         if these_findings.values().any(|mfs| !mfs.is_empty()) {
-            // TODO: unused ?
-            // let _title = match v {
-            //     Severity::Gas => "## Gas otimizations".to_string(),
-            //     Severity::High => "## High severity findings".to_string(),
-            //     Severity::Medium => "## Medium severity findings".to_string(),
-            //     Severity::Low => "## Low severity findings".to_string(),
-            //     Severity::Informal => "## Informal findings".to_string(),
-            // };
-
             let finding_identifier = match v {
                 Severity::Gas => "G".to_string(),
                 Severity::High => "H".to_string(),
@@ -222,7 +213,15 @@ fn format_to_md(
             these_findings
                 .into_iter()
                 .for_each(|(module, meta_findings)| {
-                    meta_findings.into_iter().for_each(|mf| {
+                    meta_findings.into_iter().for_each(|mut mf| {
+                        let gas_saved = get_gas_diff(
+                            mf.finding.name.clone(),
+                            mf.finding.code,
+                            Default::default(),
+                        );
+
+                        mf.finding.gas = gas_saved;
+
                         findings_id
                             .entry((module.clone(), mf.finding.code))
                             .and_modify(|(_, mfs)| {
@@ -252,8 +251,13 @@ fn format_to_md(
             findings_id_vec
                 .iter()
                 .for_each(|((id, f_count, sum), mfs)| {
+                    let gas_saved = mfs
+                        .iter()
+                        .map(|mf| mf.finding.gas.unwrap_or(0))
+                        .sum::<u64>();
+
                     let findings_title =
-                        get_table_title(id.clone(), *f_count, sum.clone(), mfs.len(), 0);
+                        get_table_title(id.clone(), *f_count, sum.clone(), mfs.len(), gas_saved);
                     summary += &findings_title;
                 });
 
@@ -281,12 +285,6 @@ fn format_to_md(
                         // TODO: write the comment section and prioritize any comment that 1. doesn't have the same finding code 2. doesn't have the same comment
                         .filter(|(i, _)| i < &max_content)
                         .for_each(|(_, mf)| {
-                            let gas_saved = get_gas_diff(
-                                mf.finding.name.clone(),
-                                mf.finding.code,
-                                Default::default(),
-                            );
-
                             let mut formatted_finding = format!(
                                 "`{}`\n{}:{}\n\n```solidity\n{}```\n\n",
                                 mf.meta.file,
@@ -300,9 +298,11 @@ fn format_to_md(
                                     .push_str(&format!("### Comments\n\n{}\n\n", comment));
                             }
 
-                            if let Some(gas_saved) = gas_saved {
-                                formatted_finding
-                                    .push_str(&format!("### Gas saved\n\n{}\n\n", gas_saved));
+                            if let Some(gas_saved) = mf.finding.gas {
+                                formatted_finding.push_str(&format!(
+                                    "### Gas saved (per instance)\n\n{}\n\n",
+                                    gas_saved
+                                ));
                             }
 
                             description.push_str(&formatted_finding);
@@ -363,7 +363,7 @@ fn get_table_title(
     finding_code: usize,
     summary: String,
     instances: usize,
-    gas_saved: usize,
+    gas_saved: u64,
 ) -> String {
     let saved = if gas_saved == 0 {
         String::from("/")

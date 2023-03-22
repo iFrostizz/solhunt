@@ -83,9 +83,11 @@ pub fn get_finding_content(content: String, start: usize, length: usize) -> Stri
 
     let mut content = String::new();
 
-    content.push_str(&get_finding_content_before(&file_bytes, start));
-    content.push_str(&get_finding_content_middle(&file_bytes, start, length));
-    content.push_str(&get_finding_content_after(&file_bytes, start, length));
+    content.push_str(&(String::from("  ") + &get_finding_content_before(&file_bytes, start)));
+    content
+        .push_str(&(String::from("> ") + &get_finding_content_middle(&file_bytes, start, length)));
+    content
+        .push_str(&(String::from("  ") + &get_finding_content_after(&file_bytes, start, length)));
 
     content
 }
