@@ -1,6 +1,6 @@
 use crate::{
     loader::get_all_visitors,
-    solidity::{build_source_maps, get_finding_content},
+    solidity::{build_source_maps, get_finding_content, get_finding_content_arrow},
     walker::{AllFindings, Walker},
 };
 use bytes::Bytes;
@@ -689,7 +689,7 @@ fn make_temp_project(
             let content = if source.start == -1 || source.end == -1 {
                 String::from("")
             } else {
-                get_finding_content(
+                get_finding_content_arrow(
                     contract,
                     source.start.try_into().unwrap(),
                     (source.end - source.start).try_into().unwrap(),

@@ -83,9 +83,28 @@ pub fn get_finding_content(content: String, start: usize, length: usize) -> Stri
 
     let mut content = String::new();
 
-    content.push_str(&(String::from("  ") + &get_finding_content_before(&file_bytes, start)));
+    content.push_str(&get_finding_content_before(&file_bytes, start));
+    content.push_str(&get_finding_content_middle(&file_bytes, start, length));
+    content.push_str(&get_finding_content_after(&file_bytes, start, length));
+
     content
-        .push_str(&(String::from("> ") + &get_finding_content_middle(&file_bytes, start, length)));
+}
+
+/// Returns a view in the code where the finding is located with an arrow showing where it is
+pub fn get_finding_content_arrow(content: String, start: usize, length: usize) -> String {
+    let file_bytes: Vec<u8> = content.as_bytes().to_vec();
+
+    let mut content = String::new();
+
+    content.push_str(&(String::from("  ") + &get_finding_content_before(&file_bytes, start)));
+
+    let mid = get_finding_content_middle(&file_bytes, start, length);
+    let mid = mid
+        .lines()
+        .map(|l| String::from("> ") + l + "\n")
+        .collect::<String>();
+
+    content.push_str(&mid);
     content
         .push_str(&(String::from("  ") + &get_finding_content_after(&file_bytes, start, length)));
 

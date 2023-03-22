@@ -4,7 +4,7 @@ use super::{Meta, MetaFinding, ModuleState};
 use crate::{
     cmd::bars::get_bar,
     loader::Information,
-    solidity::{get_finding_content, get_position},
+    solidity::{get_finding_content, get_finding_content_arrow, get_position},
     walker::AllFindings,
 };
 use ethers_solc::{
@@ -149,7 +149,7 @@ pub fn visit_sources<D>(
                     {
                         (
                             get_position(start, lines_to_bytes),
-                            get_finding_content(
+                            get_finding_content_arrow(
                                 file_content.to_string(),
                                 start,
                                 src.length.unwrap_or_default(),
