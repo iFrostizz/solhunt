@@ -146,10 +146,10 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
         // get the most packed one
         if per_len < smollest {
             local_packed.append(&mut stipend);
-            // packed = Some(local_packed);
-            // smollest = per_len;
+            packed = Some(local_packed);
+            smollest = per_len;
 
-            return Some(local_packed);
+            // return Some(local_packed);
         }
     }
 

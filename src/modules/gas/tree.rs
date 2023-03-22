@@ -1,14 +1,22 @@
-// https://github.com/code-423n4/2022-12-backed-findings/blob/main/data/IllIllI-G.md#g02--internal-functions-only-called-once-can-be-inlined-to-save-gas
 use crate::build_visitor;
 
-// unstable module
 build_visitor! {
     BTreeMap::from([
+        // https://github.com/code-423n4/2022-12-backed-findings/blob/main/data/IllIllI-G.md#g02--internal-functions-only-called-once-can-be-inlined-to-save-gas
         (
             0,
             FindingKey {
                 summary: "`internal` functions only called once can be inlined to save gas".to_string(),
                 description: "Not inlining costs 20 to 40 gas because of two extra JUMP instructions and additional stack operations needed for function calls.".to_string(),
+                severity: Severity::Gas
+            }
+        ),
+        // 8. https://0xmacro.com/blog/solidity-gas-optimizations-cheat-sheet/
+        (
+            1,
+            FindingKey {
+                summary: "Refactor a modifier to call a local function instead of directly having the code in the modifier, saving bytecode size and thereby deployment cost".to_string(),
+                description: "Modifiers code is copied in all instances where it's used, increasing bytecode size. By doing a refractor to the internal function, one can reduce bytecode size significantly at the cost of one JUMP. Consider doing this only if you are constrained by bytecode size.".to_string(),
                 severity: Severity::Gas
             }
         )
@@ -200,4 +208,47 @@ contract Overriden is Kid {
         lines_for_findings_with_code_module(&findings, "tree", 0),
         vec![11]
     );
+}
+
+#[test]
+fn modifier_no_func() {
+    let findings = compile_contract_and_get_findings(String::from(
+        r#"pragma solidity 0.8.0;
+
+contract ModifFunc {
+    address public immutable owner = msg.sender;
+
+    modifier onlyOwner() {
+        require(owner == msg.sender, "Ownable: caller is not the owner");
+        _;
+    }
+}"#,
+    ));
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "tree", 1),
+        vec![5]
+    );
+}
+
+#[test]
+fn modifier_func() {
+    let findings = compile_contract_and_get_findings(String::from(
+        r#"pragma solidity 0.8.0;
+
+contract ModifFunc {
+    address public immutable owner = msg.sender;
+
+    modifier onlyOwner() {
+        _checkOwner();
+        _;
+    }
+
+    function _checkOwner() internal view virtual {
+        require(owner == msg.sender, "Ownable: caller is not the owner");
+    }
+}"#,
+    ));
+
+    assert!(!has_with_code(&findings, "tree", 1));
 }
