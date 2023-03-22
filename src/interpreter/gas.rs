@@ -172,12 +172,15 @@ impl GasComparer {
 
         let exec = self.evm.transact_commit().unwrap();
 
-        if let ExecutionResult::Success { gas_used, .. } = exec {
-            // stipend the tx base price
-            Ok(gas_used - 21000)
-        } else {
-            eyre::bail!("function call failed: {:#?}", exec);
-        }
+        // if let ExecutionResult::Success { gas_used, .. } = exec {
+        //     // stipend the tx base price
+        //     Ok(gas_used - 21000)
+        // } else {
+        //     eyre::bail!("function call failed: {:#?}", exec);
+        // }
+
+        // revert is sometimes desired
+        Ok(exec.gas_used() - 21000)
     }
 
     /// Compiles and deploys metering contracts from location and return the addresses

@@ -5,10 +5,10 @@ use crate::{
     solidity::{build_artifacts_source_maps, to_cached_artifacts, Solidity},
     walker::{Severity, Walker},
 };
-use ethers_solc::{artifacts::Optimizer, ArtifactId, ConfigurableContractArtifact};
+use ethers_solc::artifacts::Optimizer;
 use glob::{glob, GlobError};
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     path::PathBuf,
 };
 

@@ -429,10 +429,10 @@ pub fn to_cached_artifacts(
 }
 
 // get path of all .sol files
-pub fn get_sol_files(path: &PathBuf) -> Vec<PathBuf> {
+pub fn get_sol_files(path: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
-    visit_dirs(path.as_path(), &mut files).expect("failed to get contracts");
+    visit_dirs(path, &mut files).expect("failed to get contracts");
 
     files
 }

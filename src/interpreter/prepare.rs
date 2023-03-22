@@ -14,14 +14,14 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs::File,
     io::prelude::*,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 /// walk sol files in the gas-metering folder and return a map to keep track of their name (finding id), version, in order to compile them and run the metering for each patch of solc
 pub fn compile_metering(
     root: &PathBuf,
     base_path: &PathBuf,
-    path: &PathBuf, // represents the path of the only contracts we wil meter
+    path: &Path, // represents the path of the only contracts we wil meter
 ) -> eyre::Result<MeteringData> {
     let mut data = read_base(base_path)?;
 

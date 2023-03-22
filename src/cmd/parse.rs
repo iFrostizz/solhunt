@@ -65,6 +65,8 @@ pub struct GasMetering {
     pub except_modules: Option<Vec<String>>,
     #[clap(short, long, help = "Location of files to meter")]
     pub path: Option<PathBuf>,
+    #[clap(short, long, help = "reset the metering database")]
+    pub reset: bool,
 }
 
 #[allow(unused)]
