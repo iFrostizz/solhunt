@@ -13,6 +13,11 @@ use std::{
 };
 
 pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
+    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    tracing::warn!("starting analysis");
+
     let mut severities = HashMap::from([
         ('h', Severity::High),
         ('m', Severity::Medium),
@@ -47,26 +52,28 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
     let glob_str = glob_path.to_str().unwrap();
     let glob = glob(glob_str)?.collect::<Result<HashSet<_>, GlobError>>()?;
 
+    tracing::warn!("compiling");
+
     let compiled = solidity.compile().expect("Compilation failed");
 
-    let artifacts = to_cached_artifacts(compiled.into_artifacts().collect())?;
-    let artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact> = if path.is_dir() {
-        artifacts
-            .into_iter()
-            .filter(|(id, _art)| glob.iter().any(|path| &id.source == path))
-            .collect()
-    } else {
-        artifacts
-    };
+    tracing::warn!("gathering cached artifacts");
+
+    let artifacts = to_cached_artifacts(compiled.into_artifacts().collect(), glob)?;
 
     if !artifacts.is_empty() {
+        tracing::warn!("source map building");
+
         let source_map = build_artifacts_source_maps(&artifacts);
 
         let visitors = get_all_visitors();
 
+        tracing::warn!("walker instanciation");
+
         let mut walker = Walker::new(artifacts, source_map, visitors).with_bar(true);
 
         println!("Starting the analysis...");
+
+        tracing::warn!("traversing the ast");
 
         let findings = walker.traverse().expect("failed to traverse ast");
         let num_findings = findings.len();
