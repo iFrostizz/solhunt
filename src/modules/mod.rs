@@ -15,7 +15,7 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use ethers_solc::artifacts::{visitor::{Visitor, VisitError, Visitable}, *, ast::{*, yul::*}};
         #[allow(unused)]
-        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings}};
+        use $crate::{walker::{Finding, FindingMap, FindingKey, Severity, Inside, ModuleState}, loader::PushedFinding, solidity::{ProjectFile, compile_and_get_findings, compile_contract_and_get_findings}};
         use ethers_solc::artifacts::ast::SourceLocation;
         #[allow(unused)]
         use semver::{Version, VersionReq};
@@ -47,7 +47,8 @@ macro_rules! build_visitor {
             pub constructor_variables: HashSet<String>,
             pub events: Vec<EmitStatement>,
             pub shared_data: ModuleState,
-            pub revert_reasons: HashMap<String, Vec<SourceLocation>>
+            pub revert_reasons: HashMap<String, Vec<SourceLocation>>,
+            pub id_var: HashMap<usize, VariableDeclaration>
         }
 
         /// populate the f_map on startup in order to specify the finding codes only
@@ -70,7 +71,8 @@ macro_rules! build_visitor {
                         findings: Vec::new(),
                         file_findings: HashMap::new(),
                     },
-                    revert_reasons: HashMap::new()
+                    revert_reasons: HashMap::new(),
+                    id_var: Default::default()
                 }
             }
         }

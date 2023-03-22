@@ -25,14 +25,13 @@ build_visitor! {
     fn visit_struct_definition(&mut self, struct_definition: &mut StructDefinition) {
         let struct_bytes = extract_struct_bytes(struct_definition.clone());
 
-        // TODO: propose a better packing in a "comment" section
-        // if let Some(packed) = tightly_pack(struct_bytes.clone()) {
-        //     let packed_struct = propose_better_packing(struct_definition, struct_bytes.into_iter().flatten().collect(), packed.into_iter().flatten().collect());
+        if let Some(packed) = tightly_pack(struct_bytes.clone()) {
+            let packed_struct = propose_better_packing(struct_definition, struct_bytes.into_iter().flatten().collect(), packed.into_iter().flatten().collect());
 
-        //     let repr = struct_to_sol_representation(&packed_struct);
+            let repr = struct_to_sol_representation(&packed_struct);
 
-        //     self.push_finding_comment(0, Some(struct_definition.src.clone()), repr);
-        // };
+            self.push_finding_comment(0, Some(struct_definition.src.clone()), repr);
+        };
 
         struct_definition.visit(self)
     }
@@ -390,22 +389,13 @@ struct PositionPreview { // @audit gas: can be tightly packed by moving borrowTy
 }
 "));
 
+    // expect struct size to be 32 since they are a monolith, they shouldn't be reorganized
     let module: Rc<RefCell<dyn Visitor<ModuleState>>> = Rc::from(RefCell::from(StructModule {
         struct_name: Some(String::from("PositionPreview")),
         expected_struct_bytes: vec![
             vec![20],
             vec![32],
             vec![32],
-            vec![32],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
-            vec![16, 16],
             vec![32],
             vec![32],
             vec![32],
@@ -425,9 +415,22 @@ struct PositionPreview { // @audit gas: can be tightly packed by moving borrowTy
     let mut_mod = module.borrow_mut();
     let der_mod = mut_mod.deref();
     let struct_mod = der_mod.as_any().downcast_ref::<StructModule>().unwrap();
+    let mut smaller = struct_mod.tight_struct_bytes.clone().unwrap();
+    smaller.sort();
 
     assert_eq!(
-        struct_mod.tight_struct_bytes.clone().unwrap(),
-        vec![vec![6, 6, 20], vec![10, 10, 10], vec![12, 20], vec![12],]
+        smaller,
+        vec![
+            vec![20],
+            vec![20, 1, 1],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+            vec![32],
+        ]
     );
 }
