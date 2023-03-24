@@ -45,8 +45,9 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
             runs,
             details: None,
         })
-        // .use_cache(false)
-        .auto_remappings(true);
+        .use_cache(true)
+        .auto_remappings(true)
+        .silent();
 
     let glob_path = path.join(args.glob);
     let glob_str = glob_path.to_str().unwrap();

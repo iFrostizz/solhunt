@@ -1,5 +1,4 @@
 use crate::test::has_with_code_at_line;
-use crate::walker::sort_findings_by_len;
 use crate::{solidity::compile_path_and_get_findings, test::has_with_code_file};
 use ethers_solc::artifacts::Optimizer;
 
@@ -12,21 +11,8 @@ fn biconomy_integration() {
             runs: Some(200),
             details: None,
         }),
-    );
-
-    let sorted_findings = sort_findings_by_len(&findings);
-
-    sorted_findings.iter().for_each(|(n, mfs)| {
-        println!("{n}: {}", mfs.len());
-        if mfs.len() > 1000 {
-            mfs.iter()
-                .enumerate()
-                .filter(|(i, _)| i > &10 && i <= &15)
-                .for_each(|(_, mf)| {
-                    println!("{:#?} {:#?} {}", &mf.meta, mf.finding.src, mf.finding.code);
-                });
-        }
-    });
+    )
+    .unwrap();
 
     // https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/Rolezn-G.md#gas2-state-variables-only-set-in-the-constructor-should-be-declared-immutable
     assert!(!has_with_code_file(
@@ -59,5 +45,33 @@ fn biconomy_integration() {
         "constructor",
         0,
         17
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "aa-4337/core/BasePaymaster.sol",
+        "constructor",
+        0,
+        20
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "libs/MultiSend.sol",
+        "constructor",
+        0,
+        12
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "paymasters/BasePaymaster.sol",
+        "constructor",
+        0,
+        20
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "paymasters/verifying/singleton/VerifyingSingletonPaymaster.sol",
+        "constructor",
+        0,
+        35
     ));
 }

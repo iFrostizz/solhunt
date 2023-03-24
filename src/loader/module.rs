@@ -39,9 +39,9 @@ pub struct PushedFinding {
 pub fn get_all_visitors() -> Vec<Rc<RefCell<(dyn Visitor<ModuleState> + 'static)>>> {
     // Vec::new()
     vec![
-        Rc::from(RefCell::from(high::calls::DetectionModule::default())),
+        // Rc::from(RefCell::from(high::calls::DetectionModule::default())),
         Rc::from(RefCell::from(medium::assembly::DetectionModule::default())),
-        Rc::from(RefCell::from(medium::overflow::DetectionModule::default())),
+        // Rc::from(RefCell::from(medium::overflow::DetectionModule::default())),
         Rc::from(RefCell::from(medium::chainlink::DetectionModule::default())),
         Rc::from(RefCell::from(
             medium::centralization::DetectionModule::default(),

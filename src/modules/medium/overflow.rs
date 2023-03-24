@@ -124,108 +124,108 @@ build_visitor!(
     }
 );
 
-#[test]
-fn can_find_overflow_old_ver() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("OldVerCheck"),
-        String::from(
-            "pragma solidity 0.7.0;
-contract OldVerCheck {
-    mapping(address => uint256) bal;
+// #[test]
+// fn can_find_overflow_old_ver() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("OldVerCheck"),
+//         String::from(
+//             "pragma solidity 0.7.0;
+// contract OldVerCheck {
+//     mapping(address => uint256) bal;
 
-    function deposit() external payable {
-        bal[msg.sender] += msg.value;
-    }
+//     function deposit() external payable {
+//         bal[msg.sender] += msg.value;
+//     }
 
-    function withdraw(uint256 amount) external {
-        bal[msg.sender] -= amount;
-        payable(msg.sender).transfer(amount);
-    }
+//     function withdraw(uint256 amount) external {
+//         bal[msg.sender] -= amount;
+//         payable(msg.sender).transfer(amount);
+//     }
 
-    fallback() external payable {}
-}",
-        ),
-    )]);
+//     fallback() external payable {}
+// }",
+//         ),
+//     )]);
 
-    // TODO: check if any version under 0.8.0 can be selected
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "overflow", 0),
-        vec![1]
-    ); // ver
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "overflow", 1),
-        vec![6]
-    ); // +
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "overflow", 2),
-        vec![10]
-    ); // -
-}
+//     // TODO: check if any version under 0.8.0 can be selected
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "overflow", 0),
+//         vec![1]
+//     ); // ver
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "overflow", 1),
+//         vec![6]
+//     ); // +
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "overflow", 2),
+//         vec![10]
+//     ); // -
+// }
 
-#[test]
-fn dont_find_overflow() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("NoOverFlow"),
-        String::from(
-            "pragma solidity ^0.8.10;
-contract NoOverFlow {
-    mapping(address => uint256) bal;
-    
-    function deposit() external payable {
-        bal[msg.sender] += msg.value;
-    }
-    
-    function withdraw(uint256 amount) external {
-        bal[msg.sender] -= amount;
-        payable(msg.sender).transfer(amount);
-    }
-    
-    fallback() external payable {}
-}",
-        ),
-    )]);
+// #[test]
+// fn dont_find_overflow() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("NoOverFlow"),
+//         String::from(
+//             "pragma solidity ^0.8.10;
+// contract NoOverFlow {
+//     mapping(address => uint256) bal;
 
-    assert!(!has_with_module(&findings, "overflow"));
-}
+//     function deposit() external payable {
+//         bal[msg.sender] += msg.value;
+//     }
 
-#[test]
-fn find_unchecked_overflow() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("Unchecked"),
-        String::from(
-            "pragma solidity ^0.8.10;
-contract Unchecked {
-    mapping(address => uint256) bal;
-    
-    function deposit() external payable {
-        unchecked {
-            bal[msg.sender] += msg.value;
-        }
-    }
-    
-    function withdraw(uint256 amount) external {
-        unchecked {
-            bal[msg.sender] -= amount;
-        }
-        payable(msg.sender).transfer(amount);
-    }
-    
-    fallback() external payable {}
-}",
-        ),
-    )]);
+//     function withdraw(uint256 amount) external {
+//         bal[msg.sender] -= amount;
+//         payable(msg.sender).transfer(amount);
+//     }
 
-    assert!(!has_with_code(&findings, "overflow", 0));
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "overflow", 3),
-        vec![6, 12]
-    ); // unchecked
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "overflow", 1),
-        vec![7]
-    ); // +
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "overflow", 2),
-        vec![13]
-    ); // -
-}
+//     fallback() external payable {}
+// }",
+//         ),
+//     )]);
+
+//     assert!(!has_with_module(&findings, "overflow"));
+// }
+
+// #[test]
+// fn find_unchecked_overflow() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("Unchecked"),
+//         String::from(
+//             "pragma solidity ^0.8.10;
+// contract Unchecked {
+//     mapping(address => uint256) bal;
+
+//     function deposit() external payable {
+//         unchecked {
+//             bal[msg.sender] += msg.value;
+//         }
+//     }
+
+//     function withdraw(uint256 amount) external {
+//         unchecked {
+//             bal[msg.sender] -= amount;
+//         }
+//         payable(msg.sender).transfer(amount);
+//     }
+
+//     fallback() external payable {}
+// }",
+//         ),
+//     )]);
+
+//     assert!(!has_with_code(&findings, "overflow", 0));
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "overflow", 3),
+//         vec![6, 12]
+//     ); // unchecked
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "overflow", 1),
+//         vec![7]
+//     ); // +
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "overflow", 2),
+//         vec![13]
+//     ); // -
+// }

@@ -411,12 +411,14 @@ impl Solidity {
 /// read compiled artifacts, merge the cached ones
 pub fn to_cached_artifacts(
     mut artifacts: BTreeMap<ArtifactId, ConfigurableContractArtifact>,
-    glob_match: HashSet<PathBuf>,
+    locations: HashSet<PathBuf>,
 ) -> Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
     let cart = artifacts.clone();
 
     for id in cart.keys() {
-        if glob_match.contains(&id.source) {
+        let abs_path = id.source.clone();
+
+        if locations.iter().any(|l| abs_path.starts_with(l)) {
             let path = &id.path;
             let cached_artifact = Project::<ConfigurableArtifacts>::read_cached_artifact(path)
                 .wrap_err_with(|| eyre::eyre!("artifact reading failed for path: {:?}", path))?;
@@ -486,7 +488,12 @@ fn is_sol_file(path: &Path) -> bool {
 }
 
 #[cfg(test)]
-pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -> AllFindings {
+pub fn compile_path_and_get_findings(
+    path: &str,
+    optimizer: Option<Optimizer>,
+) -> eyre::Result<AllFindings> {
+    use super::build_artifacts_source_maps;
+
     let root = PathBuf::from(path).canonicalize().unwrap();
 
     let mut solidity = Solidity::default()
@@ -499,20 +506,17 @@ pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -
 
     let compiled = solidity.compile().unwrap();
 
-    let output = compiled.clone().output();
+    let artifacts = to_cached_artifacts(
+        compiled
+            .into_artifacts()
+            .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>(),
+        HashSet::from([root]),
+    )?;
 
-    let source_map = build_source_maps(output);
-
-    let artifacts = compiled
-        .into_artifacts()
-        .filter(|(id, _artifact)| {
-            // Only return artifacts derived from root path by default
-            match &id.source.canonicalize() {
-                Ok(path) => path.starts_with(root.clone()),
-                _ => false,
-            }
-        })
-        .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>();
+    let source_map = build_artifacts_source_maps(&artifacts);
+    if source_map.is_empty() {
+        eyre::bail!("No source map")
+    }
 
     if let Some(debug) = env::var_os("DEBUG") {
         if debug == "true" || debug == "True" || debug == "TRUE" {
@@ -528,7 +532,7 @@ pub fn compile_path_and_get_findings(path: &str, optimizer: Option<Optimizer>) -
 
     let mut walker = Walker::new(artifacts, source_map, visitors);
 
-    walker.traverse().expect("failed to traverse ast")
+    walker.traverse()
 }
 
 pub fn compile_contract_and_get_findings(contract: String) -> AllFindings {

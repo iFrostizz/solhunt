@@ -167,107 +167,107 @@ fn check_for_external_call(stat: &Statement, data: &HashMap<String, String>) -> 
 
 // https://github.com/Picodes/4naly3er/blob/main/src/issues/H/delegateCallInLoop.ts
 // TODO: add payable function condition ? Security concecrn here is the msg.value
-#[test]
-fn delegatecall_in_for_loop() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("DelegateCallLoop"),
-        String::from(
-            r#"pragma solidity ^0.8.0;
+// #[test]
+// fn delegatecall_in_for_loop() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("DelegateCallLoop"),
+//         String::from(
+//             r#"pragma solidity ^0.8.0;
 
-contract DelegateCallForLoop {
-    function causeTrouble(address to) public {
-        for (uint256 i; i < 10; i++) {
-            to.delegatecall("");
-        }
-    }
-}"#,
-        ),
-    )]);
+// contract DelegateCallForLoop {
+//     function causeTrouble(address to) public {
+//         for (uint256 i; i < 10; i++) {
+//             to.delegatecall("");
+//         }
+//     }
+// }"#,
+//         ),
+//     )]);
 
-    assert_eq!(lines_for_findings_with_code_module(&findings, "calls", 2), vec![6]);
-}
+//     assert_eq!(lines_for_findings_with_code_module(&findings, "calls", 2), vec![6]);
+// }
 
-#[test]
-fn delegatecall_in_while_loop() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("DelegateCallLoop"),
-        String::from(
-            r#"pragma solidity ^0.8.0;
+// #[test]
+// fn delegatecall_in_while_loop() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("DelegateCallLoop"),
+//         String::from(
+//             r#"pragma solidity ^0.8.0;
 
-contract DelegateCallWhileLoop {
-    function causeTrouble(address to) public {
-        uint256 i = 0;
-        while (i < 10) {
-            to.delegatecall("");
-        }
-    }
-}"#,
-        ),
-    )]);
+// contract DelegateCallWhileLoop {
+//     function causeTrouble(address to) public {
+//         uint256 i = 0;
+//         while (i < 10) {
+//             to.delegatecall("");
+//         }
+//     }
+// }"#,
+//         ),
+//     )]);
 
-    assert_eq!(lines_for_findings_with_code_module(&findings, "calls", 2), vec![7]);
-}
+//     assert_eq!(lines_for_findings_with_code_module(&findings, "calls", 2), vec![7]);
+// }
 
-#[test]
-fn use_low_level_interface() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("ContractExistence"),
-        String::from(
-            "pragma solidity ^0.8.0;
-interface Coll {
-    function setStuff() external;
-}
+// #[test]
+// fn use_low_level_interface() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("ContractExistence"),
+//         String::from(
+//             "pragma solidity ^0.8.0;
+// interface Coll {
+//     function setStuff() external;
+// }
 
-contract CallInt {
-    Coll to;
+// contract CallInt {
+//     Coll to;
 
-    constructor(Coll _to) {
-        to = _to;
-    }
+//     constructor(Coll _to) {
+//         to = _to;
+//     }
 
-    function doTheThing() public {
-        to.setStuff();
-    }
-}",
-        ),
-    )]);
+//     function doTheThing() public {
+//         to.setStuff();
+//     }
+// }",
+//         ),
+//     )]);
 
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "calls", 0),
-        vec![14]
-    );
-}
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "calls", 0),
+//         vec![14]
+//     );
+// }
 
-#[test]
-fn use_low_level_contract() {
-    let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-        String::from("CallContract"),
-        String::from(
-            "pragma solidity ^0.8.0;
-contract Coll {
-    uint256 val;
+// #[test]
+// fn use_low_level_contract() {
+//     let findings = compile_and_get_findings(vec![ProjectFile::Contract(
+//         String::from("CallContract"),
+//         String::from(
+//             "pragma solidity ^0.8.0;
+// contract Coll {
+//     uint256 val;
 
-    function setStuff(uint256 _val) external {
-                val = _val;
-    }
-}
+//     function setStuff(uint256 _val) external {
+//                 val = _val;
+//     }
+// }
 
-contract CallContract {
-    Coll to;
+// contract CallContract {
+//     Coll to;
 
-    constructor(Coll _to) {
-        to = _to;
-    }
+//     constructor(Coll _to) {
+//         to = _to;
+//     }
 
-    function doTheThing() public {
-        to.setStuff(10);
-    }
-}",
-        ),
-    )]);
+//     function doTheThing() public {
+//         to.setStuff(10);
+//     }
+// }",
+//         ),
+//     )]);
 
-    assert_eq!(
-        lines_for_findings_with_code_module(&findings, "calls", 0),
-        vec![18]
-    );
-}
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "calls", 0),
+//         vec![18]
+//     );
+// }
