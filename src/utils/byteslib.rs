@@ -132,24 +132,25 @@ pub fn tightly_pack(loose_bytes: Vec<Vec<usize>>) -> Option<Vec<Vec<usize>>> {
     let stipend_len = loose_len - bytes_len;
     let mut stipend = vec![vec![32]; stipend_len];
 
-    let mut packed: Option<Vec<Vec<usize>>> = None;
+    let packed: Option<Vec<Vec<usize>>> = None;
 
     let bytes: Vec<_> = bytes.into_iter().flatten().collect();
     let len = bytes.len();
 
-    let mut smollest = loose_len;
+    let smollest = loose_len;
 
-    for perm in bytes.into_iter().permutations(len).unique() {
+    // TODO: are permutations the best method ?
+    for perm in bytes.into_iter().permutations(len) {
         let mut local_packed = pack(perm);
         let per_len = local_packed.len() + stipend_len;
 
         // get the most packed one
         if per_len < smollest {
             local_packed.append(&mut stipend);
-            packed = Some(local_packed);
-            smollest = per_len;
+            // packed = Some(local_packed);
+            // smollest = per_len;
 
-            // return Some(local_packed);
+            return Some(local_packed);
         }
     }
 

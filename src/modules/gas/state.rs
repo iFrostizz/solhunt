@@ -39,6 +39,7 @@ build_visitor! {
                 severity: Severity::Gas
             }
         ),
+        // TODO: avoid assigning state boolean, can be quantified more easily
         (
             4,
             FindingKey {

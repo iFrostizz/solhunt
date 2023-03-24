@@ -28,12 +28,12 @@ build_visitor! {
         if let Some(packed) = tightly_pack(struct_bytes.clone()) {
             let packed_struct = propose_better_packing(struct_definition, struct_bytes.into_iter().flatten().collect(), packed.into_iter().flatten().collect());
 
-            let repr = struct_to_sol_representation(&packed_struct);
+            let comment = "Here is a packed version that saves slot(s):\n\n".to_string() + &struct_to_sol_representation(&packed_struct);
 
-            self.push_finding_comment(0, Some(struct_definition.src.clone()), repr);
+            self.push_finding_comment(0, Some(struct_definition.src.clone()), comment);
         };
 
-        struct_definition.visit(self)
+        Ok(())
     }
 }
 
@@ -75,27 +75,25 @@ pub fn propose_better_packing(
     mut loose: Vec<usize>,
     tight: Vec<usize>,
 ) -> StructDefinition {
+    assert_eq!(loose.len(), tight.len());
+    assert_eq!(loose.len(), struc.members.len());
+
     let mut packed_struc = struc.clone();
     let mut members = struc.members.clone();
 
-    while loose != tight {
-        for i in 0..loose.len() {
-            if loose[i] != tight[i] {
-                // get the next index whose value is the current one to swap it
-                let next_id = tight
-                    .iter()
-                    .enumerate()
-                    .find(|(_, &x)| x == loose[i])
-                    .map(|(j, _)| j)
-                    .unwrap();
+    for i in 0..loose.len() {
+        if loose[i] != tight[i] {
+            // get the next index whose value is the current one to swap it
+            let next_id = tight
+                .iter()
+                .enumerate()
+                .find(|(_, &x)| x == loose[i])
+                .map(|(j, _)| j)
+                .unwrap();
 
-                // update the mirrored vec as well as the struct
-                loose.swap(i, next_id);
-                members.swap(i, next_id);
-
-                //                 dbg!(&loose);
-                //                 dbg!(&tight);
-            }
+            // update the mirrored vec as well as the struct
+            loose.swap(i, next_id);
+            members.swap(i, next_id);
         }
     }
 
@@ -433,4 +431,68 @@ struct PositionPreview { // @audit gas: can be tightly packed by moving borrowTy
             vec![32],
         ]
     );
+}
+
+#[test]
+fn better_packing() {
+    let src = SourceLocation {
+        start: None,
+        length: None,
+        index: None,
+    };
+
+    let def = StructDefinition {
+        members: Default::default(),
+        id: 0,
+        src: src.clone(),
+        name: Default::default(),
+        name_location: Default::default(),
+        canonical_name: Default::default(),
+        scope: Default::default(),
+        visibility: Visibility::Public,
+    };
+
+    let var = VariableDeclaration {
+        id: 0,
+        src,
+        name: Default::default(),
+        name_location: Default::default(),
+        base_functions: vec![],
+        constant: false,
+        state_variable: false,
+        documentation: None,
+        function_selector: None,
+        indexed: false,
+        mutability: None,
+        overrides: None,
+        scope: 0,
+        storage_location: StorageLocation::Default,
+        type_descriptions: TypeDescriptions {
+            type_identifier: None,
+            type_string: None,
+        },
+        type_name: None,
+        value: None,
+        visibility: Visibility::Public,
+    };
+
+    let mut var1 = var.clone();
+    var1.id = 1;
+    let mut var2 = var.clone();
+    var2.id = 2;
+    let mut var3 = var.clone();
+    var3.id = 3;
+    let mut var4 = var;
+    var4.id = 4;
+
+    let mut loose = def.clone();
+    loose.members = vec![var1.clone(), var2.clone(), var3.clone(), var4.clone()];
+
+    let mut tight = def;
+    tight.members = vec![var1, var3, var2, var4];
+
+    let loose_b = vec![32, 8, 32, 20];
+    let tight_b = vec![32, 32, 8, 20];
+
+    assert_eq!(propose_better_packing(&loose, loose_b, tight_b), tight);
 }

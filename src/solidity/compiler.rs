@@ -422,6 +422,9 @@ pub fn to_cached_artifacts(
                 .wrap_err_with(|| eyre::eyre!("artifact reading failed for path: {:?}", path))?;
 
             artifacts.insert(id.clone(), cached_artifact);
+        } else {
+            // remove any out-of-scope artifacts
+            artifacts.remove(id);
         }
     }
 
