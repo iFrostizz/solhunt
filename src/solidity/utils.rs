@@ -78,6 +78,7 @@ pub fn get_position(start: usize, lines_to_bytes: &[usize]) -> (usize, usize) {
 }
 
 /// Returns a view in the code where the finding is located
+#[allow(unused)]
 pub fn get_finding_content(content: String, start: usize, length: usize) -> String {
     let file_bytes: Vec<u8> = content.as_bytes().to_vec();
 

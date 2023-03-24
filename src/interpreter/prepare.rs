@@ -15,6 +15,7 @@ use std::{
     fs::File,
     io::prelude::*,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 /// walk sol files in the gas-metering folder and return a map to keep track of their name (finding id), version, in order to compile them and run the metering for each patch of solc
@@ -23,7 +24,7 @@ pub fn compile_metering(
     base_path: &PathBuf,
     path: &Path, // represents the path of the only contracts we wil meter
 ) -> eyre::Result<MeteringData> {
-    let mut data = read_base(base_path)?;
+    let data = Arc::new(Mutex::new(read_base(base_path)?));
 
     let all_contracts = get_sol_files(path);
 
@@ -98,72 +99,81 @@ pub fn compile_metering(
 
     let bar = get_bar(len, message);
 
-    for (ver, artifacts) in versioned_artifacts.into_iter() {
-        let artifacts_locations: Vec<PathBuf> =
-            artifacts.keys().map(|id| id.source.clone()).collect();
+    versioned_artifacts
+        .into_par_iter()
+        .for_each(|(ver, artifacts)| {
+            let artifacts_locations: Vec<PathBuf> =
+                artifacts.keys().map(|id| id.source.clone()).collect();
 
-        for location in artifacts_locations.iter() {
-            let from_to_artifacts_iter = artifacts.iter().filter(|(id, _)| &id.source == location);
+            for location in artifacts_locations.iter() {
+                let from_to_artifacts_iter =
+                    artifacts.iter().filter(|(id, _)| &id.source == location);
 
-            // should only find two artifacts, on "from" and one "to"
-            assert_eq!(from_to_artifacts_iter.clone().count(), 2);
+                // should only find two artifacts, on "from" and one "to"
+                assert_eq!(from_to_artifacts_iter.clone().count(), 2);
 
-            let mut art_from = None;
-            let mut art_to = None;
+                let mut art_from = None;
+                let mut art_to = None;
 
-            from_to_artifacts_iter.for_each(|(id, artifact)| {
-                if id.name == "From" {
-                    art_from = Some(BTreeMap::from([(id.clone(), artifact.clone())]));
-                } else if id.name == "To" {
-                    art_to = Some(BTreeMap::from([(id.clone(), artifact.clone())]));
-                }
-            });
+                from_to_artifacts_iter.for_each(|(id, artifact)| {
+                    if id.name == "From" {
+                        art_from = Some(BTreeMap::from([(id.clone(), artifact.clone())]));
+                    } else if id.name == "To" {
+                        art_to = Some(BTreeMap::from([(id.clone(), artifact.clone())]));
+                    }
+                });
 
-            let art_from = art_from.ok_or(eyre::eyre!("No `From` artifact"))?;
-            let art_to = art_to.ok_or(eyre::eyre!("No `To` artifact"))?;
+                // let art_from = art_from.ok_or(eyre::eyre!("No `From` artifact"))?;
+                // let art_to = art_to.ok_or(eyre::eyre!("No `To` artifact"))?;
+                let art_from = art_from.expect("No `From` artifact");
+                let art_to = art_to.expect("No `To` artifact");
 
-            let mut gas_comparer = GasComparer::default()
-                .with_root(root.clone())
-                .with_location(location.clone())
-                .with_artifacts((art_from, art_to))
-                .with_version(ver.clone());
+                let mut gas_comparer = GasComparer::default()
+                    .with_root(root.clone())
+                    .with_location(location.clone())
+                    .with_artifacts((art_from, art_to))
+                    .with_version(ver.clone());
 
-            let (from, to) = match gas_comparer.run() {
-                Ok(a) => a,
-                Err(err) => {
-                    let mini_path = location.strip_prefix(root).unwrap();
-                    panic!("err for location `{}`: `{err}`", mini_path.display());
-                }
-            };
+                let (from, to) = match gas_comparer.run() {
+                    Ok(a) => a,
+                    Err(err) => {
+                        let mini_path = location.strip_prefix(root).unwrap();
+                        panic!("err for location `{}`: `{err}`", mini_path.display());
+                    }
+                };
 
-            let file_stem = location
-                .file_stem()
-                .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
-                .to_os_string()
-                .into_string()
-                .unwrap();
+                let file_stem = location
+                    .file_stem()
+                    .expect("could not get file name")
+                    .to_os_string()
+                    .into_string()
+                    .unwrap();
 
-            let code: usize = file_stem
-                .parse()
-                .expect("should be named `code.sol`, got {file_stem}");
+                let code: usize = file_stem
+                    .parse()
+                    .expect("should be named `code.sol`, got {file_stem}");
 
-            let folder_name = location
-                .parent()
-                .ok_or(eyre::eyre!("couldn't get parent for {:#?}", location))?
-                .file_name()
-                .ok_or(eyre::eyre!("couldn't get file name for {:#?}", location))?
-                .to_str()
-                .unwrap()
-                .to_string();
+                let folder_name = location
+                    .parent()
+                    .expect("could not get parent")
+                    .file_name()
+                    .expect("could not get file name")
+                    .to_str()
+                    .unwrap()
+                    .to_string();
 
-            let d1: &mut HashMap<String, HashMap<String, (String, String)>> =
-                data.entry(folder_name).or_default();
-            let d2 = d1.entry(code.to_string()).or_default();
-            d2.insert(ver.clone().to_string(), (from.to_string(), to.to_string()));
+                let mut d = data.lock().unwrap();
 
-            bar.inc(1);
-        }
-    }
+                let d1: &mut HashMap<String, HashMap<String, (String, String)>> =
+                    d.entry(folder_name).or_default();
+                let d2 = d1.entry(code.to_string()).or_default();
+                d2.insert(ver.clone().to_string(), (from.to_string(), to.to_string()));
+
+                bar.inc(1);
+            }
+        });
+
+    let data = Arc::try_unwrap(data).unwrap().into_inner().unwrap();
 
     Ok(data)
 }

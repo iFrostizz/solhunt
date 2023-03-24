@@ -1,6 +1,6 @@
 use crate::{
     loader::get_all_visitors,
-    solidity::{build_source_maps, get_finding_content, get_finding_content_arrow},
+    solidity::{build_source_maps, get_finding_content_arrow},
     walker::{AllFindings, Walker},
 };
 use bytes::Bytes;
