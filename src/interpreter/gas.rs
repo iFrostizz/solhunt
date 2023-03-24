@@ -109,22 +109,6 @@ impl GasComparer {
         let cache_db = InMemoryDB::default();
         self.evm.database(cache_db);
 
-        // let artifacts =
-        //     compile_single_contract_to_artifacts_path(self.location.clone(), self.version.clone())?;
-
-        // let mut art_from = None;
-        // let mut art_to = None;
-
-        // self.artifacts.into_iter().for_each(|(id, artifact)| {
-        //     if id.source == self.location {
-        //         if id.name == "From" {
-        //             art_from = Some(BTreeMap::from([(id, artifact)]));
-        //         } else if id.name == "To" {
-        //             art_to = Some(BTreeMap::from([(id, artifact)]));
-        //         }
-        //     }
-        // });
-
         let artifacts = self
             .artifacts
             .clone()

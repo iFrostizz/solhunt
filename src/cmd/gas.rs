@@ -18,11 +18,6 @@ pub type MeteringData = HashMap<String, HashMap<String, HashMap<String, (String,
 /// A lockfile will be written to in the TOML format to keep track of the gas changes
 pub fn run_gas_metering(args: GasMetering) -> eyre::Result<()> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("gas-metering");
-    let base_path = if args.reset {
-        Default::default()
-    } else {
-        root.join("metering.toml")
-    };
 
     let path = if let Some(path) = &args.path {
         let path = path.canonicalize()?;
@@ -36,7 +31,16 @@ pub fn run_gas_metering(args: GasMetering) -> eyre::Result<()> {
         root.clone()
     };
 
-    let data = compile_metering(&root, &base_path, &path)?;
+    let data = if args.reset {
+        Default::default()
+    } else {
+        read_base(&path)?
+    };
+
+    let data = compile_metering(&root, data, &path)?;
+
+    let base_path = root.join("metering.toml");
+
     write_to_base(&base_path, data)?;
 
     Ok(())
