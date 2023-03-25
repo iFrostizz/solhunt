@@ -74,4 +74,48 @@ fn biconomy_integration() {
         0,
         35
     ));
+
+    // https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/Rolezn-G.md#gas4-duplicated-requirerevert-checks-should-be-refactored-to-a-modifier-or-function
+    assert!(has_with_code_at_line(
+        &findings,
+        "SmartAccount.sol",
+        "require",
+        1,
+        262
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "SmartAccount.sol",
+        "require",
+        1,
+        286
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "SmartAccount.sol",
+        "require",
+        1,
+        265
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "SmartAccount.sol",
+        "require",
+        1,
+        289
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "SmartAccount.sol",
+        "require",
+        1,
+        348
+    ));
+    assert!(has_with_code_at_line(
+        &findings,
+        "SmartAccount.sol",
+        "require",
+        1,
+        351
+    ));
 }

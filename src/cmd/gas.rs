@@ -32,6 +32,8 @@ pub fn run_gas_metering(args: GasMetering) -> eyre::Result<()> {
         root.clone()
     };
 
+    let base_path = root.join("metering.toml");
+
     let data = if args.reset {
         Default::default()
     } else {
