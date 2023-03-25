@@ -6,16 +6,16 @@ build_visitor! {
        (
             0,
             FindingKey {
-                summary: String::from("Use custom errors instead of revert strings"),
-                description: String::from("Solidity 0.8.4 added the custom errors functionality, which can be use instead of revert strings, resulting in big gas savings on errors. Replace all revert statements with custom error ones"),
+                summary: "Use custom errors instead of revert strings".to_string(),
+                description: "Solidity 0.8.4 added the custom errors functionality, which can be used instead of revert strings, resulting in big gas savings on errors since they all just consist of the 4 bytes signature of the error, similar to functions. They can then be decoded thanks to the ABI.".to_string(),
                 severity: Severity::Gas
             }
         ),
         (
             1,
             FindingKey {
-                summary: "Duplicated require()/revert() Checks Should Be Refactored To A Modifier Or an internal function".to_string(),
-                description: "Less code means a less costly deployment".to_string(),
+                summary: "Duplicated require()/revert()/assert() checks should be refactored to a modifier or an internal function".to_string(),
+                description: "Duplicated require, revert, or assert messages should be refactored to an internal or private function in order to save some gas on deployment. The more duplicated it is, the greater the savings, but this always saves gas starting from two duplication.".to_string(),
                 severity: Severity::Gas
             }
         ),
@@ -23,7 +23,7 @@ build_visitor! {
             2,
             FindingKey {
                 summary: "Use `require` instead of `assert`".to_string(),
-                description: "assert wastes all the transaction gas. Use require instead".to_string(),
+                description: "Assert should be used for unreachable paths, but if any of these gets triggered, it will waste all the gas forwarded with the call. This can result in a huge loss in some cases.".to_string(),
                 severity: Severity::Gas
             }
         )

@@ -15,6 +15,7 @@ use ethers_solc::{
     ProjectPathsConfig, Solc, SolcConfig,
 };
 use eyre::{Context, Result};
+use glob::glob;
 use semver::Version;
 use std::{
     collections::{BTreeMap, HashSet},
@@ -418,7 +419,7 @@ pub fn to_cached_artifacts(
     for id in cart.keys() {
         let abs_path = id.source.clone();
 
-        if locations.iter().any(|l| abs_path.starts_with(l)) {
+        if locations.iter().any(|loc| abs_path.starts_with(loc)) {
             let path = &id.path;
             let cached_artifact = Project::<ConfigurableArtifacts>::read_cached_artifact(path)
                 .wrap_err_with(|| eyre::eyre!("artifact reading failed for path: {:?}", path))?;
@@ -487,6 +488,16 @@ fn is_sol_file(path: &Path) -> bool {
     false
 }
 
+pub fn get_glob_locations(path: &str) -> eyre::Result<HashSet<PathBuf>> {
+    let glob = glob(path)?.collect::<Result<HashSet<_>, _>>()?;
+    if glob.is_empty() {
+        eyre::bail!("No path matched by glob")
+    }
+
+    Ok(glob)
+}
+
+// TODO: optional glob path, else get all sol files
 #[cfg(test)]
 pub fn compile_path_and_get_findings(
     path: &str,
@@ -506,11 +517,14 @@ pub fn compile_path_and_get_findings(
 
     let compiled = solidity.compile().unwrap();
 
+    let root_str = root.into_os_string().into_string().unwrap();
+    let glob: HashSet<_> = get_glob_locations(&(root_str + "/**/*.sol"))?;
+
     let artifacts = to_cached_artifacts(
         compiled
             .into_artifacts()
             .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>(),
-        HashSet::from([root]),
+        glob,
     )?;
 
     let source_map = build_artifacts_source_maps(&artifacts);

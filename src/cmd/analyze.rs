@@ -2,17 +2,25 @@ use super::parse::Analyze;
 use crate::{
     formatter::Report,
     loader::get_all_visitors,
-    solidity::{build_artifacts_source_maps, to_cached_artifacts, Solidity},
+    solidity::{build_artifacts_source_maps, get_glob_locations, to_cached_artifacts, Solidity},
     walker::{Severity, Walker},
 };
 use ethers_solc::artifacts::Optimizer;
-use glob::{glob, GlobError};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
 
 pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
+    let path = PathBuf::from(args.path).canonicalize().unwrap();
+    let glob_path = path.join(args.glob);
+    let glob_str = glob_path.to_str().unwrap();
+    let glob: HashSet<_> = get_glob_locations(glob_str)?;
+
+    if glob.is_empty() {
+        panic!("the glob path `{}` didn't matched any file", glob_str);
+    }
+
     let subscriber = tracing_subscriber::FmtSubscriber::new();
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -35,8 +43,6 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
         severities.values().map(|s| s.to_owned()).collect()
     };
 
-    let path = PathBuf::from(args.path).canonicalize().unwrap();
-
     let runs = args.optimizer_runs;
     let mut solidity = Solidity::default()
         .with_path_root(path.clone())
@@ -48,10 +54,6 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
         .use_cache(true)
         .auto_remappings(true)
         .silent();
-
-    let glob_path = path.join(args.glob);
-    let glob_str = glob_path.to_str().unwrap();
-    let glob = glob(glob_str)?.collect::<Result<HashSet<_>, GlobError>>()?;
 
     tracing::warn!("compiling");
 

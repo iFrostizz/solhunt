@@ -18,11 +18,11 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    use itertools::Itertools;
-
     use crate::walker::AllFindings;
+    use itertools::Itertools;
     use std::collections::HashSet;
 
+    #[allow(unused)]
     pub fn has_with_module(findings: &AllFindings, name: &str) -> bool {
         match findings.get(name) {
             Some(val) => !val.is_empty(),

@@ -6,8 +6,8 @@ build_visitor! {
         (
             0,
             FindingKey {
-                summary: "Use calldata instead of memory for function parameters".to_string(),
-                description: "It is generally cheaper to load variables directly from calldata for external functions, rather than copying them to memory. Only use memory if the variable needs to be modified. ".to_string(),
+                summary: "Use calldata instead of memory for external function parameters".to_string(),
+                description: "By the use of the `memory` keyword, all of the variables from the function parameter are copied to the memory by using the opcode `CALLDATACOPY`. This opcode gas cost grows linearly as a function of the number of slots to copy plus the memory expansion cost which can grow quadratically if there are a lot of slots to copy. If there is no need to alter the variables and store them somewhere, then we can safely load them from the calldata. See on evm.codes for more informations: https://www.evm.codes/#37".to_string(),
                 severity: Severity::Gas
             }
         )
