@@ -140,6 +140,9 @@ pub fn visit_sources<D>(
         let findings_data = &data.findings.to_vec();
 
         let source_findings = &findings_data[last_id..].to_vec();
+        // if abs_path.ends_with("Account.sol") {
+        //     dbg!(&source_findings);
+        // }
 
         source_findings.iter().for_each(|finding| {
             let (position, content) = if let Some(src) = &finding.src {

@@ -1,4 +1,4 @@
-use crate::test::has_with_code_at_line;
+use crate::test::{has_with_code_at_line, lines_for_findings_with_code_file_module};
 use crate::{solidity::compile_path_and_get_findings, test::has_with_code_file};
 use ethers_solc::artifacts::Optimizer;
 
@@ -75,49 +75,44 @@ fn biconomy_integration() {
         35
     ));
 
-    // dbg!(&findings["require"]);
-
     // https://github.com/code-423n4/2023-01-biconomy-findings/blob/main/data/Rolezn-G.md#gas4-duplicated-requirerevert-checks-should-be-refactored-to-a-modifier-or-function
-    // assert!(has_with_code_at_line(
-    //     &findings,
-    //     "SmartAccount.sol",
-    //     "require",
-    //     1,
-    //     262
-    // ));
-    // assert!(has_with_code_at_line(
-    //     &findings,
-    //     "SmartAccount.sol",
-    //     "require",
-    //     1,
-    //     286
-    // ));
+    assert_eq!(
+        lines_for_findings_with_code_file_module(&findings, "SmartAccount.sol", "require", 1),
+        vec![167, 168, 170, 171, 262, 265, 286, 289, 348, 351]
+    );
+
+    assert_eq!(
+        lines_for_findings_with_code_file_module(
+            &findings,
+            "SmartAccount.sol",
+            "centralization",
+            1
+        ),
+        vec![449, 455, 460, 465, 536]
+    );
+    assert_eq!(
+        lines_for_findings_with_code_file_module(
+            &findings,
+            "aa-4337/core/BasePaymaster.sol",
+            "centralization",
+            1
+        ),
+        vec![24, 67, 75, 90, 99]
+    );
+    assert_eq!(
+        lines_for_findings_with_code_file_module(
+            &findings,
+            "aa-4337/core/BasePaymaster.sol",
+            "centralization",
+            1
+        ),
+        vec![24, 67, 75, 90, 99]
+    );
     assert!(has_with_code_at_line(
         &findings,
-        "SmartAccount.sol",
-        "require",
+        "paymasters/verifying/singleton/VerifyingSingletonPaymaster.sol",
+        "centralization",
         1,
-        265
-    ));
-    assert!(has_with_code_at_line(
-        &findings,
-        "SmartAccount.sol",
-        "require",
-        1,
-        289
-    ));
-    // assert!(has_with_code_at_line(
-    //     &findings,
-    //     "SmartAccount.sol",
-    //     "require",
-    //     1,
-    //     348
-    // ));
-    assert!(has_with_code_at_line(
-        &findings,
-        "SmartAccount.sol",
-        "require",
-        1,
-        351
+        65
     ));
 }

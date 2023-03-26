@@ -42,9 +42,14 @@ build_visitor! {
                    }
                 }).collect();
 
-                self.push_findings(p_findings)
+                self.push_findings(p_findings);
+
+                // dbg!(sources);
+            } else {
+                // dbg!(&sources);
             }
         });
+
 
         self.revert_reasons.clear();
 
@@ -55,6 +60,7 @@ build_visitor! {
         let id_name = &identifier.name;
         if id_name == "require" || id_name == "revert" {
             let arg_ty = &identifier.argument_types;
+            // dbg!(&arg_ty);
 
             if let Some(reason) = if identifier.name == "require" {
                 let condition = &arg_ty[0];
@@ -73,18 +79,21 @@ arg_ty.get(0)
                 None
             } {
                     if let Some(id) = &reason.type_identifier {
+                        let lit = id.to_string();
 
-                        self.revert_reasons.entry(id.to_string()).and_modify(|times| {
-                            times.push(identifier.src.clone())
-                       }).or_insert(vec![identifier.src.clone()]);
+                        if lit != "t_string_memory_ptr" {
+                            self.revert_reasons.entry(lit).and_modify(|times| {
+                                times.push(identifier.src.clone())
+                            }).or_insert(vec![identifier.src.clone()]);
 
-                        if id.starts_with("t_stringliteral_") {
-                            self.push_finding(0, Some(identifier.src.clone()))
+                            if id.starts_with("t_stringliteral_") {
+                                self.push_finding(0, Some(identifier.src.clone()));
+                            }
                         }
                     }
             }
         } else if id_name == "assert" {
-            self.push_finding(2, Some(identifier.src.clone()))
+            self.push_finding(2, Some(identifier.src.clone()));
         }
 
         identifier.visit(self)
@@ -230,4 +239,87 @@ contract Assert {
         lines_for_findings_with_code_module(&findings, "require", 2),
         vec![5]
     );
+}
+
+// fix for biconomy integration. `true_body` forgotten!
+#[test]
+fn biconomy_require() {
+    let findings = compile_contract_and_get_findings(String::from(
+        r#"pragma solidity 0.8.0;
+
+contract Thingy {
+    function handlePayment(
+        uint256 gasUsed,
+        uint256 baseGas,
+        uint256 gasPrice,
+        uint256 tokenGasPriceFactor,
+        address gasToken,
+        address payable refundReceiver
+    ) private returns (uint256 payment) {
+        // uint256 startGas = gasleft();
+        // solhint-disable-next-line avoid-tx-origin
+        address payable receiver = refundReceiver == address(0) ? payable(tx.origin) : refundReceiver;
+        if (gasToken == address(0)) {
+            // For ETH we will only adjust the gas price to not be higher than the actual used gas price
+            payment = (gasUsed + baseGas) * (gasPrice < tx.gasprice ? gasPrice : tx.gasprice);
+            (bool success,) = receiver.call{value: payment}("");
+            require(success, "BSA011");
+        } else {
+            payment = (gasUsed + baseGas) * (gasPrice) / (tokenGasPriceFactor);
+            require(transferToken(gasToken, receiver, payment), "BSA012");
+        }
+        // uint256 requiredGas = startGas - gasleft();
+        //console.log("hp %s", requiredGas);
+    }
+
+    function handlePaymentRevert(
+        uint256 gasUsed,
+        uint256 baseGas,
+        uint256 gasPrice,
+        uint256 tokenGasPriceFactor,
+        address gasToken,
+        address payable refundReceiver
+    ) external returns (uint256 payment) {
+        uint256 startGas = gasleft();
+        // solhint-disable-next-line avoid-tx-origin
+        address payable receiver = refundReceiver == address(0) ? payable(tx.origin) : refundReceiver;
+        if (gasToken == address(0)) {
+            // For ETH we will only adjust the gas price to not be higher than the actual used gas price
+            payment = (gasUsed + baseGas) * (gasPrice < tx.gasprice ? gasPrice : tx.gasprice);
+            (bool success,) = receiver.call{value: payment}("");
+            require(success, "BSA011");
+        } else {
+            payment = (gasUsed + baseGas) * (gasPrice) / (tokenGasPriceFactor);
+            require(transferToken(gasToken, receiver, payment), "BSA012");
+        }
+        uint256 requiredGas = startGas - gasleft();
+        //console.log("hpr %s", requiredGas);
+        // Convert response to string and return via error message
+        revert(string(abi.encodePacked(requiredGas)));
+    }
+
+    function transferToken(address, address, uint256) internal returns (bool) {return true;}
+}"#,
+    ));
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "require", 1),
+        vec![19, 22, 43, 46]
+    );
+}
+
+#[test]
+fn invalid_data() {
+    let findings = compile_contract_and_get_findings(String::from(
+        r#"pragma solidity 0.8.0;
+
+contract Test {
+    function hello() public {
+        require(true, string(abi.encode(abi.encodePacked("No!"))));
+        require(true, string(abi.encode(abi.encodePacked("No!"))));
+    }
+}"#,
+    ));
+
+    assert!(!has_with_code(&findings, "require", 1));
 }
