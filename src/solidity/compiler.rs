@@ -509,7 +509,8 @@ pub fn compile_path_and_get_findings(
 
     let mut solidity = Solidity::default()
         .with_path_root(root.clone())
-        .auto_remappings(true);
+        .auto_remappings(true)
+        .silent();
 
     if let Some(optimizer) = optimizer {
         solidity = solidity.with_optimizer(optimizer);
