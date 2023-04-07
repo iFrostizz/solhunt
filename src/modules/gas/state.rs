@@ -55,6 +55,14 @@ build_visitor! {
                 description: "When state variables are guaranteed to never change, they should be inlined in the bytecode of the contract by declaring them as immutables or constants to avoid paying the upfront cost of SLOAD which are expensive, mainly when the slot is cold.".to_string(),
                 severity: Severity::Gas,
             }
+        ),
+        (
+            6,
+            FindingKey {
+                summary: "Cache state variables assigned in a loop".to_string(),
+                description: "".to_string(),
+                severity: Severity::Gas,
+            }
         )
     ]),
 
@@ -454,3 +462,26 @@ contract Const {
 
     assert!(!has_with_code(&findings, "immutable", 5));
 }
+
+// TODO: after bringing the ast on the codebase from ethers-rs
+// #[test]
+// fn state_assign_loop() {
+//     let findings = compile_contract_and_get_findings(String::from(
+//         "pragma solidity 0.8.0;
+
+// contract Assign {
+//     uint256 val;
+
+//     function loop() public {
+//         for (uint i; i < 10; i++) {
+//             val = i;
+//         }
+//     }
+// }",
+//     ));
+
+//     assert_eq!(
+//         lines_for_findings_with_code_module(&findings, "state", 6),
+//         vec![8]
+//     );
+// }
