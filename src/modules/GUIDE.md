@@ -2,7 +2,7 @@
 
 ## Intro
 
-This repo currently rely on a fork of ethers-rs with new types for more granularity and to avoid too much repetition as well as a "visitor" pattern. The `Visitor` is a trait that can be implemented by the detection modules which can hold some arbitrary state (including the findings). Everytime it visits a node, it will call the underlying function back to the implementer of the trait to notify that this node is being visited.
+This repo currently relies on a fork of ethers-rs with new types for more granularity and to avoid too much repetition as well as a "visitor" pattern. The `Visitor` is a trait that can be implemented by the detection modules which can hold some arbitrary state (including the findings). Everytime it visits a node, it will call the underlying function back to the implementer of the trait to notify that this node is being visited.
 
 The `build_visitor!` macro was made to avoid having to copy and paste the same implementation over and over so that you can focus on the findings.
 
@@ -39,7 +39,11 @@ First, we are importing the `build_visitor!` macro.
 Inside of this macro, we can define the findings, and how to actually find them.
 We are creating a map that links the finding code to a more detailed description as well as the severity. Finding a `uint256` may seem critical, but it seems more apropriate to define it as `Informal`.
 
-In the implementation, we are defining `visit_variable_declaration()` which will be called by the Visitor. If the type identifier is "t_uint256", then we can raise the finding.
+In the implementation, we are defining `visit_variable_declaration()` which will be called by the Visitor. If the `type identifier` is a "t_uint256", then we can raise the finding.
+
+We are then calling `var.visit(self)` to notify that we should keep visiting the nodes nested in the `variable_declaration`.
+
+You can do the choice to omit it, and just return `Ok(())` if you believe that there won't be any other function relying on some of these nested nodes. It's quite easy to forget it though and can be somewhat hard to understand why some functions (in nested nodes) aren't being visited and maybe not really worth the optimization.
 
 ## Avoiding false positives
 
@@ -55,15 +59,13 @@ mod test {
 
     #[test]
     fn can_find_dummy_uint256() {
-        let findings = compile_and_get_findings(vec![ProjectFile::Contract(
-            String::from("DummyUint256"),
+        let findings = compile_contract_and_get_findings(vec![ProjectFile::Contract(
             String::from(
                 "pragma solidity 0.8.0;
 
             contract DummyUint256 {
                 uint256 unint;
-            }
-            ",
+            }",
             ),
         )]);
 
@@ -81,10 +83,3 @@ After catching the findings, we are asserting that the location of this `uint256
 
 Making sure that tests passes for each situation will reduce the amount of false positives as well as false negatives.
 
-# Modules TODO
-- [ ] ERC20 without return check
-- [ ] Hardcoded slippage for Uniswap
-- [ ] Usage of Safemath / useless pragmas / assert
-- [ ] Leftover of testing: console.log, import contracts
-- [ ] Tight variable packing
-- [ ] Require without message
