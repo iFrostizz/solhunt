@@ -35,7 +35,6 @@ pub struct PushedFinding {
 }
 
 // TODO: automate this !
-// TODO: write benches for detection modules and only run *one* visitor
 pub fn get_all_visitors() -> Vec<Rc<RefCell<(dyn Visitor<ModuleState> + 'static)>>> {
     // Vec::new()
     vec![

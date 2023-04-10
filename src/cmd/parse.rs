@@ -23,7 +23,9 @@ pub struct Cmd {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Run a static analysis
     Analyze(Analyze),
+    /// Launch gas meterings
     Gas(GasMetering),
 }
 

@@ -497,14 +497,10 @@ pub fn get_glob_locations(path: &str) -> eyre::Result<HashSet<PathBuf>> {
     Ok(glob)
 }
 
-// TODO: optional glob path, else get all sol files
-#[cfg(test)]
-pub fn compile_path_and_get_findings(
+pub fn compile_path_to_artifacts(
     path: &str,
     optimizer: Option<Optimizer>,
-) -> eyre::Result<AllFindings> {
-    use super::build_artifacts_source_maps;
-
+) -> eyre::Result<BTreeMap<ArtifactId, ConfigurableContractArtifact>> {
     let root = PathBuf::from(path).canonicalize().unwrap();
 
     let mut solidity = Solidity::default()
@@ -521,14 +517,23 @@ pub fn compile_path_and_get_findings(
     let root_str = root.into_os_string().into_string().unwrap();
     let glob: HashSet<_> = get_glob_locations(&(root_str + "/**/*.sol"))?;
 
-    let artifacts = to_cached_artifacts(
+    to_cached_artifacts(
         compiled
             .into_artifacts()
             .collect::<BTreeMap<ArtifactId, ConfigurableContractArtifact>>(),
         glob,
-    )?;
+    )
+}
 
-    let source_map = build_artifacts_source_maps(&artifacts);
+// TODO: optional glob path, else get all sol files
+#[cfg(test)]
+pub fn compile_path_and_get_findings(
+    path: &str,
+    optimizer: Option<Optimizer>,
+) -> eyre::Result<AllFindings> {
+    let artifacts = compile_path_to_artifacts(path, optimizer)?;
+
+    let source_map = super::build_artifacts_source_maps(&artifacts);
     if source_map.is_empty() {
         eyre::bail!("No source map")
     }
