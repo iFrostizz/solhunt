@@ -81,5 +81,12 @@ We are writing a contract, which will be saved on a temporarly location on your 
 
 After catching the findings, we are asserting that the location of this `uint256` declaration which has the finding code "0" is at line 4.
 
+Before running the test, make sure to add it in the visitors array, in `src/loader/module.rs`. The `build_visitor!` macro will automatically generate a `DetectionModule` struct that contains the necessary state.
+
 Making sure that tests passes for each situation will reduce the amount of false positives as well as false negatives.
 
+You can log the AST in the terminal by passing the `DEBUG` env variable. Either by writing it in a `.env` for instance, but a convenient way is to run:
+
+```sh
+DEBUG=true cargo test info::uint256::can_find_dummy_uint256
+```
