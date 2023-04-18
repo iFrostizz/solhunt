@@ -15,7 +15,7 @@ build_visitor! {
     ]),
 
     fn visit_function_call(&mut self, fc: &mut FunctionCall) {
-        if fc.type_descriptions.type_string == Some("bytes1".to_string()) {
+        if fc.type_descriptions.type_string == Some("bytes1".to_string()) && fc.arguments.is_empty() {
             let expr = &fc.expression;
 
             if let Expression::MemberAccess(ma) = expr {
@@ -25,7 +25,7 @@ build_visitor! {
             }
         }
 
-        Ok(())
+        fc.visit(self)
     }
 }
 
@@ -49,4 +49,23 @@ contract Dirty {
         lines_for_findings_with_code_module(&findings, "dirty", 0),
         vec![8]
     );
+}
+
+#[test]
+fn non_empty_push() {
+    let findings = compile_contract_and_get_findings(String::from(
+        r#"pragma solidity 0.7.0;
+
+contract Dirty {
+    mapping(address => string) public usernameOf;
+
+    function setUsername(uint256 obfuscationDegree) public payable {
+        for (uint256 i; i < obfuscationDegree; ++i) {
+            bytes(usernameOf[msg.sender]).push(bytes1(uint8(10)));
+        }
+    }
+}"#,
+    ));
+
+    assert!(!has_with_code(&findings, "dirty", 0));
 }
