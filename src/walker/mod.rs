@@ -1,4 +1,5 @@
 mod findings;
+mod instru;
 mod parser;
 mod traversal;
 

@@ -1,6 +1,9 @@
 // Takes a load of modules and walk through the full ast. Should be kind enough to tell bugs
 
-use super::{Meta, MetaFinding, ModuleState};
+use super::{
+    instru::{to_instru_ast, InstrumentedAst},
+    Meta, MetaFinding, ModuleState,
+};
 use crate::{
     cmd::bars::get_bar,
     loader::Information,
@@ -49,10 +52,6 @@ impl Walker {
         self
     }
 
-    // For analyzing a syntax tree, we need an AST "walker" — an object to facilitate the traversal of the tree.
-    // The ast module offers two walkers:
-    // - ast.NodeVisitor (doesn't allow modification to the input tree)
-    // - ast.NodeTransformer (allows modification)
     pub fn traverse(&mut self) -> eyre::Result<AllFindings> {
         let mut all_findings: AllFindings = HashMap::new();
 
@@ -73,6 +72,7 @@ impl Walker {
 
                 let ast: TypedAst = ast.to_typed();
                 let source_unit = &ast.source_unit;
+
                 let source_id = source_unit.id;
 
                 let abs_path = &id.source;
@@ -86,10 +86,14 @@ impl Walker {
                     version: id.version.clone(),
                 };
 
+                let instru_ast = to_instru_ast(ast).unwrap();
+
+                // dbg!(&instru_ast.instru);
+
                 let ret = if ids.contains(&source_id) {
                     None
                 } else {
-                    Some((ast, info, abs_path))
+                    Some((instru_ast, info, abs_path))
                 };
 
                 ids.push(source_id);
@@ -125,7 +129,7 @@ impl Walker {
 }
 
 pub fn visit_sources<D>(
-    full_sources: Vec<(TypedAst, Information, &PathBuf)>,
+    full_sources: Vec<(InstrumentedAst, Information, &PathBuf)>,
     visitor: &Rc<RefCell<dyn Visitor<ModuleState>>>,
     source_map: &BTreeMap<String, (String, Vec<usize>)>,
     findings: &mut AllFindings,
@@ -134,7 +138,7 @@ pub fn visit_sources<D>(
     let mut visitor = visitor.borrow_mut();
 
     for (mut source, info, abs_path) in full_sources.into_iter() {
-        source.visit(visitor.deref_mut())?;
+        source.ast.visit(visitor.deref_mut())?;
 
         let data = visitor.shared_data();
         let findings_data = &data.findings.to_vec();
